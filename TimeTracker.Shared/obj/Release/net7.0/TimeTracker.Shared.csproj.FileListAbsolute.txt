@@ -1,0 +1,12 @@
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/bin/Release/net7.0/TimeTracker.Shared.deps.json
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/bin/Release/net7.0/TimeTracker.Shared.dll
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/bin/Release/net7.0/TimeTracker.Shared.pdb
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/TimeTracker.Shared.csproj.AssemblyReference.cache
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/TimeTracker.Shared.GeneratedMSBuildEditorConfig.editorconfig
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/TimeTracker.Shared.AssemblyInfoInputs.cache
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/TimeTracker.Shared.AssemblyInfo.cs
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/TimeTracker.Shared.csproj.CoreCompileInputs.cache
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/TimeTracker.Shared.dll
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/refint/TimeTracker.Shared.dll
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/TimeTracker.Shared.pdb
+/Users/zkarachiwala/Documents/Development/DotNetWebAcademy/TimeTracker/TimeTracker.Shared/obj/Release/net7.0/ref/TimeTracker.Shared.dll
