@@ -1,5 +1,3 @@
-using TimeTracker.Shared.Entities;
-
 namespace TimeTracker.API.Repositories;
 
 public interface ITimeEntryRepository
