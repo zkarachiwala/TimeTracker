@@ -5,9 +5,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Build Connection String
 var conStrBuilder = new SqlConnectionStringBuilder(
         builder.Configuration.GetConnectionString("DefaultConnection"));
-conStrBuilder.UserID = builder.Configuration["DbUser"];
-conStrBuilder.Password = builder.Configuration["DbPassword"];
-
+if (builder.Environment.IsDevelopment()) {
+    conStrBuilder.UserID = builder.Configuration["DbUser"];
+    conStrBuilder.Password = builder.Configuration["DbPassword"];
+}
 var connection = conStrBuilder.ConnectionString;
 
 
