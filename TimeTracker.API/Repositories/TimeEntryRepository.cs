@@ -29,12 +29,12 @@ public class TimeEntryRepository : ITimeEntryRepository
         return await _context.TimeEntries.ToListAsync();
     }
 
-    public async Task<List<TimeEntry>?> UpdateTimeEntry(int id, TimeEntry timeEntry)
+    public async Task<List<TimeEntry>> UpdateTimeEntry(int id, TimeEntry timeEntry)
     {
         var dbTimeEntry = await _context.TimeEntries.FindAsync(id);
         if (dbTimeEntry is null)
         {
-            return null;
+            throw new EntityNotFoundException($"Entity with ID {id} was not found.");
         }
 
         dbTimeEntry.Project = timeEntry.Project;
