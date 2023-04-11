@@ -2,15 +2,15 @@ using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var connection = builder.Configuration.GetConnectionString("DefaultConnection");
 // Build Connection String
-var conStrBuilder = new SqlConnectionStringBuilder(
-        builder.Configuration.GetConnectionString("DefaultConnection"));
 if (builder.Environment.IsDevelopment()) {
+    var conStrBuilder = new SqlConnectionStringBuilder(
+    builder.Configuration.GetConnectionString("DefaultConnection"));
     conStrBuilder.UserID = builder.Configuration["DbUser"];
     conStrBuilder.Password = builder.Configuration["DbPassword"];
+    connection = conStrBuilder.ConnectionString;
 }
-var connection = conStrBuilder.ConnectionString;
-
 
 // Add services to the container.
 
