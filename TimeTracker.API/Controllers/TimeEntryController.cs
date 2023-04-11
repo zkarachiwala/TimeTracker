@@ -14,15 +14,15 @@ public class TimeEntryController : ControllerBase
     }
     
     [HttpGet]
-    public ActionResult<List<TimeEntryResponse>> GetAllTimeEntries()
+    public async Task<ActionResult<List<TimeEntryResponse>>> GetAllTimeEntries()
     {
-        return Ok(_timeEntryService.GetAllTimeEntries());
+        return Ok(await _timeEntryService.GetAllTimeEntries());
     }
 
     [HttpGet("{id}")]
-    public ActionResult<TimeEntryResponse> GetTimeEntryById(int id)
+    public async Task<ActionResult<TimeEntryResponse>> GetTimeEntryById(int id)
     {
-        var result = _timeEntryService.GetTimeEntryById(id);
+        var result = await  _timeEntryService.GetTimeEntryById(id);
         if(result is null)
             return NotFound("TimeEntry with the given ID was not found.");
 
@@ -30,15 +30,15 @@ public class TimeEntryController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<List<TimeEntryResponse>> CreateTimeEntry(TimeEntryCreateRequest timeEntry)
+    public async Task<ActionResult<List<TimeEntryResponse>>> CreateTimeEntry(TimeEntryCreateRequest timeEntry)
     {
-        return Ok(_timeEntryService.CreateTimeEntry(timeEntry));
+        return Ok(await _timeEntryService.CreateTimeEntry(timeEntry));
     }
 
     [HttpPut("{id}")]
-    public ActionResult<List<TimeEntryResponse>> UpdateTimeEntry(int id, TimeEntryUpdateRequest timeEntry)
+    public async Task<ActionResult<List<TimeEntryResponse>>> UpdateTimeEntry(int id, TimeEntryUpdateRequest timeEntry)
     {
-        var result = _timeEntryService.UpdateTimeEntry(id, timeEntry);
+        var result = await _timeEntryService.UpdateTimeEntry(id, timeEntry);
         if (result is null)
             return NotFound("TimeEntry with the given ID was not found.");
 
@@ -46,9 +46,9 @@ public class TimeEntryController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public ActionResult<List<TimeEntryResponse>> DeleteTimeEntry(int id)
+    public async Task<ActionResult<List<TimeEntryResponse>>> DeleteTimeEntry(int id)
     {
-        var result = _timeEntryService.DeleteTimeEntry(id);
+        var result = await _timeEntryService.DeleteTimeEntry(id);
         if (result is null)
             return NotFound("TimeEntry with the given ID was not found.");
 
