@@ -7,4 +7,5 @@ public class DataContext : DbContext
     }
 
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
+    public DbSet<Project> Projects => Set<Project>();
 }
