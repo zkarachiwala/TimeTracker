@@ -38,7 +38,8 @@ public class ProjectRepository : IProjectRepository
 
     public async Task<Project?> GetProjectById(int id)
     {
-        var project = await _context.Projects.FindAsync(id);
+        var project = await _context.Projects.Where(p => p.IsDeleted != true)
+                                             .FirstOrDefaultAsync(p => p.Id == id);
         return project;
     }
 

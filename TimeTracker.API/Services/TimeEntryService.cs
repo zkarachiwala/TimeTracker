@@ -29,10 +29,10 @@ public class TimeEntryService : ITimeEntryService
         return result.Adapt<List<TimeEntryResponse>>();
     }
 
-    public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByProjectId(int projectId)
+    public async Task<List<TimeEntryByProjectResponse>> GetAllTimeEntriesByProjectId(int projectId)
     {
         var result = await _timeEntryRepository.GetAllTimeEntriesByProjectId(projectId);
-        return result.Adapt<List<TimeEntryResponse>>();        
+        return result.Adapt<List<TimeEntryByProjectResponse>>();        
     }
 
     public async Task<TimeEntryResponse?> GetTimeEntryById(int id)
