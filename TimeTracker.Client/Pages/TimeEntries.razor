@@ -1,6 +1,6 @@
 @page "/timeentries"
-@inject HttpClient Http
-
+@inject ITimeEntryService TimeEntryService
+@implements IDisposable
 
 <PageTitle>Time Entries</PageTitle>
 <h3>Time Entries</h3>
@@ -12,32 +12,38 @@
             <th>End</th>
             <th>Duration</th>
             <th>Project</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var timeEntry in timeEntries)
+        @foreach (var timeEntry in TimeEntryService.TimeEntries)
         {
             <tr>
                 <td>@timeEntry.Start</td>
-                <td>@timeEntry.Start</td>
+                <td>@timeEntry.End</td>
                 <td>@GetDuration(timeEntry.Start, timeEntry.End)</td>
                 <td>@timeEntry.Project.Name</td>
+                <td>
+                    <button class="btn btn-primary" onclick="@(() => ShowProject(timeEntry.Project.Id))">Show Project</button>
+                </td>
             </tr>
         }
     </tbody>
 </table>
 
+@if(projectId > 0)
+{
+    <ProjectDetails ProjectId="projectId" />
+}
+
 @code {
 
-    private List<TimeEntryResponse> timeEntries = new List<TimeEntryResponse>();
-    
+    int projectId = 0;
+
     protected override async Task OnInitializedAsync()
     {
-        var result = await Http.GetFromJsonAsync<List<TimeEntryResponse>>("api/timeentry");
-        if (result is not null)
-        {
-            timeEntries = result;
-        }
+        await TimeEntryService.GetTimeEntriesByProject(projectId);
+        TimeEntryService.OnChange += StateHasChanged;
     }
 
     private string GetDuration(DateTime? start, DateTime? end)
@@ -49,6 +55,20 @@
             return result;
         }
         return string.Empty;
+    }
+
+    private void ShowProject(int id)
+    {
+        if(projectId == id)
+            return;
+        
+        projectId = id;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        TimeEntryService.OnChange -= StateHasChanged;
     }
 
 }

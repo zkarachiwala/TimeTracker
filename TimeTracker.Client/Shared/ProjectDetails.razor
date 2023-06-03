@@ -1,0 +1,33 @@
+@inject HttpClient Http
+
+@if(showDetails)
+{
+    <hr />
+    <p>
+        Project: @project.Name<br />
+        Description: @project.Description<br />
+        Start: @project.StartDate<br />
+        End: @project.EndDate<br />
+    </p>
+}
+
+@code {
+    [Parameter]
+    public int ProjectId { get; set; }
+    bool showDetails = false;
+    ProjectResponse project { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Http.GetAsync($"api/project/{ProjectId}");
+        if (result.IsSuccessStatusCode)
+        {
+            project = await result.Content.ReadFromJsonAsync<ProjectResponse>();
+            showDetails = true;
+        }
+        else
+        {
+            showDetails = false;
+        }
+    }
+}
