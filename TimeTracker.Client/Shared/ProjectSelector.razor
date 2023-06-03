@@ -1,0 +1,35 @@
+@inject HttpClient Http
+@inject ITimeEntryService TimeEntryService
+
+<div class="form-group my-4">
+    <InputSelect @bind-Value="projectId" @oninput="OnInput" class="form-control">
+        <option value="0">All Projects</option>
+        @foreach (var project in projects)
+        {
+            <option value="@project.Id">@project.Name</option>
+        }
+    </InputSelect>
+</div>
+
+@code {
+    private List<ProjectResponse> projects = new List<ProjectResponse>();
+    private int projectId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Http.GetFromJsonAsync<List<ProjectResponse>>("api/project");
+        if (result is not null)
+            projects = result;
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        if(e.Value is not null)
+        {
+            if(int.TryParse(e.Value.ToString(), out int projectId))
+            {
+                await TimeEntryService.GetTimeEntriesByProject(projectId);
+            }
+        }
+    }
+}
