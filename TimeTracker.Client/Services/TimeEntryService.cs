@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Mapster;
 using TimeTracker.Shared.Models.TimeEntry;
 
 namespace TimeTracker.Client.Services;
@@ -33,5 +34,25 @@ public class TimeEntryService : ITimeEntryService
             TimeEntries = result;
             OnChange?.Invoke();
         }
+    }
+
+    public async Task<TimeEntryResponse> GetTimeEntryById(int id)
+    {
+        return await _http.GetFromJsonAsync<TimeEntryResponse>($"api/timeentry/{id}");
+    }
+
+    public async Task CreateTimeEntry(TimeEntryRequest request)
+    {
+        await _http.PostAsJsonAsync("api/timeentry", request.Adapt<TimeEntryCreateRequest>());
+    }
+
+    public async Task UpdateTimeEntry(int id, TimeEntryRequest request)
+    {
+        await _http.PutAsJsonAsync($"api/timeentry/{id}", request.Adapt<TimeEntryUpdateRequest>());
+    }
+
+    public async Task DeleteTimeEntry(int id)
+    {
+        await _http.DeleteAsync($"api/timeentry/{id}");
     }
 }

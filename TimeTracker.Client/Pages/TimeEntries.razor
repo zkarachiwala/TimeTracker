@@ -1,9 +1,12 @@
 @page "/timeentries"
 @inject ITimeEntryService TimeEntryService
+@inject NavigationManager NavigationManager
 @implements IDisposable
 
 <PageTitle>Time Entries</PageTitle>
 <h3>Time Entries</h3>
+
+<button class="btn btn-primary mb-2" @onclick="CreateTimeEntry">Create Time Entry</button>
 
 <table>
     <thead>
@@ -12,6 +15,7 @@
             <th>End</th>
             <th>Duration</th>
             <th>Project</th>
+            <th></th>
             <th></th>
         </tr>
     </thead>
@@ -25,6 +29,11 @@
                 <td>@timeEntry.Project.Name</td>
                 <td>
                     <button class="btn btn-primary" onclick="@(() => ShowProject(timeEntry.Project.Id))">Show Project</button>
+                </td>
+                <td>
+                    <button class="btn btn-primary" onclick="@(() => EditTimeEntry(timeEntry.Id))">
+                        <i class="oi oi-pencil" />
+                </button>
                 </td>
             </tr>
         }
@@ -69,6 +78,16 @@
     public void Dispose()
     {
         TimeEntryService.OnChange -= StateHasChanged;
+    }
+
+    private void CreateTimeEntry()
+    {
+        NavigationManager.NavigateTo("/timeentry");
+    }
+
+    private void EditTimeEntry(int id)
+    {
+        NavigationManager.NavigateTo($"/timeentry/{id}");
     }
 
 }

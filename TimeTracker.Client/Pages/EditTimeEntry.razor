@@ -1,0 +1,104 @@
+@page "/timeentry"
+@page "/timeentry/{id:int}"
+@inject ITimeEntryService TimeEntryService
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+@if(Id is null)
+{
+    <h3>Create Time Entry</h3>
+} 
+else
+{
+    <h3>Edit Time Entry</h3>
+}
+
+
+<EditForm Model="timeEntry" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <div>
+        <label for="startDate">Start</label>
+        <InputDate id="startDate" Type="InputDateType.DateTimeLocal"
+            @bind-Value="timeEntry.Start" class="form-control" />
+    </div>
+    <div>
+        <label for="endDate">End</label>
+        <InputDate id="endDate" Type="InputDateType.DateTimeLocal"
+            @bind-Value="timeEntry.End" class="form-control" />
+    </div>
+    <div>
+        <label for="project">Project</label>
+        <InputSelect id="project" @bind-Value="timeEntry.ProjectId" class="form-control">
+            @foreach (var project in ProjectService.Projects)
+            {
+                <option value="@project.Id">@project.Name</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => timeEntry.ProjectId" />
+    </div>
+    @if(Id is not null)
+    {
+        <button type="button" class="btn btn-danger mt-2 mx-1" 
+            @onclick="DeleteTimeEntry">
+            Delete
+        </button>    
+    }
+    <button type="submit" class="btn btn-primary mt-2">Submit</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    TimeEntryRequest timeEntry = new TimeEntryRequest();
+
+    protected override void OnInitialized()
+    {
+        ProjectService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if(Id is not null)
+        {
+            var result = await TimeEntryService.GetTimeEntryById((int)Id);
+            timeEntry = new TimeEntryRequest {
+                ProjectId = result.Project.Id,
+                Start = result.Start,
+                End = result.End
+            };
+        }
+    }
+
+    async Task HandleSubmit()
+    {
+        if(Id is null)
+        {
+            await TimeEntryService.CreateTimeEntry(timeEntry);
+            NavigationManager.NavigateTo("/timeentries");
+        } 
+        else
+        {
+            await TimeEntryService.UpdateTimeEntry((int)Id, timeEntry);
+            NavigationManager.NavigateTo("/timeentries");            
+        }
+    }
+
+    async Task DeleteTimeEntry()
+    {
+        var confirmed = await JSRuntime
+            .InvokeAsync<bool>("confirm", "Do you really want to delete this entry?");
+        if(Id is not null && confirmed)
+        {
+            await TimeEntryService.DeleteTimeEntry((int)Id);
+            NavigationManager.NavigateTo("/timeentries");
+        }
+    }
+
+    public void Dispose()
+    {
+        ProjectService.OnChange -= StateHasChanged;
+    }
+}
