@@ -8,37 +8,28 @@
 
 <button class="btn btn-primary mb-2" @onclick="CreateTimeEntry">Create Time Entry</button>
 
-<table>
-    <thead>
-        <tr>
-            <th>Start</th>
-            <th>End</th>
-            <th>Duration</th>
-            <th>Project</th>
-            <th></th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var timeEntry in TimeEntryService.TimeEntries)
-        {
-            <tr>
-                <td>@timeEntry.Start</td>
-                <td>@timeEntry.End</td>
-                <td>@GetDuration(timeEntry.Start, timeEntry.End)</td>
-                <td>@timeEntry.Project.Name</td>
-                <td>
-                    <button class="btn btn-primary" onclick="@(() => ShowProject(timeEntry.Project.Id))">Show Project</button>
-                </td>
-                <td>
-                    <button class="btn btn-primary" onclick="@(() => EditTimeEntry(timeEntry.Id))">
-                        <i class="oi oi-pencil" />
-                </button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<QuickGrid Items="FilteredTimeEntries" Pagination="@paginator">
+    <PropertyColumn Property="t => t.Start" />
+    <PropertyColumn Property="t => t.End" />
+    <PropertyColumn Property="t => GetDuration(t.Start, t.End)" Title="Duration" />
+    <PropertyColumn Property="t => t.Project.Name" Title="Project">
+        <ColumnOptions>
+            <div>
+                <input type="search" autofocus @bind="projectFilter" @bind:event="oninput" placeholder="Project name..." />
+            </div>
+        </ColumnOptions>
+    </PropertyColumn>
+    <TemplateColumn>
+        <button class="btn btn-primary" onclick="@(() => ShowProject(context.Project.Id))">Show Project</button>
+    </TemplateColumn>
+    <TemplateColumn>
+        <button class="btn btn-primary" onclick="@(() => EditTimeEntry(context.Id))">
+            <i class="oi oi-pencil" />
+        </button>
+    </TemplateColumn>
+</QuickGrid>
+
+<Paginator Value="@paginator" />
 
 @if(projectId > 0)
 {
@@ -48,6 +39,24 @@
 @code {
 
     int projectId = 0;
+    private string? projectFilter;
+    PaginationState paginator = new PaginationState { ItemsPerPage = 2 };
+
+    IQueryable<TimeEntryResponse> FilteredTimeEntries
+    {
+        get
+        {
+            var result = TimeEntryService.TimeEntries.AsQueryable();
+
+            if(!string.IsNullOrWhiteSpace(projectFilter))
+            {
+                result = result.Where(t => t.Project.Name
+                    .Contains(projectFilter, StringComparison.CurrentCultureIgnoreCase));
+            }
+            return result;
+        }
+    }
+
 
     protected override async Task OnInitializedAsync()
     {
