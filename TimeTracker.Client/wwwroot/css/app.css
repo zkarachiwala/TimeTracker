@@ -99,3 +99,8 @@ a, .btn-link {
     .loading-progress-text:after {
         content: var(--blazor-load-percentage-text, "Loading");
     }
+
+.quickgrid[theme=default], table, th, td {
+    border: 1px solid black;
+    padding: 10px;
+}
