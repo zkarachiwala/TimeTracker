@@ -1,0 +1,84 @@
+@page "/projects"
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<PageTitle>Projects</PageTitle>
+<h3>Projects</h3>
+
+<button class="btn btn-primary mb-2" @onclick="CreateProject">Create Project</button>
+
+<QuickGrid Items="FilteredProjects" Pagination="@paginator">
+    <PropertyColumn Property="p => p.Name">
+        <ColumnOptions>
+            <div>
+                <input type="search" autofocus @bind="projectFilter" @bind:event="oninput" placeholder="Project name..." />
+            </div>
+        </ColumnOptions>        
+    </PropertyColumn>
+    <PropertyColumn Property="p => p.Description" />
+    <PropertyColumn Property="p => p.StartDate" Format="dd/MM/yyyy" Title="Start" />
+    <PropertyColumn Property="p => p.EndDate" Format="dd/MM/yyyy" Title="End"/>
+    <TemplateColumn>
+        <button class="btn btn-primary" onclick="@(() => EditProject(context.Id))">
+            <i class="oi oi-pencil" />
+        </button>
+    </TemplateColumn>
+</QuickGrid>
+
+<Paginator Value="@paginator" />
+
+@code {
+
+    private string? projectFilter;
+    PaginationState paginator = new PaginationState { ItemsPerPage = 5 };
+
+    IQueryable<ProjectResponse> FilteredProjects
+    {
+        get
+        {
+            var result = ProjectService.Projects.AsQueryable();
+
+            if(!string.IsNullOrWhiteSpace(projectFilter))
+            {
+                result = result.Where(p => p.Name
+                    .Contains(projectFilter, StringComparison.CurrentCultureIgnoreCase));
+            }
+            return result;
+        }
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        ProjectService.OnChange += StateHasChanged;
+        await ProjectService.LoadAllProjects();
+    }
+
+    private string GetDuration(DateTime? start, DateTime? end)
+    {
+        if((start is not null) && (end is not null))
+        {
+            var duration = end.Value - start.Value;
+            var result = $"{duration.Hours}h {duration.Minutes}m";
+            return result;
+        }
+        return string.Empty;
+    }
+
+    public void Dispose()
+    {
+        ProjectService.OnChange -= StateHasChanged;
+    }
+
+    private void CreateProject()
+    {
+        NavigationManager.NavigateTo("/project");
+    }
+
+    private void EditProject(int id)
+    {
+        NavigationManager.NavigateTo($"/project/{id}");
+    }
+
+}
