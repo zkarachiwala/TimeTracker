@@ -30,7 +30,7 @@ public class TimeEntryController : ControllerBase
     }
 
     [HttpGet("project/{projectId}")]
-    public async Task<ActionResult<TimeEntryByProjectResponse>> GetAllTimeEntriesByProjectId(int projectId)
+    public async Task<ActionResult<TimeEntryResponse>> GetAllTimeEntriesByProjectId(int projectId)
     {
         return Ok(await _timeEntryService.GetAllTimeEntriesByProjectId(projectId));
     }

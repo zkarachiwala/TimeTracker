@@ -1,0 +1,38 @@
+@inject ITimeEntryService TimeEntryService
+@inject IProjectService ProjectService
+@implements IDisposable
+
+<div class="form-group my-4">
+    <InputSelect @bind-Value="projectId" @oninput="OnInput" class="form-control">
+        <option value="0">All Projects</option>
+        @foreach (var project in ProjectService.Projects)
+        {
+            <option value="@project.Id">@project.Name</option>
+        }
+    </InputSelect>
+</div>
+
+@code {
+    private int projectId;
+
+    protected override void OnInitialized()
+    {
+        ProjectService.OnChange += StateHasChanged;
+    }    
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        if(e.Value is not null)
+        {
+            if(int.TryParse(e.Value.ToString(), out int projectId))
+            {
+                await TimeEntryService.GetTimeEntriesByProject(projectId);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        ProjectService.OnChange -= StateHasChanged;
+    }
+}
