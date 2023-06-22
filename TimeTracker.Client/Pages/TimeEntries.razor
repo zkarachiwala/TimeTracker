@@ -8,7 +8,7 @@
 
 <button class="btn btn-primary mb-2" @onclick="CreateTimeEntry">Create Time Entry</button>
 
-<QuickGrid Items="FilteredTimeEntries" Pagination="@paginator">
+<QuickGrid ItemsProvider="timeEntriesProvider" Pagination="@paginator">
     <PropertyColumn Property="t => t.Start" />
     <PropertyColumn Property="t => t.End" />
     <PropertyColumn Property="t => GetDuration(t.Start, t.End)" Title="Duration" />
@@ -41,6 +41,8 @@
     int projectId = 0;
     private string? projectFilter;
     PaginationState paginator = new PaginationState { ItemsPerPage = 5 };
+    GridItemsProvider<TimeEntryResponse>? timeEntriesProvider;
+
 
     IQueryable<TimeEntryResponse> FilteredTimeEntries
     {
@@ -60,6 +62,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        timeEntriesProvider = async req =>
+        {
+            var response = projectId == 0 ?
+                await TimeEntryService.GetTimeEntries(req.StartIndex, (int)req.Count) :
+                await TimeEntryService.GetTimeEntriesByProject(projectId, req.StartIndex, (int)req.Count);
+            return GridItemsProviderResult.From(items: response!.TimeEntries, totalItemCount: response!.Count);
+        };
+
         await TimeEntryService.GetTimeEntriesByProject(projectId);
         TimeEntryService.OnChange += StateHasChanged;
     }

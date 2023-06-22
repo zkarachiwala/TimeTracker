@@ -1,3 +1,5 @@
+using TimeTracker.Shared.Models;
+
 namespace TimeTracker.API.Services;
 
 public class TimeEntryService : ITimeEntryService
@@ -33,6 +35,22 @@ public class TimeEntryService : ITimeEntryService
     {
         var result = await _timeEntryRepository.GetAllTimeEntriesByProjectId(projectId);
         return result.Adapt<List<TimeEntryResponse>>();        
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit)
+    {
+        var timeEntries = await _timeEntryRepository.GetTimeEntries(skip, limit);
+        var timeEntryResponses = timeEntries.Adapt<List<TimeEntryResponse>>();
+        var timeEntryCount = await _timeEntryRepository.GetTimeEntriesCount();
+        return new TimeEntryResponseWrapper { TimeEntries = timeEntryResponses, Count = timeEntryCount };
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByProjectId(int projectId, int skip, int limit)
+    {
+        var timeEntries = await _timeEntryRepository.GetTimeEntriesByProjectId(projectId, skip, limit);
+        var timeEntryResponses = timeEntries.Adapt<List<TimeEntryResponse>>();
+        var timeEntryCount = await _timeEntryRepository.GetTimeEntriesCount();
+        return new TimeEntryResponseWrapper { TimeEntries = timeEntryResponses, Count = timeEntryCount };
     }
 
     public async Task<TimeEntryResponse?> GetTimeEntryById(int id)

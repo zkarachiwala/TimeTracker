@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Mapster;
+using TimeTracker.Shared.Models;
 using TimeTracker.Shared.Models.TimeEntry;
 
 namespace TimeTracker.Client.Services;
@@ -19,8 +20,8 @@ public class TimeEntryService : ITimeEntryService
 
     public async Task GetTimeEntriesByProject(int projectId)
     {
-        List<TimeEntryResponse>? result = null;
-        if(projectId <= 0)
+        List<TimeEntryResponse>? result;
+        if (projectId <= 0)
         {
             result = await _http.GetFromJsonAsync<List<TimeEntryResponse>>("api/timeentry");
         }
@@ -54,5 +55,30 @@ public class TimeEntryService : ITimeEntryService
     public async Task DeleteTimeEntry(int id)
     {
         await _http.DeleteAsync($"api/timeentry/{id}");
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByProject(int projectId, int skip, int limit)
+    {
+        TimeEntryResponseWrapper result;
+        if (projectId <= 0)
+        {
+            result = await GetTimeEntries(skip, limit);
+        }
+        else
+        {
+            result = await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"/api/timeentry/project/{projectId}/{skip}/{limit}");
+        }
+
+        if(result!.TimeEntries is not null)
+        {
+            TimeEntries = result!.TimeEntries;
+            OnChange?.Invoke();
+        }
+        return result;       
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit)
+    {
+        return await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"/api/timeentry/{skip}/{limit}");
     }
 }

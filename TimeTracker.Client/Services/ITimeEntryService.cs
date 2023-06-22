@@ -1,3 +1,4 @@
+using TimeTracker.Shared.Models;
 using TimeTracker.Shared.Models.TimeEntry;
 
 namespace TimeTracker.Client.Services;
@@ -9,6 +10,10 @@ public interface ITimeEntryService
     public List<TimeEntryResponse> TimeEntries { get; set; }
     
     Task GetTimeEntriesByProject(int projectId);
+
+    Task<TimeEntryResponseWrapper> GetTimeEntriesByProject(int projectId, int skip, int limit);
+
+    Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit);
 
     Task<TimeEntryResponse> GetTimeEntryById(int id);
 
