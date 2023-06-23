@@ -26,6 +26,8 @@
         {
             if(int.TryParse(e.Value.ToString(), out int projectId))
             {
+                TimeEntryService.SetSelectedProject(projectId);
+
                 await TimeEntryService.GetTimeEntriesByProject(projectId);
             }
         }

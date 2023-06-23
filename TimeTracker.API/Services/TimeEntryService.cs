@@ -49,7 +49,7 @@ public class TimeEntryService : ITimeEntryService
     {
         var timeEntries = await _timeEntryRepository.GetTimeEntriesByProjectId(projectId, skip, limit);
         var timeEntryResponses = timeEntries.Adapt<List<TimeEntryResponse>>();
-        var timeEntryCount = await _timeEntryRepository.GetTimeEntriesCount();
+        var timeEntryCount = await _timeEntryRepository.GetTimeEntriesCountByProjectId(projectId);
         return new TimeEntryResponseWrapper { TimeEntries = timeEntryResponses, Count = timeEntryCount };
     }
 

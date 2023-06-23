@@ -62,16 +62,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+        InitTimeEntriesProvider();
+        TimeEntryService.OnChange += StateHasChanged;
+        TimeEntryService.ProjectChanged += InitTimeEntriesProvider;
+    }
+
+    private void InitTimeEntriesProvider()
+    {
         timeEntriesProvider = async req =>
         {
-            var response = projectId == 0 ?
+            var response = TimeEntryService.SelectedProjectId <= 0 ?
                 await TimeEntryService.GetTimeEntries(req.StartIndex, (int)req.Count) :
-                await TimeEntryService.GetTimeEntriesByProject(projectId, req.StartIndex, (int)req.Count);
+                await TimeEntryService.GetTimeEntriesByProject(TimeEntryService.SelectedProjectId, req.StartIndex, (int)req.Count);
             return GridItemsProviderResult.From(items: response!.TimeEntries, totalItemCount: response!.Count);
         };
-
-        await TimeEntryService.GetTimeEntriesByProject(projectId);
-        TimeEntryService.OnChange += StateHasChanged;
+        StateHasChanged();      // To re-render grid
     }
 
     private string GetDuration(DateTime? start, DateTime? end)
@@ -97,6 +102,7 @@
     public void Dispose()
     {
         TimeEntryService.OnChange -= StateHasChanged;
+        TimeEntryService.ProjectChanged -= InitTimeEntriesProvider;
     }
 
     private void CreateTimeEntry()

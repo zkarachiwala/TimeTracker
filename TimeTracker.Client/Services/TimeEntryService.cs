@@ -11,7 +11,10 @@ public class TimeEntryService : ITimeEntryService
 
     public List<TimeEntryResponse> TimeEntries { get; set; } = new List<TimeEntryResponse>();
 
+    public int SelectedProjectId { get; set; } = 0;
+
     public event Action? OnChange;
+    public event Action? ProjectChanged;
 
     public TimeEntryService(HttpClient http)
     {
@@ -80,5 +83,11 @@ public class TimeEntryService : ITimeEntryService
     public async Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit)
     {
         return await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"/api/timeentry/{skip}/{limit}");
+    }
+
+    public void SetSelectedProject(int projectId)
+    {
+        SelectedProjectId = projectId;
+        ProjectChanged?.Invoke();
     }
 }
