@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TimeTracker.Shared.Models;
 
 namespace TimeTracker.API.Controllers;
 
@@ -18,6 +19,18 @@ public class TimeEntryController : ControllerBase
     {
         return Ok(await _timeEntryService.GetAllTimeEntries());
     }
+
+    [HttpGet("{skip}/{limit}")]
+    public async Task<ActionResult<TimeEntryResponseWrapper>> GetTimeEntries(int skip, int limit)
+    {
+        return Ok(await _timeEntryService.GetTimeEntries(skip, limit));
+    }
+
+    [HttpGet("project/{projectId}/{skip}/{limit}")]
+    public async Task<ActionResult<TimeEntryResponseWrapper>> GetTimeEntriesByProjectId(int projectId, int skip, int limit)
+    {
+        return Ok(await _timeEntryService.GetTimeEntriesByProjectId(projectId, skip, limit));
+    }    
 
     [HttpGet("{id}")]
     public async Task<ActionResult<TimeEntryResponse>> GetTimeEntryById(int id)

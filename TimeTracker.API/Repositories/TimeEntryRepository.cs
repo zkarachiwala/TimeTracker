@@ -65,5 +65,33 @@ public class TimeEntryRepository : ITimeEntryRepository
             .Where(te => te.ProjectId == projectId)
             .ToListAsync();        
     }
+
+    public async Task<List<TimeEntry>> GetTimeEntriesByProjectId(int projectId, int skip, int limit)
+    {
+        return await _context.TimeEntries
+            .Where(te => te.ProjectId == projectId)
+            .Skip(skip)
+            .Take(limit)
+            .ToListAsync();   
+    }
+
+    public async Task<List<TimeEntry>> GetTimeEntries(int skip, int limit)
+    {
+        return await _context.TimeEntries
+            .Skip(skip)
+            .Take(limit)
+            .ToListAsync(); 
+    }
+
+    public async Task<int> GetTimeEntriesCount()
+    {
+        return await _context.TimeEntries.CountAsync();
+    }
+
+    public async Task<int> GetTimeEntriesCountByProjectId(int projectId)
+    {
+        return await _context.TimeEntries.Where(te => te.ProjectId == projectId)
+                                         .CountAsync();
+    }
 }
 
