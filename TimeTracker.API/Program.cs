@@ -1,15 +1,15 @@
 using Microsoft.Data.SqlClient;
-using TimeTracker.Shared.Models.Project;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var connection = builder.Configuration.GetConnectionString("DefaultConnection");
 // Build Connection String
 if (builder.Environment.IsDevelopment()) {
-    var conStrBuilder = new SqlConnectionStringBuilder(
-    builder.Configuration.GetConnectionString("DefaultConnection"));
-    conStrBuilder.UserID = builder.Configuration["DbUser"];
-    conStrBuilder.Password = builder.Configuration["DbPassword"];
+    var conStrBuilder = new SqlConnectionStringBuilder(connection)
+    {
+        UserID = builder.Configuration["DbUser"],
+        Password = builder.Configuration["DbPassword"]
+    };
     connection = conStrBuilder.ConnectionString;
 }
 
@@ -22,6 +22,10 @@ builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(connection));
+
+builder.Services.AddDefaultIdentity<User>()
+    .AddEntityFrameworkStores<DataContext>();
+
 builder.Services.AddScoped<ITimeEntryRepository, TimeEntryRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();

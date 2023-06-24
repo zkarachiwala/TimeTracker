@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace TimeTracker.API.Data;
 
-public class DataContext : IdentityDbContext
+public class DataContext : IdentityDbContext<User>
 {
     public DataContext(DbContextOptions<DataContext> options) : base(options)
     {        
@@ -12,6 +12,7 @@ public class DataContext : IdentityDbContext
     {
         modelBuilder.Entity<TimeEntry>().Navigation(c => c.Project).AutoInclude();
         modelBuilder.Entity<Project>().Navigation(c => c.ProjectDetails).AutoInclude();
+        base.OnModelCreating(modelBuilder);
     }
 
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();

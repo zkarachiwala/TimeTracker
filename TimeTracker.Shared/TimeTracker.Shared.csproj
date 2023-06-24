@@ -16,4 +16,7 @@
     <Folder Include="Models\" />
     <Folder Include="Models\TimeEntry\" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="7.0.8" />
+  </ItemGroup>
 </Project>
