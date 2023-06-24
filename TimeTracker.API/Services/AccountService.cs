@@ -13,7 +13,7 @@ public class AccountService : IAccountService
     }
     public async Task<AccountRegistrationResponse> RegisterAsync(AccountRegistrationRequest request)
     {
-        var newUser = new User { UserName = request.UserName, Email = request.Email };
+        var newUser = new User { UserName = request.UserName, Email = request.Email, EmailConfirmed = true };
         var result = await _userManager.CreateAsync(newUser, request.Password);
 
         if(!result.Succeeded)
