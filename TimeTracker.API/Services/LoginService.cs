@@ -11,11 +11,13 @@ public class LoginService : ILoginService
 {
     private readonly SignInManager<User> _signInManager;
     private readonly IConfiguration _config;
+    private readonly UserManager<User> _userManager;
 
-    public LoginService(SignInManager<User> signInManager, IConfiguration config)
+    public LoginService(SignInManager<User> signInManager, IConfiguration config, UserManager<User> userManager)
     {
         _signInManager = signInManager;
         _config = config;
+        _userManager = userManager;
     }
     public async Task<LoginResponse> Login(LoginRequest request)
     {
@@ -26,9 +28,16 @@ public class LoginService : ILoginService
             return new LoginResponse(false, "Email of password is wrong.");
         }
 
+        var user = await _userManager.FindByNameAsync(request.UserName);
+        if(user is null)
+        {
+            return new LoginResponse(false, "User doesn't exist.");
+        }
+
         var claims = new[]
         {
-            new Claim(ClaimTypes.Name, request.UserName)
+            new Claim(ClaimTypes.Name, request.UserName),
+            new Claim(ClaimTypes.NameIdentifier, user.Id)
         };
 
         var key = new SymmetricSecurityKey(
