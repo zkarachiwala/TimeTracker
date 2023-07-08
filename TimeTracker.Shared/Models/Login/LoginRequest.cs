@@ -1,7 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TimeTracker.Shared.Models.Login;
 
 public class LoginRequest
 {
-    public required string UserName { get; set; }
-    public required string Password { get; set; }
+    [Required]
+    public string UserName { get; set; } = string.Empty;
+
+    [Required]
+    public string Password { get; set; } = string.Empty;
 }

@@ -25,7 +25,7 @@ public class LoginService : ILoginService
 
         if(!result.Succeeded)
         {
-            return new LoginResponse(false, "Email of password is wrong.");
+            return new LoginResponse(false, "Username or password is wrong.");
         }
 
         var user = await _userManager.FindByNameAsync(request.UserName);
