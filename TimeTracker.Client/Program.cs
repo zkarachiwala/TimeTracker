@@ -1,5 +1,6 @@
 using Blazored.LocalStorage;
 using Blazored.Toast;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using TimeTracker.Client;
@@ -15,5 +16,5 @@ builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddBlazoredToast();
 builder.Services.AddBlazoredLocalStorage();
-
+builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
 await builder.Build().RunAsync();
