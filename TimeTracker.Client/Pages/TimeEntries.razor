@@ -2,6 +2,7 @@
 @inject ITimeEntryService TimeEntryService
 @inject NavigationManager NavigationManager
 @implements IDisposable
+@attribute [Authorize]
 
 <PageTitle>Time Entries</PageTitle>
 <h3>Time Entries</h3>

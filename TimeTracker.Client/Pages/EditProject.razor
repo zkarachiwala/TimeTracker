@@ -4,6 +4,7 @@
 @inject IProjectService ProjectService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@attribute [Authorize]
 @* @implements IDisposable *@
 
 @if(Id is null)
