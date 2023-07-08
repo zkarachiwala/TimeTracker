@@ -4,19 +4,12 @@ using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Filters;
+using TimeTracker.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connection = builder.Configuration.GetConnectionString("DefaultConnection");
-// Build Connection String
-if (builder.Environment.IsDevelopment()) {
-    var conStrBuilder = new SqlConnectionStringBuilder(connection)
-    {
-        UserID = builder.Configuration["DbUser"],
-        Password = builder.Configuration["DbPassword"]
-    };
-    connection = conStrBuilder.ConnectionString;
-}
+var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
+var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
 // Add services to the container.
 
@@ -35,7 +28,9 @@ builder.Services.AddSwaggerGen(options =>
 
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
-builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(connection));
+builder.Services.AddDbContext<TimeTrackerDataContext>(options => options.UseSqlServer(timeTrackerConnection));
+builder.Services.AddDbContext<IdentityDataContext>(options => options.UseSqlServer(identityConnection));
+
 
 builder.Services.AddDefaultIdentity<User>(options =>
     {
@@ -45,7 +40,7 @@ builder.Services.AddDefaultIdentity<User>(options =>
         options.User.RequireUniqueEmail = true;
         options.SignIn.RequireConfirmedEmail = true;
     })
-    .AddEntityFrameworkStores<DataContext>();
+    .AddEntityFrameworkStores<IdentityDataContext>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
@@ -105,4 +100,22 @@ static void ConfigureMapster()
         .Map(dest => dest.Description, src => src.ProjectDetails != null ? src.ProjectDetails.Description : null)
         .Map(dest => dest.StartDate, src => src.ProjectDetails != null ? src.ProjectDetails.StartDate : null)
         .Map(dest => dest.EndDate, src => src.ProjectDetails != null ? src.ProjectDetails.EndDate : null);
+}
+
+static string? GetConnectionString(WebApplicationBuilder builder,
+                                  string connectionCfgName,
+                                  string userCfgName,
+                                  string passwordCfgName)
+{
+    var connectionString = builder.Configuration.GetConnectionString(connectionCfgName);
+    // Build Connection String
+    if (builder.Environment.IsDevelopment()) {
+        var conStrBuilder = new SqlConnectionStringBuilder(connectionString)
+        {
+            UserID = builder.Configuration[userCfgName],
+            Password = builder.Configuration[passwordCfgName]
+        };
+        connectionString = conStrBuilder.ConnectionString;
+    }
+    return connectionString;
 }
