@@ -1,19 +1,23 @@
+using Microsoft.AspNetCore.Identity.UI.V4.Pages.Account.Internal;
+using TimeTracker.API.Data;
+
 namespace TimeTracker.API.Repositories;
 
 public class ProjectRepository : IProjectRepository
 {
-    private readonly DataContext _context;
+    private readonly TimeTrackerDataContext _context;
     private readonly IUserContextService _userContextService;
 
-    public ProjectRepository(DataContext context, IUserContextService userContextService)
+    public ProjectRepository(TimeTrackerDataContext context, IUserContextService userContextService)
     {
         _context = context;
         _userContextService = userContextService;
     }
     public async Task<List<Project>> CreateProject(Project project)
     {
-        var user = await _userContextService.GetUserAsync() ?? throw new EntityNotFoundException("User was not found.");
-        project.Users = new List<User> { user };
+        //var user = await _userContextService.GetUserAsync() ?? throw new EntityNotFoundException("User was not found.");
+        var userId = _userContextService.GetUserId() ?? throw new EntityNotFoundException("User was not found.");
+        project.UserIds = new List<UserId> { new UserId { Id = userId }};
 
         _context.Projects.Add(project);
         await _context.SaveChangesAsync();
@@ -26,7 +30,7 @@ public class ProjectRepository : IProjectRepository
         if (userId is null)
             return null;
 
-        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.Users.Any(u => u.Id == userId));
+        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.UserIds.Any(u => u.Id == userId));
         if (dbProject is null)
             return null;
 
@@ -45,7 +49,7 @@ public class ProjectRepository : IProjectRepository
 
         return await _context.Projects
             .Where(p => p.IsDeleted != true && 
-                p.Users.Any(u => u.Id == userId))
+                p.UserIds.Any(u => u.Id == userId))
             .ToListAsync();
     }
 
@@ -56,7 +60,7 @@ public class ProjectRepository : IProjectRepository
             return null;
 
         var project = await _context.Projects
-            .FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted != true && p.Users.Any(u => u.Id == userId));
+            .FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted != true && p.UserIds.Any(u => u.Id == userId));
         return project;
     }
 
@@ -64,7 +68,7 @@ public class ProjectRepository : IProjectRepository
     {
         var userId = _userContextService.GetUserId() ?? throw new EntityNotFoundException($"Entity with ID {id} was not found.");
         
-        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.Users.Any(u => u.Id == userId)) ?? 
+        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.UserIds.Any(u => u.Id == userId)) ?? 
             throw new EntityNotFoundException($"Entity with ID {id} was not found.");
 
         if (project.ProjectDetails is not null && dbProject.ProjectDetails is not null)

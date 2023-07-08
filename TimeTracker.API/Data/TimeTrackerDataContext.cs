@@ -2,14 +2,15 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace TimeTracker.API.Data;
 
-public class DataContext : IdentityDbContext<User>
+public class TimeTrackerDataContext : DbContext
 {
-    public DataContext(DbContextOptions<DataContext> options) : base(options)
+    public TimeTrackerDataContext(DbContextOptions<TimeTrackerDataContext> options) : base(options)
     {        
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema( "app" );
         modelBuilder.Entity<TimeEntry>().Navigation(c => c.Project).AutoInclude();
         modelBuilder.Entity<Project>().Navigation(c => c.ProjectDetails).AutoInclude();
         base.OnModelCreating(modelBuilder);

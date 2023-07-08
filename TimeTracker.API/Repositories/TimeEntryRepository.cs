@@ -2,10 +2,10 @@ namespace TimeTracker.API.Repositories;
 
 public class TimeEntryRepository : ITimeEntryRepository
 {
-    private readonly DataContext _context;
+    private readonly TimeTrackerDataContext _context;
     private readonly IUserContextService _userContextService;
 
-    public TimeEntryRepository(DataContext context, IUserContextService userContextService)
+    public TimeEntryRepository(TimeTrackerDataContext context, IUserContextService userContextService)
     {
         _context = context;
         _userContextService = userContextService;
@@ -19,14 +19,14 @@ public class TimeEntryRepository : ITimeEntryRepository
 
         return await _context.TimeEntries
             //.Include(te => te.Project)
-            .Where(t => t.User.Id == userId)
+            .Where(t => t.UserId == userId)
             .ToListAsync();
     }
 
     public async Task<List<TimeEntry>> CreateTimeEntry(TimeEntry timeEntry)
     {
         var user = await _userContextService.GetUserAsync() ?? throw new EntityNotFoundException("User was not found.");
-        timeEntry.User = user;
+        timeEntry.UserId = user.Id;
 
         _context.TimeEntries.Add(timeEntry);
         await _context.SaveChangesAsync();
@@ -37,7 +37,7 @@ public class TimeEntryRepository : ITimeEntryRepository
     {
         var userId = _userContextService.GetUserId() ?? throw new EntityNotFoundException("User was not found.");
         var dbTimeEntry = await _context.TimeEntries
-            .FirstOrDefaultAsync(te => te.Id == id && te.User.Id == userId) ?? 
+            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId) ?? 
                 throw new EntityNotFoundException($"Entity with ID {id} was not found.");
                 
         dbTimeEntry.ProjectId = timeEntry.ProjectId;
@@ -56,7 +56,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return null;
 
         var dbTimeEntry = await _context.TimeEntries
-            .FirstOrDefaultAsync(te => te.Id == id && te.User.Id == userId);
+            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId);
         if (dbTimeEntry is null)
             return null;
 
@@ -73,7 +73,7 @@ public class TimeEntryRepository : ITimeEntryRepository
 
         var timeEntry = await _context.TimeEntries
             //.Include(te => te.Project)
-            .FirstOrDefaultAsync(te => te.Id == id && te.User.Id == userId);
+            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId);
         return timeEntry;
     }
 
@@ -84,7 +84,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return new List<TimeEntry>();        
 
         return await _context.TimeEntries
-            .Where(te => te.ProjectId == projectId && te.User.Id == userId)
+            .Where(te => te.ProjectId == projectId && te.UserId == userId)
             .ToListAsync();        
     }
 
@@ -95,7 +95,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return new List<TimeEntry>();   
 
         return await _context.TimeEntries
-            .Where(te => te.ProjectId == projectId && te.User.Id == userId)
+            .Where(te => te.ProjectId == projectId && te.UserId == userId)
             .Skip(skip)
             .Take(limit)
             .ToListAsync();   
@@ -108,7 +108,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return new List<TimeEntry>();   
 
         return await _context.TimeEntries
-            .Where(te => te.User.Id == userId)
+            .Where(te => te.UserId == userId)
             .Skip(skip)
             .Take(limit)
             .ToListAsync(); 
@@ -121,7 +121,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return 0;     
                  
         return await _context.TimeEntries
-            .Where(te => te.User.Id == userId)
+            .Where(te => te.UserId == userId)
             .CountAsync();
     }
 
@@ -132,7 +132,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return 0;  
         
         return await _context.TimeEntries
-            .Where(te => te.ProjectId == projectId && te.User.Id == userId)
+            .Where(te => te.ProjectId == projectId && te.UserId == userId)
             .CountAsync();
     }
 }
