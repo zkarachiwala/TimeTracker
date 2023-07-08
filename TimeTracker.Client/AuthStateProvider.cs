@@ -31,6 +31,8 @@ public class AuthStateProvider : AuthenticationStateProvider
             authState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(authToken), "jwt")));
         }
 
+        NotifyAuthenticationStateChanged(Task.FromResult(authState));
+
         return authState;
     }
 

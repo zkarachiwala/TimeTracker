@@ -56,6 +56,13 @@ public class AuthService : IAuthService
         }        
     }
 
+    public async Task Logout()
+    {
+        await _localStorage.RemoveItemAsync("authToken");
+        await _authStateProvider.GetAuthenticationStateAsync();
+        _navigationManager.NavigateTo("/login");
+    }
+
     public async Task Register(AccountRegistrationRequest request)
     {
         var result =  await _httpClient.PostAsJsonAsync("api/account", request);
