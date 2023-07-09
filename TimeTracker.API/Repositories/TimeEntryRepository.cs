@@ -19,14 +19,16 @@ public class TimeEntryRepository : ITimeEntryRepository
 
         return await _context.TimeEntries
             //.Include(te => te.Project)
-            .Where(t => t.UserId == userId)
+            .Where(t => t.UserId == userId && !t.Project.IsDeleted)
             .ToListAsync();
     }
 
     public async Task<List<TimeEntry>> CreateTimeEntry(TimeEntry timeEntry)
     {
-        var user = await _userContextService.GetUserAsync() ?? throw new EntityNotFoundException("User was not found.");
-        timeEntry.UserId = user.Id;
+        var userId = _userContextService.GetUserId() ?? throw new EntityNotFoundException("User was not found.");
+
+        //var appUser = await _context.AppUsers.FirstOrDefaultAsync(au => au.Id == userId!) ?? new AppUser { Id = userId! };
+        timeEntry.UserId = userId;
 
         _context.TimeEntries.Add(timeEntry);
         await _context.SaveChangesAsync();
@@ -95,7 +97,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return new List<TimeEntry>();   
 
         return await _context.TimeEntries
-            .Where(te => te.ProjectId == projectId && te.UserId == userId)
+            .Where(te => te.ProjectId == projectId && te.UserId == userId && !te.Project.IsDeleted)
             .Skip(skip)
             .Take(limit)
             .ToListAsync();   
@@ -108,7 +110,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return new List<TimeEntry>();   
 
         return await _context.TimeEntries
-            .Where(te => te.UserId == userId)
+            .Where(te => te.UserId == userId && !te.Project.IsDeleted)
             .Skip(skip)
             .Take(limit)
             .ToListAsync(); 
@@ -121,7 +123,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return 0;     
                  
         return await _context.TimeEntries
-            .Where(te => te.UserId == userId)
+            .Where(te => te.UserId == userId && !te.Project.IsDeleted)
             .CountAsync();
     }
 
@@ -132,8 +134,7 @@ public class TimeEntryRepository : ITimeEntryRepository
             return 0;  
         
         return await _context.TimeEntries
-            .Where(te => te.ProjectId == projectId && te.UserId == userId)
+            .Where(te => te.ProjectId == projectId && te.UserId == userId && !te.Project.IsDeleted)
             .CountAsync();
     }
 }
-

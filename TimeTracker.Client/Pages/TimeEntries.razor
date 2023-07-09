@@ -7,6 +7,8 @@
 <PageTitle>Time Entries</PageTitle>
 <h3>Time Entries</h3>
 
+<ProjectSelector />
+
 <button class="btn btn-primary mb-2" @onclick="CreateTimeEntry">Create Time Entry</button>
 
 <QuickGrid ItemsProvider="timeEntriesProvider" Pagination="@paginator">
