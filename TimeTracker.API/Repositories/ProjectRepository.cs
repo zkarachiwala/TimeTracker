@@ -19,7 +19,8 @@ public class ProjectRepository : IProjectRepository
         var userId = _userContextService.GetUserId() ?? throw new EntityNotFoundException("User was not found.");
 
         // var appUser = await _context.AppUsers.FirstOrDefaultAsync(au => au.Id == userId!) ?? new AppUser { Id = userId! };
-        project.ProjectUsers = new List<ProjectUser> { new ProjectUser { UserId = userId } };
+        project.ProjectUsers = new List<ProjectUser> { new 
+        ProjectUser { UserId = userId } };
 
         _context.Projects.Add(project);
         await _context.SaveChangesAsync();
