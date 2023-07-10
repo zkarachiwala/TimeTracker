@@ -2,7 +2,7 @@
 @inject IProjectService ProjectService
 @inject NavigationManager NavigationManager
 @implements IDisposable
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin")]
 
 <PageTitle>Projects</PageTitle>
 <h3>Projects</h3>

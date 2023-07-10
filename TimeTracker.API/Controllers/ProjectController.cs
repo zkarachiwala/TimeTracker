@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace TimeTracker.API.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Roles = "Admin")]
 [Route("api/[controller]")]
 public class ProjectController : ControllerBase
 {

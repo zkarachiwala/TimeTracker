@@ -33,7 +33,11 @@
         var state = await task;
         if(state is not null && state.User.Identity!.IsAuthenticated)
         {
-            await ProjectService.LoadAllProjects();
+            var roles = state.User.Claims.Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => c.Value).ToList();
+            if (roles.Contains("Admin")) {
+                await ProjectService.LoadAllProjects();
+            }
         }
     }
 

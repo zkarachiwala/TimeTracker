@@ -20,13 +20,15 @@
                     <NavLink class="nav-link" href="timeentries">
                         <span class="oi oi-clock" aria-hidden="true"></span> Time Entries
                     </NavLink>
-                </div>   
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="projects">
-                        <span class="oi oi-project" aria-hidden="true"></span> Projects
-                    </NavLink>
-                </div>   
+                </div>    
             </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="projects">
+                    <span class="oi oi-project" aria-hidden="true"></span> Projects
+                </NavLink>
+            </div>  
         </AuthorizeView>
            
     </nav>
