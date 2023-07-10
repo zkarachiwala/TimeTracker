@@ -1,21 +1,49 @@
 ﻿@inject IProjectService ProjectService
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
 
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
-        </LayoutView>
-    </NotFound>
-</Router>
-
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <h3>Whoops!</h3>
+                    Looks like you're not logged in.<br />
+                    Please <a href="login">log in</a> or <a href="register">register first.</a>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p role="alert">Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
 @code {
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await ProjectService.LoadAllProjects();
+        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;   
     }
+
+    public async void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        var state = await task;
+        if(state is not null && state.User.Identity!.IsAuthenticated)
+        {
+            var roles = state.User.Claims.Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => c.Value).ToList();
+            if (roles.Contains("Admin")) {
+                await ProjectService.LoadAllProjects();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+    }
+
 }

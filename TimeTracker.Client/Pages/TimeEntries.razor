@@ -2,9 +2,12 @@
 @inject ITimeEntryService TimeEntryService
 @inject NavigationManager NavigationManager
 @implements IDisposable
+@attribute [Authorize]
 
 <PageTitle>Time Entries</PageTitle>
 <h3>Time Entries</h3>
+
+<ProjectSelector />
 
 <button class="btn btn-primary mb-2" @onclick="CreateTimeEntry">Create Time Entry</button>
 
@@ -59,8 +62,7 @@
         }
     }
 
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         InitTimeEntriesProvider();
         TimeEntryService.OnChange += StateHasChanged;
@@ -71,9 +73,10 @@
     {
         timeEntriesProvider = async req =>
         {
+            int reqCount = req.Count == null ? paginator.ItemsPerPage : (int) req.Count;
             var response = TimeEntryService.SelectedProjectId <= 0 ?
-                await TimeEntryService.GetTimeEntries(req.StartIndex, (int)req.Count) :
-                await TimeEntryService.GetTimeEntriesByProject(TimeEntryService.SelectedProjectId, req.StartIndex, (int)req.Count);
+                await TimeEntryService.GetTimeEntries(req.StartIndex, reqCount) :
+                await TimeEntryService.GetTimeEntriesByProject(TimeEntryService.SelectedProjectId, req.StartIndex, reqCount);
             return GridItemsProviderResult.From(items: response!.TimeEntries, totalItemCount: response!.Count);
         };
         StateHasChanged();      // To re-render grid

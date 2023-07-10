@@ -25,7 +25,7 @@ public class LoginService : ILoginService
 
         if(!result.Succeeded)
         {
-            return new LoginResponse(false, "Email of password is wrong.");
+            return new LoginResponse(false, "Username or password is wrong.");
         }
 
         var user = await _userManager.FindByNameAsync(request.UserName);
@@ -33,12 +33,17 @@ public class LoginService : ILoginService
         {
             return new LoginResponse(false, "User doesn't exist.");
         }
+        
+        // Get roles of user
+        var roles = await _userManager.GetRolesAsync(user);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, request.UserName),
             new Claim(ClaimTypes.NameIdentifier, user.Id)
         };
+        // Add all roles to Jwt
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_config["JwtSecurityKey"]!)

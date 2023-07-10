@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TimeTracker.API.Data;
 
@@ -11,9 +12,11 @@ using TimeTracker.API.Data;
 namespace TimeTracker.API.Migrations
 {
     [DbContext(typeof(TimeTrackerDataContext))]
-    partial class TimeTrackerDataContextModelSnapshot : ModelSnapshot
+    [Migration("20230709013755_AppUser")]
+    partial class AppUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,6 +25,31 @@ namespace TimeTracker.API.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("AppUserProject", b =>
+                {
+                    b.Property<string>("AppUsersId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("ProjectsId")
+                        .HasColumnType("int");
+
+                    b.HasKey("AppUsersId", "ProjectsId");
+
+                    b.HasIndex("ProjectsId");
+
+                    b.ToTable("AppUserProject", "app");
+                });
+
+            modelBuilder.Entity("TimeTracker.Shared.Entities.AppUser", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AppUsers", "app");
+                });
 
             modelBuilder.Entity("TimeTracker.Shared.Entities.Project", b =>
                 {
@@ -80,28 +108,6 @@ namespace TimeTracker.API.Migrations
                     b.ToTable("ProjectDetails", "app");
                 });
 
-            modelBuilder.Entity("TimeTracker.Shared.Entities.ProjectUser", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("ProjectUsers", "app");
-                });
-
             modelBuilder.Entity("TimeTracker.Shared.Entities.TimeEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -109,6 +115,9 @@ namespace TimeTracker.API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AppUserId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("DateCreated")
                         .HasColumnType("datetime2");
@@ -125,15 +134,28 @@ namespace TimeTracker.API.Migrations
                     b.Property<DateTime>("Start")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
+
+                    b.HasIndex("AppUserId");
 
                     b.HasIndex("ProjectId");
 
                     b.ToTable("TimeEntries", "app");
+                });
+
+            modelBuilder.Entity("AppUserProject", b =>
+                {
+                    b.HasOne("TimeTracker.Shared.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("AppUsersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TimeTracker.Shared.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("TimeTracker.Shared.Entities.ProjectDetails", b =>
@@ -147,31 +169,29 @@ namespace TimeTracker.API.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("TimeTracker.Shared.Entities.ProjectUser", b =>
-                {
-                    b.HasOne("TimeTracker.Shared.Entities.Project", "Project")
-                        .WithMany("ProjectUsers")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
-                });
-
             modelBuilder.Entity("TimeTracker.Shared.Entities.TimeEntry", b =>
                 {
+                    b.HasOne("TimeTracker.Shared.Entities.AppUser", "AppUser")
+                        .WithMany("TimeEntries")
+                        .HasForeignKey("AppUserId");
+
                     b.HasOne("TimeTracker.Shared.Entities.Project", "Project")
                         .WithMany("TimeEntries")
                         .HasForeignKey("ProjectId");
 
+                    b.Navigation("AppUser");
+
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("TimeTracker.Shared.Entities.AppUser", b =>
+                {
+                    b.Navigation("TimeEntries");
                 });
 
             modelBuilder.Entity("TimeTracker.Shared.Entities.Project", b =>
                 {
                     b.Navigation("ProjectDetails");
-
-                    b.Navigation("ProjectUsers");
 
                     b.Navigation("TimeEntries");
                 });

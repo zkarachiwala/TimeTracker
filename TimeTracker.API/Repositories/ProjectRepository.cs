@@ -17,10 +17,14 @@ public class ProjectRepository : IProjectRepository
     {
         //var user = await _userContextService.GetUserAsync() ?? throw new EntityNotFoundException("User was not found.");
         var userId = _userContextService.GetUserId() ?? throw new EntityNotFoundException("User was not found.");
-        project.UserIds = new List<UserId> { new UserId { Id = userId }};
+
+        // var appUser = await _context.AppUsers.FirstOrDefaultAsync(au => au.Id == userId!) ?? new AppUser { Id = userId! };
+        project.ProjectUsers = new List<ProjectUser> { new 
+        ProjectUser { UserId = userId } };
 
         _context.Projects.Add(project);
         await _context.SaveChangesAsync();
+
         return await GetAllProjects();
     }
 
@@ -30,7 +34,7 @@ public class ProjectRepository : IProjectRepository
         if (userId is null)
             return null;
 
-        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.UserIds.Any(u => u.Id == userId));
+        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.ProjectUsers.Any(pu => pu.UserId == userId));
         if (dbProject is null)
             return null;
 
@@ -49,7 +53,7 @@ public class ProjectRepository : IProjectRepository
 
         return await _context.Projects
             .Where(p => p.IsDeleted != true && 
-                p.UserIds.Any(u => u.Id == userId))
+                p.ProjectUsers.Any(u => u.UserId == userId))
             .ToListAsync();
     }
 
@@ -60,7 +64,7 @@ public class ProjectRepository : IProjectRepository
             return null;
 
         var project = await _context.Projects
-            .FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted != true && p.UserIds.Any(u => u.Id == userId));
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted && p.ProjectUsers.Any(u => u.UserId == userId));
         return project;
     }
 
@@ -68,7 +72,7 @@ public class ProjectRepository : IProjectRepository
     {
         var userId = _userContextService.GetUserId() ?? throw new EntityNotFoundException($"Entity with ID {id} was not found.");
         
-        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.UserIds.Any(u => u.Id == userId)) ?? 
+        var dbProject = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.ProjectUsers.Any(u => u.UserId == userId)) ?? 
             throw new EntityNotFoundException($"Entity with ID {id} was not found.");
 
         if (project.ProjectDetails is not null && dbProject.ProjectDetails is not null)
