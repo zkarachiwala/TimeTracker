@@ -12,6 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
+Console.WriteLine($"--> {timeTrackerConnection}");
+Console.WriteLine($"--> {identityConnection}");
+
 // Add services to the container.
 
 builder.Services.AddControllersWithViews();
