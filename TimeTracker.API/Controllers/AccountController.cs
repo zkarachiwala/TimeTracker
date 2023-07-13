@@ -20,4 +20,11 @@ public class AccountController : ControllerBase
         var result = await _accountService.RegisterAsync(request);
         return Ok(result);
     }
+
+    [HttpPost("role")]
+    public async Task<IActionResult> AssignRole(string userName, string roleName)
+    {
+        await _accountService.AssignRole(userName, roleName);
+        return Ok();
+    }
 }
