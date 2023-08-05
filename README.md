@@ -20,3 +20,20 @@ https://adrianhall.github.io/asp.net/2022/09/01/blazor-wasm-aad-auth-part-1/
 
 ## Use App Roles with Azure AD
 https://code-maze.com/using-app-roles-with-azure-active-directory-and-blazor-webassembly-hosted-apps/
+
+## Requires secrets.json file
+```
+{
+  "DbPassword": "{database password goes here - MAC OS requirement}",
+  "DbUser": "{database user goes here - MAC OS requirement}",
+  "AzureAD" : {
+    "Domain" : "{Your AD domain}",
+    "TenantId" : "{Your AD tenant ID}",
+    "ClientId" : "{Your client id for your server app}"
+  },
+  "ClientConfiguration" : {
+        "ClientId" : "{You client id for your client app}"
+  }
+
+}
+```
