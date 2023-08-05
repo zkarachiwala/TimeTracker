@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Identity.Web.Resource;
 using TimeTracker.Shared.Models;
 
 namespace TimeTracker.API.Controllers;
@@ -7,6 +8,7 @@ namespace TimeTracker.API.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
+[RequiredScope(RequiredScopesConfigurationKey = "AzureAd:Scopes")]
 public class TimeEntryController : ControllerBase
 {
     private readonly ITimeEntryService _timeEntryService;
@@ -25,6 +27,7 @@ public class TimeEntryController : ControllerBase
     [HttpGet("{skip}/{limit}")]
     public async Task<ActionResult<TimeEntryResponseWrapper>> GetTimeEntries(int skip, int limit)
     {
+        Console.WriteLine("Getting entries");
         return Ok(await _timeEntryService.GetTimeEntries(skip, limit));
     }
 

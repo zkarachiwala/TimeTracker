@@ -1,0 +1,36 @@
+@page "/userprofiles"
+@*@attribute [Authorize(Roles = "Admin")] commented out because it doesn't work*@
+<h3>UserProfileList</h3>
+@inject HttpClient httpClient;
+@inject IHttpClientFactory _clientFactory
+<AuthorizeView>
+    <Authorized>
+    @if (@context.User is not null)
+    {
+        <h3>@context.User.Identity.Name</h3>
+        <div class="m-2 p-2">
+            Is Authenticated: @context.User.Identity.IsAuthenticated
+        </div>
+        <div class="m-2 p-2">
+            Authentication Type: @context.User.Identity.AuthenticationType
+        </div>
+        <div class="m-2 p-2">
+            Admin Role: @context.User.IsInRole("Admin")
+        </div>
+        <div class="m-2 p-2">
+            <h5>Claims</h5>
+            @foreach (var claim in @context.User.Claims)
+            {
+                <span>
+                    @claim.Type
+                </span>
+                <span>:</span>
+                <span>
+                    @claim.Value
+                </span>
+                <br />
+            }
+        </div>
+    }
+    </Authorized>
+</AuthorizeView>    

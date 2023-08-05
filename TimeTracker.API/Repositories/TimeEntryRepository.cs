@@ -106,6 +106,7 @@ public class TimeEntryRepository : ITimeEntryRepository
     public async Task<List<TimeEntry>> GetTimeEntries(int skip, int limit)
     {
         var userId = _userContextService.GetUserId();
+        Console.WriteLine(userId);
         if(userId is null)
             return new List<TimeEntry>();   
 

@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Mapster;
+using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using TimeTracker.Shared.Models;
 using TimeTracker.Shared.Models.TimeEntry;
 
@@ -82,7 +83,16 @@ public class TimeEntryService : ITimeEntryService
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit)
     {
-        return await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"/api/timeentry/{skip}/{limit}");
+        TimeEntryResponseWrapper timeEntries = new(new List<TimeEntryResponse>(),0);
+        try
+        {
+            timeEntries = await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"/api/timeentry/{skip}/{limit}");
+        } catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+        }
+        
+        return  timeEntries;
     }
 
     public void SetSelectedProject(int projectId)

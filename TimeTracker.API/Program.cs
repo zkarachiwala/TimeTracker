@@ -1,11 +1,9 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Filters;
-using TimeTracker.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,33 +31,38 @@ builder.Services.AddDbContext<TimeTrackerDataContext>(options => options.UseSqlS
 builder.Services.AddDbContext<IdentityDataContext>(options => options.UseSqlServer(identityConnection));
 
 
-builder.Services.AddIdentity<User, IdentityRole>(options =>
-    {
-        options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequireDigit = false;
-        options.Password.RequireUppercase = false;
-        options.User.RequireUniqueEmail = true;
-        options.SignIn.RequireConfirmedEmail = true;
-    })
-    .AddEntityFrameworkStores<IdentityDataContext>()
-    .AddDefaultTokenProviders();
+// builder.Services.AddIdentity<User, IdentityRole>(options =>
+//     {
+//         options.Password.RequireNonAlphanumeric = false;
+//         options.Password.RequireDigit = false;
+//         options.Password.RequireUppercase = false;
+//         options.User.RequireUniqueEmail = true;
+//         options.SignIn.RequireConfirmedEmail = true;
+//     })
+//     .AddEntityFrameworkStores<IdentityDataContext>()
+//     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication(options => {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options => {
-        options.TokenValidationParameters = new TokenValidationParameters {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["JwtIssuer"],
-            ValidAudience = builder.Configuration["JwtAudience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["JwtSecurityKey"]!)
-            )
-        };
+builder.Services.AddDefaultIdentity<User>(options =>
+    options.SignIn.RequireConfirmedEmail = true)
+        .AddRoles<IdentityRole>()
+        .AddEntityFrameworkStores<IdentityDataContext>();
+
+builder.Services.AddScoped<UserManager<User>>();
+builder.Services.AddScoped<RoleManager<IdentityRole>>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(options =>
+    {
+        builder.Configuration.Bind("AzureAd", options);
+        options.TokenValidationParameters.RoleClaimType = 
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+    },
+    options => { builder.Configuration.Bind("AzureAd", options); });
+
+builder.Services.Configure<JwtBearerOptions>(
+    JwtBearerDefaults.AuthenticationScheme, options =>
+    {
+        options.TokenValidationParameters.NameClaimType = "name";
     });
 
 builder.Services.AddHttpContextAccessor();
@@ -67,9 +70,10 @@ builder.Services.AddScoped<ITimeEntryRepository, TimeEntryRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IAccountService, AccountService>();
-builder.Services.AddScoped<ILoginService, LoginService>();
+//builder.Services.AddScoped<IAccountService, AccountService>();
+//builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IUserContextService, UserContextService>();
+builder.Services.AddScoped<IClientConfigurationManager, ClientConfigurationManager>();
 
 var app = builder.Build();
 

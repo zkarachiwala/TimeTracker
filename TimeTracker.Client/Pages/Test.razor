@@ -1,0 +1,58 @@
+@page "/Test"
+@using TimeTracker.Shared.Models.TimeEntry
+@attribute [AllowAnonymous]
+@inject HttpClient Http
+
+<h1>Hello, world!</h1>
+
+<AuthorizeView>
+    <NotAuthorized>
+        <p>You are not authorized.  Data will not be loaded.</p>
+    </NotAuthorized>
+    <Authorized>
+        @if (TimeEntries == null)
+        {
+            <p><i>Loading...</i></p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Temp. (C)</th>
+                        <th>Temp. (F)</th>
+                        <th>Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var timeEntry in TimeEntries.TimeEntries)
+                    {
+                        <tr>
+                            <td>@timeEntry.Id</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private TimeEntryResponseWrapper TimeEntries = new(new List<TimeEntryResponse>(),0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            TimeEntries = await Http.GetFromJsonAsync<TimeEntryResponseWrapper>("/api/timeentry/0/5");
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+        }
+    }
+}
