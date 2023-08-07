@@ -8,7 +8,6 @@ using Swashbuckle.AspNetCore.Filters;
 var builder = WebApplication.CreateBuilder(args);
 
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
-var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
 // Add services to the container.
 
@@ -28,27 +27,6 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
 builder.Services.AddDbContext<TimeTrackerDataContext>(options => options.UseSqlServer(timeTrackerConnection));
-builder.Services.AddDbContext<IdentityDataContext>(options => options.UseSqlServer(identityConnection));
-
-
-// builder.Services.AddIdentity<User, IdentityRole>(options =>
-//     {
-//         options.Password.RequireNonAlphanumeric = false;
-//         options.Password.RequireDigit = false;
-//         options.Password.RequireUppercase = false;
-//         options.User.RequireUniqueEmail = true;
-//         options.SignIn.RequireConfirmedEmail = true;
-//     })
-//     .AddEntityFrameworkStores<IdentityDataContext>()
-//     .AddDefaultTokenProviders();
-
-builder.Services.AddDefaultIdentity<User>(options =>
-    options.SignIn.RequireConfirmedEmail = true)
-        .AddRoles<IdentityRole>()
-        .AddEntityFrameworkStores<IdentityDataContext>();
-
-builder.Services.AddScoped<UserManager<User>>();
-builder.Services.AddScoped<RoleManager<IdentityRole>>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(options =>
@@ -70,8 +48,6 @@ builder.Services.AddScoped<ITimeEntryRepository, TimeEntryRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
-//builder.Services.AddScoped<IAccountService, AccountService>();
-//builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<IClientConfigurationManager, ClientConfigurationManager>();
 

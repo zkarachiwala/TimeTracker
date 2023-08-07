@@ -5,7 +5,7 @@ using Microsoft.Identity.Web.Resource;
 namespace TimeTracker.API.Controllers;
 
 [ApiController]
-// [Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin")]
 [Authorize]
 [Route("api/[controller]")]
 [RequiredScope(RequiredScopesConfigurationKey = "AzureAd:Scopes")]

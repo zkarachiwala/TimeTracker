@@ -2,6 +2,7 @@ using TimeTracker.Shared.Models.Identity;
 
 namespace TimeTracker.API.Services;
 
+// Create payload of web assembly configuration instead of storing it locally in wasm package at runtime
 public class ClientConfigurationManager : IClientConfigurationManager
 {
     private readonly ClientConfiguration _clientConfig;
