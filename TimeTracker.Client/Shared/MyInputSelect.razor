@@ -1,0 +1,45 @@
+@using System.Diagnostics.CodeAnalysis;
+@using System.Linq.Expressions;
+@inherits InputBase<int>
+
+<div>
+    @if(!string.IsNullOrWhiteSpace(Label))
+    {
+        <label for="@Id" class="block text-xs font-medium text-gray-700 mt-2">@Label</label>
+    }
+    <select id="@Id" @bind="@CurrentValue"
+        class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm">
+        @foreach(var item in Items)
+        {
+            <option value="@item.Value">@item.DisplayName</option>
+        }
+    </select>
+    <ValidationMessage For="@ValidationFor" class="text-xs text-red-600 font-bold my-1" />
+</div>
+
+@code {
+    [Parameter]
+    public string? Id {get;set;}
+    [Parameter]
+    public string? Label { get; set; }
+    [Parameter]
+    public Expression<Func<int>> ValidationFor { get; set; } = default!;
+    [Parameter]
+    public IEnumerable<SelectListItem> Items { get; set; } = Enumerable.Empty<SelectListItem>();
+    protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out int result, [NotNullWhen(false)] out string? validationErrorMessage)
+    {
+        if(int.TryParse(value, out result))
+        {
+            validationErrorMessage = string.Empty;
+            return true;
+        }
+        validationErrorMessage = "Invalid selection.";
+        return false;
+    }
+
+    public class SelectListItem
+    {
+        public required string Value { get; set; }
+        public required string DisplayName { get; set; }
+    }
+}

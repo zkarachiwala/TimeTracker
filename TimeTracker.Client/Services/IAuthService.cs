@@ -5,7 +5,7 @@ namespace TimeTracker.Client.Services;
 
 public interface IAuthService
 {
-    Task Register(AccountRegistrationRequest request);
-    Task Login(LoginRequest request);
+    Task<AccountRegistrationResponse> Register(AccountRegistrationRequest request);
+    Task<LoginResponse> Login(LoginRequest request);
     Task Logout();
 }
