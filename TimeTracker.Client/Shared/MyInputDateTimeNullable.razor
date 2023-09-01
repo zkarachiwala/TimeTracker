@@ -1,0 +1,46 @@
+@using System.Diagnostics.CodeAnalysis;
+@using System.Linq.Expressions;
+@inherits InputBase<DateTime?>
+
+<div>
+    @if(!string.IsNullOrWhiteSpace(Label))
+    {
+        <label for="@Id" class="block text-xs font-medium text-gray-700 mt-2">@Label</label>
+    }
+    <input type="@Type" id="@Id" @bind="@CurrentValueAsString"
+        class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm" />
+    <ValidationMessage For="@ValidationFor" class="text-xs text-red-600 font-bold my-1" />
+</div>
+
+@code {
+    [Parameter]
+    public string? Id {get;set;}
+    [Parameter]
+    public string? Label { get; set; }
+    [Parameter]
+    public string? Type { get; set; } = "datetime-local";
+    [Parameter]
+    public Expression<Func<DateTime?>> ValidationFor { get; set; } = default!;
+    protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out DateTime? result, [NotNullWhen(false)] out string? validationErrorMessage)
+    {
+        if (DateTime.TryParse(value, out DateTime tempResult))
+        {
+            result = tempResult;
+            validationErrorMessage = string.Empty;
+            return true;
+        }
+        result = null;        
+        validationErrorMessage = $"The {FieldIdentifier.FieldName} is not a date.";
+        return false;
+    }
+
+    protected override string FormatValueAsString(DateTime? value)
+    {
+        if(value is null || !value.HasValue)
+        {
+            return string.Empty;
+        }
+        return value.Value.ToString("yyyy-MM-ddTHH:mm");
+    }
+
+}

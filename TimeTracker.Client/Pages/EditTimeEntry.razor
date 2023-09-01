@@ -19,34 +19,24 @@ else
 
 <EditForm Model="timeEntry" OnValidSubmit="HandleSubmit">
     <DataAnnotationsValidator />
-    <div>
-        <label for="startDate">Start</label>
-        <InputDate id="startDate" Type="InputDateType.DateTimeLocal"
-            @bind-Value="timeEntry.Start" class="form-control" />
+    <MyInputDateTime Id="startDate" Label="Start"
+        @bind-Value="timeEntry.Start" ValidationFor="() => timeEntry.Start" />
+    <MyInputDateTimeNullable Id="endDate" Label="End"
+        @bind-Value="timeEntry.End" ValidationFor="() => timeEntry.End" />
+    <MyInputSelect Id="project" Label="Project"
+        @bind-Value="timeEntry.ProjectId"
+        Items="ProjectService.Projects
+            .Select(p => new MyInputSelect.SelectListItem {
+                Value = p.Id.ToString(), DisplayName = p.Name
+            })"
+        ValidationFor="() => timeEntry.ProjectId"/>
+    <div class="flex gap-4">
+        @if(Id is not null)
+        {
+            <MyButton Text="Delete" Level="MyButton.ButtonLevel.Danger" AddMarginTop OnClick="DeleteTimeEntry" />
+        }
+        <MyButton Text="Submit" Type="submit" AddMarginTop />
     </div>
-    <div>
-        <label for="endDate">End</label>
-        <InputDate id="endDate" Type="InputDateType.DateTimeLocal"
-            @bind-Value="timeEntry.End" class="form-control" />
-    </div>
-    <div>
-        <label for="project">Project</label>
-        <InputSelect id="project" @bind-Value="timeEntry.ProjectId" class="form-control">
-            @foreach (var project in ProjectService.Projects)
-            {
-                <option value="@project.Id">@project.Name</option>
-            }
-        </InputSelect>
-        <ValidationMessage For="() => timeEntry.ProjectId" />
-    </div>
-    @if(Id is not null)
-    {
-        <button type="button" class="btn btn-danger mt-2 mx-1" 
-            @onclick="DeleteTimeEntry">
-            Delete
-        </button>    
-    }
-    <button type="submit" class="btn btn-primary mt-2">Submit</button>
 </EditForm>
 
 @code {
