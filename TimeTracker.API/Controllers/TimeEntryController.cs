@@ -75,4 +75,39 @@ public class TimeEntryController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet("year/{year}")]
+    public async Task<ActionResult<TimeEntryResponseWrapper>> GetAllTimeEntriesByYear(int year)
+    {
+        return Ok(await _timeEntryService.GetTimeEntriesByYear(year));
+    }
+    
+    [HttpGet("month/{month}/year/{year}")]
+    public async Task<ActionResult<TimeEntryResponseWrapper>> GetAllTimeEntriesByMonth(int month, int year)
+    {
+        return Ok(await _timeEntryService.GetTimeEntriesByMonth(month, year));
+    } 
+
+    [HttpGet("day/{day}/month/{month}/year/{year}")]
+    public async Task<ActionResult<TimeEntryResponseWrapper>> GetAllTimeEntriesByDay(int day, int month, int year)
+    {
+        return Ok(await _timeEntryService.GetTimeEntriesByDay(day, month, year));
+    }
+    [HttpGet("year/{year}/{skip}/{limit}")]
+    public async Task<ActionResult<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, int skip, int limit)
+    {
+        return Ok(await _timeEntryService.GetTimeEntriesByYear(year, skip, limit));
+    }
+    
+    [HttpGet("month/{month}/year/{year}/{skip}/{limit}")]
+    public async Task<ActionResult<TimeEntryResponseWrapper>> GetAllTimeEntriesByMonth(int month, int year, int skip, int limit)
+    {
+        return Ok(await _timeEntryService.GetTimeEntriesByMonth(month, year));
+    } 
+
+    [HttpGet("day/{day}/month/{month}/year/{year}/{skip}/{limit}")]
+    public async Task<ActionResult<TimeEntryResponseWrapper>> GetAllTimeEntriesByDay(int day, int month, int year, int skip, int limit)
+    {
+        return Ok(await _timeEntryService.GetTimeEntriesByDay(day, month, year));
+    }     
 }

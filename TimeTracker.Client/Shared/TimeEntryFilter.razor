@@ -1,0 +1,68 @@
+@inject ITimeEntryService TimeEntryService
+
+@if(Type == TimeEntryTabs.TimeEntryFilterType.Day)
+{
+    <input type="date"
+        @bind-value="now"
+        @bind-value:event="oninput"
+        @onchange="HandleDateSelection"
+        class="@Css"
+        />
+}
+else if(Type == TimeEntryTabs.TimeEntryFilterType.Month)
+{
+    <input type="month"
+        @bind-value="now"
+        @bind-value:event="oninput"
+        @onchange="HandleMonthSelection"
+        class="@Css"
+        />
+}
+else if(Type == TimeEntryTabs.TimeEntryFilterType.Year)
+{
+    <input type="number" min="1900" max="2099" step="1"
+        @bind-value="currentYear"
+        @bind-value:event="oninput"
+        @onchange="HandleYearSelection"
+        class="@Css"
+        />
+}
+else if(Type == TimeEntryTabs.TimeEntryFilterType.Project)
+{
+    <ProjectSelector />
+}
+
+@code {
+    [Parameter]
+    public TimeEntryTabs.TimeEntryFilterType Type { get; set; } = TimeEntryTabs.TimeEntryFilterType.Day;
+    DateTime now = DateTime.Now;
+    int currentYear = DateTime.Now.Year;
+    const string Css = "my-2 p-2 rounded-md border-gray-200 shadow-sm sm:text-sm";
+
+    private void HandleDateSelection(ChangeEventArgs e)
+    {
+        if(e.Value is not null && DateTime.TryParse(e.Value.ToString(), out var date))
+        {
+            TimeEntryService.SetSelectedDay(date.Day, date.Month, date.Year);
+            TimeEntryService.RefreshData(); 
+        }
+    }
+
+    private void HandleMonthSelection(ChangeEventArgs e)
+    {
+        if(e.Value is not null && DateTime.TryParse(e.Value.ToString(), out var date))
+        {
+            TimeEntryService.SetSelectedMonth(date.Month, date.Year);
+            TimeEntryService.RefreshData();
+        }
+    }
+
+    private void HandleYearSelection(ChangeEventArgs e)
+    {
+        if(e.Value is not null && Int32.TryParse(e.Value.ToString(), out var year))
+        {
+            TimeEntryService.SetSelectedYear(year);
+            TimeEntryService.RefreshData();
+        }
+    }
+}

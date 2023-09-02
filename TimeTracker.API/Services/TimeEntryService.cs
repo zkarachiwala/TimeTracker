@@ -53,6 +53,30 @@ public class TimeEntryService : ITimeEntryService
         return new TimeEntryResponseWrapper { TimeEntries = timeEntryResponses, Count = timeEntryCount };
     }
 
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByDay(int day, int month, int year, int skip, int limit)
+    {
+        var timeEntries = await _timeEntryRepository.GetTimeEntriesByDay(day, month, year, skip, limit);
+        var timeEntryResponses = timeEntries.Adapt<List<TimeEntryResponse>>();
+        var timeEntryCount = await _timeEntryRepository.GetTimeEntriesCountByDay(day, month, year);
+        return new TimeEntryResponseWrapper { TimeEntries = timeEntryResponses, Count = timeEntryCount };
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByMonth(int month, int year, int skip, int limit)
+    {
+        var timeEntries = await _timeEntryRepository.GetTimeEntriesByMonth(month, year, skip, limit);
+        var timeEntryResponses = timeEntries.Adapt<List<TimeEntryResponse>>();
+        var timeEntryCount = await _timeEntryRepository.GetTimeEntriesCountByMonth(month, year);
+        return new TimeEntryResponseWrapper { TimeEntries = timeEntryResponses, Count = timeEntryCount };
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByYear(int year, int skip, int limit)    
+    {
+        var timeEntries = await _timeEntryRepository.GetTimeEntriesByYear(year, skip, limit);
+        var timeEntryResponses = timeEntries.Adapt<List<TimeEntryResponse>>();
+        var timeEntryCount = await _timeEntryRepository.GetTimeEntriesCountByYear(year);
+        return new TimeEntryResponseWrapper { TimeEntries = timeEntryResponses, Count = timeEntryCount }; 
+    }
+
     public async Task<TimeEntryResponse?> GetTimeEntryById(int id)
     {
         var result = await _timeEntryRepository.GetTimeEntryById(id);

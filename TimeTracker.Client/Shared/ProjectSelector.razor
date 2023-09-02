@@ -2,9 +2,9 @@
 @inject IProjectService ProjectService
 @implements IDisposable
 
-<div class="form-group my-4">
+<div class="form-group">
     <InputSelect @bind-Value="projectId" @oninput="OnInput"
-        class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm">
+        class="my-2 p-2 rounded-md border-gray-200 shadow-sm sm:text-sm">
         <option value="0">All Projects</option>
         @foreach (var project in ProjectService.Projects)
         {

@@ -12,9 +12,13 @@ public class TimeEntryService : ITimeEntryService
     public List<TimeEntryResponse> TimeEntries { get; set; } = new List<TimeEntryResponse>();
 
     public int SelectedProjectId { get; set; } = 0;
+    public int SelectedDay { get; set; } = DateTime.Now.Day;
+    public int SelectedMonth { get; set; } = DateTime.Now.Month;
+    public int SelectedYear { get; set; } = DateTime.Now.Year;
+    public TimeSpan TotalDuration { get; set; }
 
     public event Action? OnChange;
-    public event Action? ProjectChanged;
+    public event Action? FilterChanged;
 
     public TimeEntryService(HttpClient http)
     {
@@ -33,11 +37,22 @@ public class TimeEntryService : ITimeEntryService
             result = await _http.GetFromJsonAsync<List<TimeEntryResponse>>($"api/timeentry/project/{projectId}");
         }
 
-        if(result is not null)
+        SetTimeEntries(result);
+    }
+
+    private void SetTimeEntries(List<TimeEntryResponse>? result)
+    {
+        if (result is not null)
         {
             TimeEntries = result;
+            CalculateTotalDuration();
             OnChange?.Invoke();
         }
+    }
+
+    public void RefreshData()
+    {
+        OnChange?.Invoke();
     }
 
     public async Task<TimeEntryResponse> GetTimeEntryById(int id)
@@ -85,9 +100,58 @@ public class TimeEntryService : ITimeEntryService
         return await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"/api/timeentry/{skip}/{limit}");
     }
 
-    public void SetSelectedProject(int projectId)
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByYear(int year, int skip, int limit)
+    {
+        var result = await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"api/timeentry/year/{year}/{skip}/{limit}");
+
+        SetTimeEntries(result!.TimeEntries);
+        return result;
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByMonth(int month, int year, int skip, int limit)
+    {
+        var result = await _http.GetFromJsonAsync<TimeEntryResponseWrapper>($"api/timeentry/month/{month}/year/{year}/{skip}/{limit}");
+        SetTimeEntries(result!.TimeEntries);
+        return result;
+    }
+
+    public async Task<TimeEntryResponseWrapper> GetTimeEntriesByDay(int day, int month, int year, int skip, int limit)
+    {
+        var result = await _http.GetFromJsonAsync<TimeEntryResponseWrapper>(
+                $"api/timeentry/day/{day}/month/{month}/year/{year}/{skip}/{limit}");
+        SetTimeEntries(result!.TimeEntries);
+        return result;
+    }
+
+    private void SetSelectedFilter(int day = 0, int month = 0, int year = 0, int projectId = 0)
     {
         SelectedProjectId = projectId;
-        ProjectChanged?.Invoke();
+        SelectedDay = day;
+        SelectedMonth = month;
+        SelectedYear = year;
+        FilterChanged?.Invoke();
+    }
+
+    public void SetSelectedProject(int projectId) => SetSelectedFilter(projectId: projectId);
+    public void SetSelectedDay(int day, int month, int year) => SetSelectedFilter(day, month, year);
+    public void SetSelectedMonth(int month, int year) => SetSelectedFilter(0, month, year);
+    public void SetSelectedYear(int year) => SetSelectedFilter(0, 0, year);
+
+    private TimeSpan CalculateDuration(TimeEntryResponse timeEntry)
+    {
+        if(timeEntry.End is null || timeEntry.End < timeEntry.Start)
+            return new TimeSpan();
+        
+        TimeSpan duration = timeEntry.End.Value - timeEntry.Start;
+        return duration;
+    }
+
+    private void CalculateTotalDuration()
+    {
+        TotalDuration = new TimeSpan();
+        foreach (var timeEntry in TimeEntries)
+        {
+            TotalDuration += CalculateDuration(timeEntry);
+        }
     }
 }

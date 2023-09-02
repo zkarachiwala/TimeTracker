@@ -1,0 +1,43 @@
+  <div class="hidden sm:block mt-4">
+    <nav class="flex gap-6" aria-label="Tabs">
+      <a @onclick="() => ChangeTab(TimeEntryFilterType.Day)" class="@TabCss(TimeEntryFilterType.Day)">
+        By Day
+      </a>
+
+      <a @onclick="() => ChangeTab(TimeEntryFilterType.Month)" class="@TabCss(TimeEntryFilterType.Month)">
+        By Month
+      </a>
+
+      <a @onclick="() => ChangeTab(TimeEntryFilterType.Year)" class="@TabCss(TimeEntryFilterType.Year)">
+        By Year
+      </a>
+
+      <a @onclick="() => ChangeTab(TimeEntryFilterType.Project)" class="@TabCss(TimeEntryFilterType.Project)">
+        By Project
+      </a>
+    </nav>
+  </div>
+
+  @code {
+    [Parameter]
+    public EventCallback<TimeEntryFilterType> TabChanged { get; set; }
+    private TimeEntryFilterType currentType = TimeEntryFilterType.Day;
+
+    async void ChangeTab(TimeEntryFilterType type)
+    {
+        currentType = type;
+        await TabChanged.InvokeAsync(type);
+    }
+
+    public string TabCss(TimeEntryFilterType type) => currentType == type ? 
+        "cursor-pointer shrink-0 rounded-lg bg-gray-100 p-2 text-sm font-medium text-gray-700" :
+        "cursor-pointer shrink-0 rounded-lg p-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700";
+
+    public enum TimeEntryFilterType
+    {
+        Day,
+        Month,
+        Year,
+        Project
+    }
+  }

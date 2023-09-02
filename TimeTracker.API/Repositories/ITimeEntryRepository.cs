@@ -14,5 +14,11 @@ public interface ITimeEntryRepository
     Task<List<TimeEntry>> GetTimeEntries(int skip, int limit);
     Task<int> GetTimeEntriesCount();
     Task<int> GetTimeEntriesCountByProjectId(int projectId);
+    Task<int> GetTimeEntriesCountByYear(int year);
+    Task<int> GetTimeEntriesCountByMonth(int month, int year);
+    Task<int> GetTimeEntriesCountByDay(int day, int month, int year);
+    Task<List<TimeEntry>> GetTimeEntriesByYear(int year, int skip, int limit);
+    Task<List<TimeEntry>> GetTimeEntriesByMonth(int month, int year, int skip, int limit);
+    Task<List<TimeEntry>> GetTimeEntriesByDay(int day, int month, int year, int skip, int limit);
 }
 
