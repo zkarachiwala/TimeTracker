@@ -37,80 +37,33 @@ For architecture detail see [architecture.md](architecture.md).
 - `IdentityModelSync` migration to align Identity schema with .NET 10
 - Fixed high severity vulnerability: `System.Linq.Dynamic.Core` 1.3.7 → 1.7.2
 
+### Phase 3 — Blazor SSR + Vertical Slice Architecture ✅
+- Collapsed `TimeTracker.Client` into `TimeTracker.Web`; migrated to Blazor SSR
+- Vertical Slice Architecture — feature folders replace Controllers / Services / Repositories
+- Cookie auth (HTTP-only, Secure, SameSite=Strict) replaces JWT-in-localStorage
+- `JwtBearer`, controller layer, repository layer, `AuthStateProvider`, `Blazored.LocalStorage`, `Blazored.Toast` removed
+- DTOs moved from `TimeTracker.Shared` into feature-scoped `*Models.cs` files
+- REST API endpoints retained per feature for future Zoho Books integration
+- Added `TimeTracker.Tests` — 31 xUnit service integration tests (EF InMemory)
+- Added CI workflow — `dotnet test` runs on every push/PR to `main`
+- Renamed project `TimeTracker.API` → `TimeTracker.Web` to align with documentation
+- Replaced static PNG ERDs with Mermaid diagrams in `docs/architecture.md`
+
 ---
 
 ## Upcoming phases
 
-### Phase 3 — Blazor SSR + Vertical Slice Architecture
+### Phase 4 — Google OAuth
 
-The largest structural change. Collapses the WASM client into the API project, migrates to Blazor SSR, and restructures to feature-organised vertical slices.
+Replace username/password login with Google OAuth. Cookie auth middleware is already in place from Phase 3.
 
-**Architecture principles:**
-- Feature folders — each feature is self-contained (service interface, implementation, DTOs, endpoints, pages)
-- No repository layer — `DbContext` injected directly into feature services (EF Core is the repository)
-- Interfaces on all services — `AddScoped<ITimeEntryService, TimeEntryService>()`
-- No MediatR — plain feature services with interfaces, injected directly into Blazor components
-- DTOs stay — entities are not exposed to the UI layer or API consumers; DTOs live in feature-scoped `*Models.cs` files
-- REST API retained — minimal API endpoints alongside Blazor pages, backed by the same services, for future Zoho Books integration
-- Mapster stays — moves from global `Program.cs` config to per-feature mapping
-
-**Target structure:**
-```
-TimeTracker.Web/
-  Features/
-    TimeEntries/
-      ITimeEntryService.cs
-      TimeEntryService.cs
-      TimeEntryModels.cs
-      TimeEntryEndpoints.cs
-      Pages/
-        TimeEntriesPage.razor
-        EditTimeEntryPage.razor
-    Projects/
-      IProjectService.cs
-      ProjectService.cs
-      ProjectModels.cs
-      ProjectEndpoints.cs
-      Pages/
-        ProjectsPage.razor
-        EditProjectPage.razor
-    Auth/
-      IAuthService.cs
-      AuthService.cs
-      Pages/
-        LoginPage.razor
-  Shared/
-    IUserContextService.cs
-    UserContextService.cs
-    Layout/
-      MainLayout.razor
-      NavMenu.razor
-TimeTracker.Shared/    ← entities only
-```
-
-**Removed in this phase:**
-- `TimeTracker.Client` project
-- Controller layer
-- Repository layer
-- `HttpClient` calls from pages
-- `AuthStateProvider`, `Blazored.LocalStorage`, `Blazored.Toast`
-- DTOs from `TimeTracker.Shared` (moved to feature folders)
-
-**Branch:** `feature/blazor-ssr`
-
----
-
-### Phase 4 — Google OAuth + cookie auth
-
-Replace username/password JWT with Google OAuth. HTTP-only cookies replace JWT-in-localStorage.
-
-- `Microsoft.AspNetCore.Authentication.Google` + cookie auth middleware
+- Add `Microsoft.AspNetCore.Authentication.Google`
+- On OAuth callback: find or create local user by email, sign in via existing cookie middleware
+- Remove username/password login pages, `IAuthService` / `AuthService`, and register page
 - ASP.NET Identity retained as local user store (stores Google sub + email)
-- On OAuth callback: find or create local user by email, sign in via cookie
-- Remove `JwtBearer`, all JWT config, login/account controllers and services
 - Google credentials in user secrets (dev), Azure App Service config (prod)
 
-**Security:** HTTP-only + Secure + SameSite=Strict cookies, CSRF via Blazor SSR antiforgery, OAuth state parameter validated.
+**Security:** OAuth state parameter validated, CSRF via Blazor SSR antiforgery (already in place).
 
 **Branch:** `feature/google-auth`
 
@@ -126,8 +79,6 @@ Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-first responsive de
 - MudBlazor Snackbar replaces `Blazored.Toast`
 - `MudChart` evaluated as replacement for Radzen year chart
 - Tailwind CSS removed
-
-Can be combined with Phase 3 into one PR.
 
 **Branch:** `feature/mudblazor-ui`
 
@@ -172,7 +123,7 @@ The REST API layer (Phase 3) is retained specifically to support this. Direction
 ## Phase dependency order
 
 ```
-Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3+5 → Phase 4 → Phase 6 → Phase 7 → Zoho integration
+Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Zoho integration
 ```
 
 ## Free tier summary
