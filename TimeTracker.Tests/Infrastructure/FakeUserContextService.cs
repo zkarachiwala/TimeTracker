@@ -1,4 +1,4 @@
-using TimeTracker.API.Shared;
+using TimeTracker.Web.Shared;
 using TimeTracker.Shared.Entities;
 
 namespace TimeTracker.Tests.Infrastructure;

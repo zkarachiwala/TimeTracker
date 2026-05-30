@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TimeTracker.API\TimeTracker.API.csproj" />
+    <ProjectReference Include="..\TimeTracker.Web\TimeTracker.Web.csproj" />
   </ItemGroup>
 
 </Project>

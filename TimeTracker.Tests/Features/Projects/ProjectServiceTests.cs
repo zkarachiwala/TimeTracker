@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using TimeTracker.API.Data;
-using TimeTracker.API.Features.Projects;
+using TimeTracker.Web.Data;
+using TimeTracker.Web.Features.Projects;
 using TimeTracker.Shared.Entities;
 using TimeTracker.Shared.Exceptions;
 using TimeTracker.Tests.Infrastructure;
