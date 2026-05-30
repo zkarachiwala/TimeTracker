@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.Filters;
+using Scalar.AspNetCore;
 using TimeTracker.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,26 +11,12 @@ var builder = WebApplication.CreateBuilder(args);
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
-// Add services to the container.
-
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme {
-        In = ParameterLocation.Header,
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey
-    });
-
-    options.OperationFilter<SecurityRequirementsOperationFilter>();
-});
+builder.Services.AddOpenApi();
 builder.Services.AddDbContext<TimeTrackerDataContext>(options => options.UseSqlServer(timeTrackerConnection));
 builder.Services.AddDbContext<IdentityDataContext>(options => options.UseSqlServer(identityConnection));
-
 
 builder.Services.AddIdentity<User, IdentityRole>(options =>
     {
@@ -73,11 +58,10 @@ builder.Services.AddScoped<IUserContextService, UserContextService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
+if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+    app.MapScalarApiReference();
     app.UseWebAssemblyDebugging();
 }
 
@@ -113,7 +97,6 @@ static string? GetConnectionString(WebApplicationBuilder builder,
                                   string passwordCfgName)
 {
     var connectionString = builder.Configuration.GetConnectionString(connectionCfgName);
-    // Build Connection String
     if (builder.Environment.IsDevelopment()) {
         var conStrBuilder = new SqlConnectionStringBuilder(connectionString)
         {

@@ -3,10 +3,6 @@ using System.Security.Claims;
 using System.Text.Json;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.VisualBasic;
-
 namespace TimeTracker.Client;
 
 public class AuthStateProvider : AuthenticationStateProvider
