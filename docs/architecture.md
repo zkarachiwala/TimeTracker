@@ -116,9 +116,18 @@ Azure App Service F1 (free, fixed plan)
 
 ```
 TimeTracker.sln
-├── TimeTracker.Web     — ASP.NET Core + Blazor SSR (replaces API + Client)
-└── TimeTracker.Shared  — Entities and models
+├── TimeTracker.Web     — ASP.NET Core + Blazor SSR + Vertical Slice features
+└── TimeTracker.Shared  — EF Core entities only
 ```
+
+### Architecture principles (future)
+
+- **Vertical Slice Architecture** — code organised by feature, not by layer
+- **No MediatR** — plain feature services behind interfaces, injected directly into Blazor components and minimal API endpoints
+- **No repository layer** — `DbContext` injected directly into feature services; EF Core is the repository
+- **Interfaces throughout** — all services registered and consumed via interface (`AddScoped<ITimeEntryService, TimeEntryService>()`)
+- **DTOs in feature folders** — entities are never exposed to the UI or API consumers; `*Models.cs` per feature holds request/response types
+- **REST API retained** — minimal API endpoints alongside Blazor pages, backed by the same services, for future Zoho Books invoice integration
 
 ### Planned phases
 
@@ -143,16 +152,18 @@ dotnet user-secrets set "DbUser" "sa"
 dotnet user-secrets set "DbPassword" "YourStrong@Passw0rd"
 ```
 
-#### Phase 3 — Blazor SSR migration
+#### Phase 3 — Blazor SSR + Vertical Slice Architecture
 
-Collapse `TimeTracker.Client` into `TimeTracker.API`, converting to Blazor SSR.
+Collapse `TimeTracker.Client` into `TimeTracker.API`, convert to Blazor SSR, and restructure to vertical slices.
 
 Key changes:
-- Pages become Blazor SSR components with direct service injection — no `HttpClient` round-trips for UI
+- Feature folders replace horizontal layers (Controllers / Services / Repositories)
+- Repository layer removed — `DbContext` injected directly into feature services
+- DTOs move from `TimeTracker.Shared` into feature-scoped `*Models.cs` files
+- Minimal API endpoints retained per feature for future Zoho Books integration
+- Pages become Blazor SSR components with direct service injection via interfaces
 - Components requiring interactivity (e.g., year chart) use `@rendermode InteractiveServer`
 - `AuthStateProvider`, `Blazored.LocalStorage`, `Blazored.Toast` removed
-- `Mapster` removed from client — only needed at API boundary
-- Controllers remain temporarily until Phase 4 removes them
 
 #### Phase 4 — Auth: Google OAuth + cookie auth
 
