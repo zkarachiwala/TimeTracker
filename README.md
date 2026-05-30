@@ -23,10 +23,13 @@ A personal timesheeting application built to replace Clockify. Tracks time entri
 docker run \
   -e "ACCEPT_EULA=Y" \
   -e "MSSQL_SA_PASSWORD=YourStrong@Passw0rd" \
-  -p 1433:1433 \
+  -p 1435:1433 \
   --name timetracker-sql \
   -d mcr.microsoft.com/mssql/server:2022-latest
 ```
+
+> Port 1435 is used because 1433 and 1434 are reserved by the Windows SQL Server instance.
+> Connect via SSMS using `127.0.0.1,1435`, SQL auth (sa), with `Encrypt=false;TrustServerCertificate=true` in Additional Connection Parameters.
 
 ### 2. Set user secrets
 
