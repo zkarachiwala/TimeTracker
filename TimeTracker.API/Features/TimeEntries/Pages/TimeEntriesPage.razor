@@ -1,0 +1,128 @@
+@page "/timeentries"
+@rendermode InteractiveServer
+@inject ITimeEntryService TimeEntryService
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<PageTitle>Time Entries</PageTitle>
+<h3>Time Entries</h3>
+
+<TimeEntryTabs Current="currentFilter" OnTabChanged="HandleTabChanged" />
+<TimeEntryFilter FilterType="currentFilter"
+    Day="selectedDay" Month="selectedMonth" Year="selectedYear"
+    SelectedProjectId="selectedProjectId"
+    Projects="projects"
+    OnDateSelected="HandleDateSelected"
+    OnProjectSelected="HandleProjectSelected" />
+
+<QuickGrid ItemsProvider="timeEntriesProvider" Pagination="paginator">
+    <PropertyColumn Property="t => t.Start" />
+    <PropertyColumn Property="t => t.End" />
+    <PropertyColumn Property="t => GetDuration(t.Start, t.End)" Title="Duration" />
+    <PropertyColumn Property="t => t.Project.Name" Title="Project" />
+    <TemplateColumn>
+        <button class="block rounded-md bg-teal-600 px-2.5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            @onclick="() => NavigateToEdit(context.Id)">
+            Edit
+        </button>
+    </TemplateColumn>
+</QuickGrid>
+<Paginator State="paginator" />
+
+<div class="flex justify-content-between items-end">
+    <MyButton AddMarginTop Text="Create Time Entry" OnClick="NavigateToCreate" />
+    <span class="font-bold text-lg">Total: @FormatDuration(totalDuration)</span>
+</div>
+
+@if (currentFilter == TimeEntryTabs.FilterType.Year)
+{
+    <TimeEntryYearChart Entries="yearEntries" Year="selectedYear" />
+}
+
+@code {
+    private TimeEntryTabs.FilterType currentFilter = TimeEntryTabs.FilterType.Day;
+    private int selectedDay = DateTime.Now.Day;
+    private int selectedMonth = DateTime.Now.Month;
+    private int selectedYear = DateTime.Now.Year;
+    private int selectedProjectId;
+    private TimeSpan totalDuration;
+    private List<TimeEntryResponse> yearEntries = new();
+    private List<ProjectResponse> projects = new();
+    private PaginationState paginator = new() { ItemsPerPage = 5 };
+    private GridItemsProvider<TimeEntryResponse>? timeEntriesProvider;
+
+    protected override async Task OnInitializedAsync()
+    {
+        projects = await ProjectService.GetAllProjects();
+        InitProvider();
+    }
+
+    private void InitProvider()
+    {
+        timeEntriesProvider = async req =>
+        {
+            var count = req.Count ?? paginator.ItemsPerPage;
+            var wrapper = currentFilter switch
+            {
+                TimeEntryTabs.FilterType.Day =>
+                    await TimeEntryService.GetTimeEntriesByDay(selectedDay, selectedMonth, selectedYear, req.StartIndex, count),
+                TimeEntryTabs.FilterType.Month =>
+                    await TimeEntryService.GetTimeEntriesByMonth(selectedMonth, selectedYear, req.StartIndex, count),
+                TimeEntryTabs.FilterType.Year =>
+                    await TimeEntryService.GetTimeEntriesByYear(selectedYear, req.StartIndex, count),
+                TimeEntryTabs.FilterType.Project =>
+                    selectedProjectId <= 0
+                        ? await TimeEntryService.GetTimeEntries(req.StartIndex, count)
+                        : await TimeEntryService.GetTimeEntriesByProjectId(selectedProjectId, req.StartIndex, count),
+                _ => await TimeEntryService.GetTimeEntries(req.StartIndex, count)
+            };
+
+            totalDuration = wrapper.TotalDuration;
+
+            if (currentFilter == TimeEntryTabs.FilterType.Year)
+                yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(selectedYear);
+
+            return GridItemsProviderResult.From(wrapper.TimeEntries, wrapper.Count);
+        };
+    }
+
+    private async Task HandleTabChanged(TimeEntryTabs.FilterType type)
+    {
+        currentFilter = type;
+        InitProvider();
+        await paginator.SetCurrentPageIndexAsync(0);
+    }
+
+    private async Task HandleDateSelected((int Day, int Month, int Year) filter)
+    {
+        selectedDay = filter.Day;
+        selectedMonth = filter.Month;
+        selectedYear = filter.Year;
+        InitProvider();
+        await paginator.SetCurrentPageIndexAsync(0);
+    }
+
+    private async Task HandleProjectSelected(int projectId)
+    {
+        selectedProjectId = projectId;
+        InitProvider();
+        await paginator.SetCurrentPageIndexAsync(0);
+    }
+
+    private void NavigateToCreate() => NavigationManager.NavigateTo("/timeentry");
+    private void NavigateToEdit(int id) => NavigationManager.NavigateTo($"/timeentry/{id}");
+
+    private static string GetDuration(DateTime start, DateTime? end)
+    {
+        if (end is null) return string.Empty;
+        var d = end.Value - start;
+        return $"{(int)d.TotalHours}h {d.Minutes}m";
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        var total = (int)duration.TotalMinutes;
+        return $"{total / 60}h {total % 60}m";
+    }
+}

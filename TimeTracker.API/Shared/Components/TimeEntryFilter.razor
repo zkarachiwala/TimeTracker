@@ -1,0 +1,52 @@
+@using TimeTracker.API.Shared.Components
+
+@if (FilterType == TimeEntryTabs.FilterType.Day)
+{
+    <input type="date" value="@DateValue" @onchange="HandleDateChange" class="@Css" />
+}
+else if (FilterType == TimeEntryTabs.FilterType.Month)
+{
+    <input type="month" value="@MonthValue" @onchange="HandleMonthChange" class="@Css" />
+}
+else if (FilterType == TimeEntryTabs.FilterType.Year)
+{
+    <input type="number" min="1900" max="2099" step="1" value="@Year" @onchange="HandleYearChange" class="@Css" />
+}
+else if (FilterType == TimeEntryTabs.FilterType.Project)
+{
+    <ProjectSelector Projects="Projects" SelectedProjectId="SelectedProjectId" OnProjectSelected="OnProjectSelected" />
+}
+
+@code {
+    [Parameter] public TimeEntryTabs.FilterType FilterType { get; set; }
+    [Parameter] public int Day { get; set; } = DateTime.Now.Day;
+    [Parameter] public int Month { get; set; } = DateTime.Now.Month;
+    [Parameter] public int Year { get; set; } = DateTime.Now.Year;
+    [Parameter] public int SelectedProjectId { get; set; }
+    [Parameter] public List<ProjectResponse> Projects { get; set; } = new();
+    [Parameter] public EventCallback<(int Day, int Month, int Year)> OnDateSelected { get; set; }
+    [Parameter] public EventCallback<int> OnProjectSelected { get; set; }
+
+    private const string Css = "my-2 p-2 rounded-md border-gray-200 shadow-sm sm:text-sm";
+
+    private string DateValue => new DateTime(Year, Month, Day).ToString("yyyy-MM-dd");
+    private string MonthValue => new DateTime(Year, Month, 1).ToString("yyyy-MM");
+
+    private async Task HandleDateChange(ChangeEventArgs e)
+    {
+        if (e.Value is not null && DateTime.TryParse(e.Value.ToString(), out var date))
+            await OnDateSelected.InvokeAsync((date.Day, date.Month, date.Year));
+    }
+
+    private async Task HandleMonthChange(ChangeEventArgs e)
+    {
+        if (e.Value is not null && DateTime.TryParse(e.Value.ToString() + "-01", out var date))
+            await OnDateSelected.InvokeAsync((1, date.Month, date.Year));
+    }
+
+    private async Task HandleYearChange(ChangeEventArgs e)
+    {
+        if (e.Value is not null && int.TryParse(e.Value.ToString(), out var year))
+            await OnDateSelected.InvokeAsync((1, 1, year));
+    }
+}

@@ -1,0 +1,52 @@
+@page "/projects"
+@rendermode InteractiveServer
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Projects</PageTitle>
+<h3>Projects</h3>
+
+<MyButton AddMarginTop Text="Create Project" OnClick="NavigateToCreate" />
+
+<QuickGrid Items="FilteredProjects" Pagination="paginator">
+    <PropertyColumn Property="p => p.Name">
+        <ColumnOptions>
+            <input type="search" autofocus @bind="projectFilter" @bind:event="oninput"
+                placeholder="Project name..." class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm" />
+        </ColumnOptions>
+    </PropertyColumn>
+    <PropertyColumn Property="p => p.Description" />
+    <PropertyColumn Property="p => p.StartDate" Format="dd/MM/yyyy" Title="Start" />
+    <PropertyColumn Property="p => p.EndDate" Format="dd/MM/yyyy" Title="End" />
+    <TemplateColumn>
+        <button class="block rounded-md bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            @onclick="() => NavigateToEdit(context.Id)">
+            Edit
+        </button>
+    </TemplateColumn>
+</QuickGrid>
+<Paginator State="paginator" />
+
+@code {
+    private List<ProjectResponse> projects = new();
+    private string? projectFilter;
+    private PaginationState paginator = new() { ItemsPerPage = 5 };
+
+    private IQueryable<ProjectResponse> FilteredProjects
+    {
+        get
+        {
+            var result = projects.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(projectFilter))
+                result = result.Where(p => p.Name.Contains(projectFilter, StringComparison.CurrentCultureIgnoreCase));
+            return result;
+        }
+    }
+
+    protected override async Task OnInitializedAsync() =>
+        projects = await ProjectService.GetAllProjects();
+
+    private void NavigateToCreate() => NavigationManager.NavigateTo("/project");
+    private void NavigateToEdit(int id) => NavigationManager.NavigateTo($"/project/{id}");
+}
