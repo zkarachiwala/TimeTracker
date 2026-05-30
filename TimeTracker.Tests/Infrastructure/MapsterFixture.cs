@@ -1,5 +1,5 @@
 using Mapster;
-using TimeTracker.API.Features.TimeEntries;
+using TimeTracker.Web.Features.TimeEntries;
 using Xunit;
 
 namespace TimeTracker.Tests.Infrastructure;

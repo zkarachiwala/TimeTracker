@@ -10,11 +10,11 @@ TimeTracker is a personal timesheeting application built to replace Clockify. It
 
 | Date | Change | PR |
 |------|--------|----|
+| 2026-05 | Renamed `TimeTracker.API` → `TimeTracker.Web` to align with documentation | — |
+| 2026-05 | Added `TimeTracker.Tests` — 31 service integration tests (EF InMemory); CI runs `dotnet test` on every PR | #25 |
+| 2026-05 | Migrated to Blazor SSR + Vertical Slice Architecture; removed `TimeTracker.Client` | #25 |
 | 2026-05 | Upgraded solution from .NET 7 → .NET 10 | #20 |
 | 2026-05 | Replaced Swashbuckle with native ASP.NET Core OpenAPI + Scalar UI (dev only) | #20 |
-| 2026-05 | Fixed Swagger unconditionally enabled in production (issue #11) | #20 |
-| 2026-05 | Removed `Microsoft.AspNetCore.Authentication` 2.2.0 (bundled since .NET Core 3) | #20 |
-| 2026-05 | Removed unused imports in `AuthStateProvider.cs` and `ProjectRepository.cs` | #20 |
 
 ---
 
@@ -24,15 +24,28 @@ TimeTracker is a personal timesheeting application built to replace Clockify. It
 
 ```
 TimeTracker.sln
-├── TimeTracker.API         — ASP.NET Core web host (REST API + Blazor WASM host)
-├── TimeTracker.Client      — Blazor WebAssembly SPA
-└── TimeTracker.Shared      — Shared entities and DTOs (class library)
+├── TimeTracker.Web         — ASP.NET Core + Blazor SSR + Vertical Slice features + REST API
+├── TimeTracker.Shared      — EF Core entities only (class library)
+└── TimeTracker.Tests       — xUnit service integration tests (EF InMemory)
+```
+
+```
+TimeTracker.Web/
+  Features/
+    Auth/          — IAuthService, AuthService, Login/Register/Logout pages
+    Projects/      — IProjectService, ProjectService, ProjectModels, ProjectEndpoints, Pages/
+    TimeEntries/   — ITimeEntryService, TimeEntryService, TimeEntryModels, TimeEntryEndpoints, Pages/
+  Shared/
+    IUserContextService, UserContextService
+    Components/    — reusable Blazor components
+    Layout/        — MainLayout, NavMenu, LoginDisplay
+  Data/            — TimeTrackerDataContext, IdentityDataContext
 ```
 
 ### Runtime
 
-- **.NET 10** across all three projects
-- Single process: the API serves the REST API and hosts the Blazor WASM client via `UseBlazorFrameworkFiles()`. No CORS required.
+- **.NET 10**
+- Single process: Blazor SSR serves pages server-side; REST API endpoints on the same host
 - Runs at `https://localhost:7006` (dev). API docs at `/scalar/v1` (dev only).
 
 ### Data layer
@@ -46,44 +59,110 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 
 - `Project` uses soft-delete (`SoftDeleteableEntity`)
 - `TimeEntry` stores `UserId` (string) rather than a navigation property to avoid cascade delete issues
-- **Mapster** handles entity ↔ DTO mapping. `Project → ProjectResponse` flattens `ProjectDetails` fields, configured in `Program.cs::ConfigureMapster()`
+- **Mapster** handles entity ↔ DTO mapping, configured via per-feature `IRegister` classes scanned at startup
 
-### API layer
+### Architecture
 
-**Pattern:** Controllers → Services → Repositories
+**Vertical Slice Architecture** — no controllers, no repository layer.
 
-| Controller | Auth | Notes |
-|------------|------|-------|
-| `TimeEntryController` | `[Authorize]` | Any authenticated user |
-| `ProjectController` | `[Authorize(Roles = "Admin")]` | Admin only |
-| `LoginController` | Public | Issues JWT on username/password login |
-| `AccountController` | Public | Registration |
-
-`IUserContextService` extracts the current user's ID from `HttpContext` claims and scopes all queries per user.
+- Feature services (`ITimeEntryService`, `IProjectService`, `IAuthService`) injected directly into Blazor pages and minimal API endpoints
+- `IUserContextService` extracts the current user's ID from `HttpContext` claims and scopes all queries per user
+- REST API endpoints registered via `MapTimeEntryEndpoints()` / `MapProjectEndpoints()` — retained for future Zoho Books integration
+- DTOs live in feature-scoped `*Models.cs` files; entities are never exposed to the UI layer
 
 ### Authentication
 
-Custom **JWT Bearer** flow:
-1. User posts credentials to `/login`
-2. API validates against ASP.NET Identity, issues a signed JWT (username, user ID, roles)
-3. Blazor WASM stores token in `localStorage` via `Blazored.LocalStorage`
-4. `AuthStateProvider` reads and parses the JWT on each navigation, sets `HttpClient.DefaultRequestHeaders.Authorization`
-
-Local dev DB credentials injected via **.NET User Secrets** (`DbUser`, `DbPassword`).
+**Cookie-based** with ASP.NET Identity (username/password, temporary — replaced by Google OAuth in Phase 4):
+- HTTP-only, Secure, SameSite=Strict cookies
+- 1-day expiration
+- Login at `/login`, logout at `/logout`
+- Local dev DB credentials via **.NET User Secrets** (`DbUser`, `DbPassword`)
 
 ### Frontend
 
-**Blazor WebAssembly** with:
-- **Radzen.Blazor** — year-view chart
+**Blazor SSR** with:
+- **Radzen.Blazor** — year-view chart (interactive server component)
 - **Tailwind CSS** — utility styling
-- **Microsoft.AspNetCore.Components.QuickGrid** — data tables with pagination
-- **Blazored.LocalStorage** / **Blazored.Toast** — localStorage and toast notifications
+- **Microsoft.AspNetCore.Components.QuickGrid** — paginated data tables
 
 ### Infrastructure (current)
 
 - **Hosting:** Local only — not yet deployed
-- **Database:** SQL Server (local install or Docker)
-- **CI:** GitHub Actions (CodeQL only)
+- **Database:** SQL Server in Docker (port 1435)
+- **CI:** GitHub Actions — `dotnet test` + CodeQL on every push/PR to `main`
+- **Tests:** 31 service integration tests in `TimeTracker.Tests` (EF InMemory, no DB required)
+
+---
+
+## Data Model
+
+### `app` schema
+
+```mermaid
+erDiagram
+    TimeEntry {
+        int Id PK
+        int ProjectId FK
+        datetime Start
+        datetime End "nullable"
+        string UserId "ASP.NET Identity user Id"
+        datetime DateCreated
+        datetime DateUpdated "nullable"
+    }
+    Project {
+        int Id PK
+        string Name
+        bool IsDeleted
+        datetime DateDeleted "nullable"
+        datetime DateCreated
+        datetime DateUpdated "nullable"
+    }
+    ProjectDetails {
+        int Id PK
+        int ProjectId FK
+        string Description "nullable"
+        datetime StartDate "nullable"
+        datetime EndDate "nullable"
+    }
+    ProjectUser {
+        int Id PK
+        int ProjectId FK
+        string UserId "ASP.NET Identity user Id"
+    }
+
+    TimeEntry }o--|| Project : "ProjectId (nullable)"
+    Project ||--o| ProjectDetails : "ProjectId"
+    Project ||--o{ ProjectUser : "ProjectId"
+```
+
+### `id` schema (ASP.NET Identity)
+
+```mermaid
+erDiagram
+    AspNetUsers {
+        string Id PK
+        string UserName
+        string NormalizedUserName
+        string Email
+        string NormalizedEmail
+        string PasswordHash
+        string SecurityStamp
+    }
+    AspNetRoles {
+        string Id PK
+        string Name
+        string NormalizedName
+    }
+    AspNetUserRoles {
+        string UserId FK
+        string RoleId FK
+    }
+
+    AspNetUsers ||--o{ AspNetUserRoles : "UserId"
+    AspNetRoles ||--o{ AspNetUserRoles : "RoleId"
+```
+
+> `TimeEntry.UserId` and `ProjectUser.UserId` reference `AspNetUsers.Id` by convention (string foreign key). No FK constraint is defined to avoid cascade delete issues.
 
 ---
 
@@ -147,14 +226,14 @@ docker run \
 
 User secrets:
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet user-secrets set "DbUser" "sa"
 dotnet user-secrets set "DbPassword" "YourStrong@Passw0rd"
 ```
 
-#### Phase 3 — Blazor SSR + Vertical Slice Architecture
+#### Phase 3 — Blazor SSR + Vertical Slice Architecture ✅
 
-Collapse `TimeTracker.Client` into `TimeTracker.API`, convert to Blazor SSR, and restructure to vertical slices.
+Collapse `TimeTracker.Client` into `TimeTracker.Web`, convert to Blazor SSR, and restructure to vertical slices.
 
 Key changes:
 - Feature folders replace horizontal layers (Controllers / Services / Repositories)
@@ -290,14 +369,14 @@ docker run \
 
 ### User secrets
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet user-secrets set "DbUser" "sa"
 dotnet user-secrets set "DbPassword" "YourStrong@Passw0rd"
 ```
 
 ### Run
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet run
 # App: https://localhost:7006
 # API docs (dev): https://localhost:7006/scalar/v1
@@ -305,7 +384,7 @@ dotnet run
 
 ### EF Core migrations
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet ef migrations add <Name> --context TimeTrackerDataContext
 dotnet ef migrations add <Name> --context IdentityDataContext
 dotnet ef database update --context TimeTrackerDataContext

@@ -34,7 +34,7 @@ docker run \
 ### 2. Set user secrets
 
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet user-secrets set "DbUser" "sa"
 dotnet user-secrets set "DbPassword" "YourStrong@Passw0rd"
 ```
@@ -42,7 +42,7 @@ dotnet user-secrets set "DbPassword" "YourStrong@Passw0rd"
 ### 3. Apply database migrations
 
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet ef database update --context TimeTrackerDataContext
 dotnet ef database update --context IdentityDataContext
 ```
@@ -50,7 +50,7 @@ dotnet ef database update --context IdentityDataContext
 ### 4. Run
 
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet run
 ```
 
@@ -65,7 +65,7 @@ API docs (dev only): `https://localhost:7006/scalar/v1`
 ## Adding EF Core migrations
 
 ```bash
-cd TimeTracker.API
+cd TimeTracker.Web
 dotnet ef migrations add <MigrationName> --context TimeTrackerDataContext
 dotnet ef migrations add <MigrationName> --context IdentityDataContext
 ```
