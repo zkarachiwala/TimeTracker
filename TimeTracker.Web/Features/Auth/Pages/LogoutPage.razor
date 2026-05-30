@@ -1,11 +1,9 @@
 @page "/logout"
-@inject IAuthService AuthService
-@inject NavigationManager NavigationManager
 
-@code {
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthService.LogoutAsync();
-        NavigationManager.NavigateTo("/login");
-    }
-}
+<form method="post" action="/auth/logout">
+    <AntiforgeryToken />
+    <button type="submit"
+        class="block rounded-md bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 mt-2">
+        Sign out
+    </button>
+</form>
