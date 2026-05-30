@@ -29,4 +29,4 @@ jobs:
         run: dotnet build TimeTracker.sln --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test TimeTracker.sln --no-build --configuration Release --logger "github;verbosity=detailed"
+        run: dotnet test TimeTracker.sln --no-build --configuration Release --logger "console;verbosity=normal"
