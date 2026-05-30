@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TimeTracker.API.Data;
 
@@ -11,9 +12,11 @@ using TimeTracker.API.Data;
 namespace TimeTracker.API.Migrations.IdentityData
 {
     [DbContext(typeof(IdentityDataContext))]
-    partial class IdentityDataContextModelSnapshot : ModelSnapshot
+    [Migration("20260530023644_IdentityModelSync")]
+    partial class IdentityModelSync
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
