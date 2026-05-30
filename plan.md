@@ -2,7 +2,7 @@
 
 ## Pending tasks (pre-Phase 4)
 
-### 1. Rename TimeTracker.Web → TimeTracker.Web
+### 1. Rename TimeTracker.API → TimeTracker.Web ✅ (PR #26)
 
 Align the project name with the documentation (roadmap.md refers to `TimeTracker.Web`).
 
@@ -20,7 +20,7 @@ Align the project name with the documentation (roadmap.md refers to `TimeTracker
 
 ---
 
-### 2. Replace PNG ERDs with Mermaid diagram in architecture.md
+### 2. Replace PNG ERDs with Mermaid diagram in architecture.md ✅ (PR #26)
 
 Remove the two static PNG files from the repo root and replace with a live Mermaid ERD embedded directly in `docs/architecture.md`.
 

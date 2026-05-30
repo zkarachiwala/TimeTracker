@@ -10,7 +10,7 @@ TimeTracker is a personal timesheeting application built to replace Clockify. It
 
 | Date | Change | PR |
 |------|--------|----|
-| 2026-05 | Renamed `TimeTracker.API` → `TimeTracker.Web` to align with documentation | — |
+| 2026-05 | Renamed `TimeTracker.API` → `TimeTracker.Web` to align with documentation | #26 |
 | 2026-05 | Added `TimeTracker.Tests` — 31 service integration tests (EF InMemory); CI runs `dotnet test` on every PR | #25 |
 | 2026-05 | Migrated to Blazor SSR + Vertical Slice Architecture; removed `TimeTracker.Client` | #25 |
 | 2026-05 | Upgraded solution from .NET 7 → .NET 10 | #20 |
@@ -172,7 +172,6 @@ erDiagram
 
 - Zero-cost 24x7 hosting on Azure
 - Google OAuth (Gmail as login identity)
-- Blazor SSR — single project, no separate WASM client
 - Mobile-responsive unified UI (MudBlazor)
 - Security best practices throughout
 
@@ -199,85 +198,30 @@ TimeTracker.sln
 └── TimeTracker.Shared  — EF Core entities only
 ```
 
-### Architecture principles (future)
-
-- **Vertical Slice Architecture** — code organised by feature, not by layer
-- **No MediatR** — plain feature services behind interfaces, injected directly into Blazor components and minimal API endpoints
-- **No repository layer** — `DbContext` injected directly into feature services; EF Core is the repository
-- **Interfaces throughout** — all services registered and consumed via interface (`AddScoped<ITimeEntryService, TimeEntryService>()`)
-- **DTOs in feature folders** — entities are never exposed to the UI or API consumers; `*Models.cs` per feature holds request/response types
-- **REST API retained** — minimal API endpoints alongside Blazor pages, backed by the same services, for future Zoho Books invoice integration
-
 ### Planned phases
 
-#### Phase 2 — Local dev: SQL Server in Docker
+#### Phase 4 — Google OAuth
 
-Run SQL Server locally via Docker Desktop (Windows) to match the Azure SQL environment.
+Replace username/password login with Google OAuth. Cookie auth middleware is already in place.
 
-```bash
-docker run \
-  -e "ACCEPT_EULA=Y" \
-  -e "MSSQL_SA_PASSWORD=YourStrong@Passw0rd" \
-  -p 1433:1433 \
-  --name timetracker-sql \
-  --hostname sqlserver \
-  -d mcr.microsoft.com/mssql/server:2022-latest
-```
-
-User secrets:
-```bash
-cd TimeTracker.Web
-dotnet user-secrets set "DbUser" "sa"
-dotnet user-secrets set "DbPassword" "YourStrong@Passw0rd"
-```
-
-#### Phase 3 — Blazor SSR + Vertical Slice Architecture ✅
-
-Collapse `TimeTracker.Client` into `TimeTracker.Web`, convert to Blazor SSR, and restructure to vertical slices.
-
-Key changes:
-- Feature folders replace horizontal layers (Controllers / Services / Repositories)
-- Repository layer removed — `DbContext` injected directly into feature services
-- DTOs move from `TimeTracker.Shared` into feature-scoped `*Models.cs` files
-- Minimal API endpoints retained per feature for future Zoho Books integration
-- Pages become Blazor SSR components with direct service injection via interfaces
-- Components requiring interactivity (e.g., year chart) use `@rendermode InteractiveServer`
-- `AuthStateProvider`, `Blazored.LocalStorage`, `Blazored.Toast` removed
-
-#### Phase 4 — Auth: Google OAuth + cookie auth
-
-Replace username/password JWT with Google OAuth. HTTP-only cookie sessions replace JWT-in-localStorage.
-
-Changes:
 - Add `Microsoft.AspNetCore.Authentication.Google`
-- Add cookie auth middleware
-- Remove `JwtBearer`, `LoginController`, `AccountController`, `LoginService`, `AccountService`
-- Keep ASP.NET Identity user table as local store (stores Google sub + email)
-- On OAuth callback: find or create local user by email, sign in via cookie
-- Google client ID/secret in user secrets (dev), Azure App Service config (prod)
+- On OAuth callback: find or create local user by email, sign in via existing cookie middleware
+- Remove username/password login pages, `IAuthService` / `AuthService`, and register page
+- ASP.NET Identity retained as local user store (stores Google sub + email)
+- Google credentials in user secrets (dev), Azure App Service config (prod)
 
-**Security practices applied:**
-- HTTP-only cookies (not accessible from JavaScript — eliminates XSS token theft)
-- Secure + SameSite=Strict cookie flags
-- HTTPS enforced
-- CSRF protection via ASP.NET Core antiforgery (built into Blazor SSR forms)
-- No sensitive credentials in `appsettings.json` or source control
-- Connection strings injected via Azure App Service configuration (not environment variables visible to app logs)
-- Google OAuth state parameter validated to prevent CSRF on the OAuth flow
+**Security:** OAuth state parameter validated, CSRF via Blazor SSR antiforgery (already in place).
 
 #### Phase 5 — UI uplift: MudBlazor
 
 Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-responsive by default.
 
-Changes:
 - `MudLayout` + responsive `MudNavMenu` drawer (works on phone and desktop)
 - `MudDataGrid` replaces QuickGrid
 - `MudDialog`, `MudTextField`, `MudSelect`, `MudDatePicker` for forms
 - MudBlazor Snackbar replaces `Blazored.Toast`
 - `MudChart` evaluated as replacement for `Radzen.Blazor` year chart
 - Tailwind CSS removed
-
-Can be combined with Phase 3 into a single PR since both rewrite the client layer.
 
 #### Phase 6 — Security hardening
 
@@ -299,11 +243,10 @@ Applied before deployment. Covers DB connection security, app-level headers, and
 - HSTS in production
 
 **Rate limiting:**
-- ASP.NET Core built-in rate limiting on `/auth/login` and `/auth/callback`
+- ASP.NET Core built-in rate limiting on `/auth/callback` and OAuth endpoints
 
 **Secrets audit:**
 - No secrets in `appsettings.json` or source control
-- JWT config removed entirely
 - Google OAuth credentials only in Azure App Service config
 - Production connection string credential-free
 
@@ -328,16 +271,16 @@ Applied before deployment. Covers DB connection security, app-level headers, and
 
 ### Key package changes
 
-| Package | Action | Reason |
-|---------|--------|--------|
-| `Microsoft.AspNetCore.Authentication.JwtBearer` | Remove | Replaced by cookie auth |
-| `Microsoft.AspNetCore.Components.WebAssembly.Server` | Remove | No longer hosting WASM |
-| `Blazored.LocalStorage` | Remove | No JWT in localStorage |
-| `Blazored.Toast` | Remove | Replaced by MudBlazor Snackbar |
-| `Microsoft.AspNetCore.Components.QuickGrid` | Remove | Replaced by MudDataGrid |
-| `Radzen.Blazor` | Evaluate removal | Replaced by MudChart |
-| — | Add | `Microsoft.AspNetCore.Authentication.Google` |
-| — | Add | `MudBlazor` |
+| Package | Action | Phase | Status |
+|---------|--------|-------|--------|
+| `Microsoft.AspNetCore.Authentication.JwtBearer` | Remove | 3 | ✅ Done |
+| `Microsoft.AspNetCore.Components.WebAssembly.Server` | Remove | 3 | ✅ Done |
+| `Blazored.LocalStorage` | Remove | 3 | ✅ Done |
+| `Blazored.Toast` | Remove | 3 | ✅ Done |
+| `Microsoft.AspNetCore.Authentication.Google` | Add | 4 | Pending |
+| `Microsoft.AspNetCore.Components.QuickGrid` | Remove | 5 | Pending |
+| `Radzen.Blazor` | Remove | 5 | Pending |
+| `MudBlazor` | Add | 5 | Pending |
 
 ### Infrastructure (future)
 
@@ -362,10 +305,13 @@ Applied before deployment. Covers DB connection security, app-level headers, and
 docker run \
   -e "ACCEPT_EULA=Y" \
   -e "MSSQL_SA_PASSWORD=YourStrong@Passw0rd" \
-  -p 1433:1433 \
+  -p 1435:1433 \
   --name timetracker-sql \
   -d mcr.microsoft.com/mssql/server:2022-latest
 ```
+
+> Port 1435 is used because 1433 and 1434 are reserved by the Windows SQL Server instance.
+> Connect via SSMS using `127.0.0.1,1435`, SQL auth (sa), with `Encrypt=false;TrustServerCertificate=true` in Additional Connection Parameters.
 
 ### User secrets
 ```bash
