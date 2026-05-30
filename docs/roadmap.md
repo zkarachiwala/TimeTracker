@@ -53,17 +53,18 @@ For architecture detail see [architecture.md](architecture.md).
 
 ## Upcoming phases
 
-### Phase 4 — Google OAuth
+### Phase 4 — External OAuth ✅
 
-Replace username/password login with Google OAuth. Cookie auth middleware is already in place from Phase 3.
+Replace username/password login with external OAuth (Google initial provider).
 
-- Add `Microsoft.AspNetCore.Authentication.Google`
-- On OAuth callback: find or create local user by email, sign in via existing cookie middleware
-- Remove username/password login pages, `IAuthService` / `AuthService`, and register page
-- ASP.NET Identity retained as local user store (stores Google sub + email)
+- Added `Microsoft.AspNetCore.Authentication.Google`
+- Provider-agnostic callback via `SignInManager.GetExternalLoginInfoAsync()` — adding a second provider (e.g. Entra ID) only requires a new `AddX()` call in `Program.cs`
+- Login page enumerates configured providers dynamically via `GetExternalAuthenticationSchemesAsync()`
+- On callback: find-or-create local user by email, check against `Authentication:AllowedEmails` config list
+- Removed `IAuthService`, `AuthService`, `RegisterPage`, username/password login
+- ASP.NET Identity retained as local user store (links external provider logins to local user record)
 - Google credentials in user secrets (dev), Azure App Service config (prod)
-
-**Security:** OAuth state parameter validated, CSRF via Blazor SSR antiforgery (already in place).
+- See `docs/google-oauth-setup.md` for Google Cloud Console setup steps
 
 **Branch:** `feature/google-auth`
 
@@ -123,7 +124,7 @@ The REST API layer (Phase 3) is retained specifically to support this. Direction
 ## Phase dependency order
 
 ```
-Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Zoho integration
+Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 → Phase 6 → Phase 7 → Zoho integration
 ```
 
 ## Free tier summary

@@ -1,44 +1,31 @@
 # TimeTracker — Active Plan
 
-## Pending tasks (pre-Phase 4)
+## Phase 4 — External OAuth ✅
 
-### 1. Rename TimeTracker.API → TimeTracker.Web ✅ (PR #26)
+Completed on `feature/google-auth`. See `docs/roadmap.md` for summary.
 
-Align the project name with the documentation (roadmap.md refers to `TimeTracker.Web`).
+**Before merging:** set user secrets and smoke-test the full login/logout flow locally.
 
-**Changes required:**
-- Rename directory `TimeTracker.Web/` → `TimeTracker.Web/`
-- Rename `TimeTracker.Web.csproj` → `TimeTracker.Web.csproj`
-- Update root namespace and assembly name in the csproj
-- Update all `using TimeTracker.Web.*` references throughout the project to `using TimeTracker.Web.*`
-- Update `TimeTracker.sln` project reference
-- Update `TimeTracker.Tests/TimeTracker.Tests.csproj` project reference
-- Update `CLAUDE.md` commands that reference `TimeTracker.Web`
-- Update `README.md` references
+```bash
+cd TimeTracker.Web
+dotnet user-secrets set "Authentication:Google:ClientId" "<your-client-id>"
+dotnet user-secrets set "Authentication:Google:ClientSecret" "<your-client-secret>"
+dotnet user-secrets set "Authentication:AllowedEmails:0" "zak.karachiwala@gmail.com"
+```
 
-**Branch:** `feature/rename-api-to-web`
+See `docs/google-oauth-setup.md` for Google Cloud Console steps.
 
 ---
 
-### 2. Replace PNG ERDs with Mermaid diagram in architecture.md ✅ (PR #26)
+## Next: Phase 5 — MudBlazor UI uplift
 
-Remove the two static PNG files from the repo root and replace with a live Mermaid ERD embedded directly in `docs/architecture.md`.
+**Branch:** `feature/mudblazor-ui`
 
-**Files to remove:**
-- `master - TimeTrackerDb - app.png`
-- `master - TimeTrackerDb - id.png`
+Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-first responsive design.
 
-**Mermaid diagram should cover:**
-- `app` schema: `TimeEntries`, `Projects`, `ProjectDetails`, `ProjectUsers`
-- `id` schema: ASP.NET Identity tables (`AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, etc.)
-- Relationships between entities
-
-**Branch:** can be done on the same `feature/rename-api-to-web` branch or separately
-
----
-
-## Phase 4 (next after above tasks)
-
-**Google OAuth + cookie auth** — branch `feature/google-auth`
-
-See `docs/roadmap.md` for full spec.
+- `MudLayout` + responsive `MudNavMenu` drawer (phone and desktop)
+- `MudDataGrid` replaces QuickGrid
+- `MudDialog`, `MudTextField`, `MudSelect`, `MudDatePicker` for forms
+- MudBlazor Snackbar replaces any remaining toast usage
+- `MudChart` evaluated as replacement for Radzen year chart
+- Tailwind CSS and Radzen removed

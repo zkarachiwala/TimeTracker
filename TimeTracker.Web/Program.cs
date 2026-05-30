@@ -1,6 +1,7 @@
 using System.Reflection;
 using TimeTracker.Web;
 using Mapster;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Scalar.AspNetCore;
@@ -27,11 +28,8 @@ builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityC
 
 builder.Services.AddIdentity<User, IdentityRole>(options =>
     {
-        options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequireDigit = false;
-        options.Password.RequireUppercase = false;
         options.User.RequireUniqueEmail = true;
-        options.SignIn.RequireConfirmedEmail = true;
+        options.SignIn.RequireConfirmedEmail = false;
     })
     .AddEntityFrameworkStores<IdentityDataContext>()
     .AddDefaultTokenProviders();
@@ -42,16 +40,23 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.LoginPath = "/login";
-    options.LogoutPath = "/logout";
     options.ExpireTimeSpan = TimeSpan.FromDays(1);
 });
+
+builder.Services.AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
+        options.SignInScheme = IdentityConstants.ExternalScheme;
+    });
 
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
 
 var app = builder.Build();
 
@@ -76,6 +81,7 @@ app.MapRazorComponents<App>()
 app.MapControllers();
 app.MapTimeEntryEndpoints();
 app.MapProjectEndpoints();
+app.MapAuthEndpoints();
 
 app.Run();
 
