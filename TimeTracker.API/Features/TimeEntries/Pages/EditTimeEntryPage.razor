@@ -1,0 +1,85 @@
+@page "/timeentry"
+@page "/timeentry/{id:int}"
+@rendermode InteractiveServer
+@inject ITimeEntryService TimeEntryService
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@attribute [Authorize]
+
+<PageTitle>@(Id is null ? "Create Time Entry" : "Edit Time Entry")</PageTitle>
+<h3>@(Id is null ? "Create Time Entry" : "Edit Time Entry")</h3>
+
+<EditForm Model="model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <MyInputDateTime Id="startDate" Label="Start" @bind-Value="model.Start" ValidationFor="() => model.Start" />
+    <MyInputDateTimeNullable Id="endDate" Label="End" @bind-Value="model.End" ValidationFor="() => model.End" />
+    <MyInputSelect Id="project" Label="Project"
+        @bind-Value="model.ProjectId"
+        Items="projects.Select(p => new MyInputSelect.SelectListItem { Value = p.Id.ToString(), DisplayName = p.Name })"
+        ValidationFor="() => model.ProjectId" />
+    <div class="flex gap-4">
+        @if (Id is not null)
+        {
+            <MyButton Text="Delete" Level="MyButton.ButtonLevel.Danger" AddMarginTop OnClick="DeleteEntry" />
+        }
+        <MyButton Text="Submit" Type="submit" AddMarginTop />
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private TimeEntryRequest model = new();
+    private List<ProjectResponse> projects = new();
+
+    protected override async Task OnInitializedAsync() =>
+        projects = await ProjectService.GetAllProjects();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is not null)
+        {
+            var result = await TimeEntryService.GetTimeEntryById(Id.Value);
+            if (result is not null)
+                model = new TimeEntryRequest
+                {
+                    ProjectId = result.Project.Id,
+                    Start = result.Start,
+                    End = result.End
+                };
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (Id is null)
+        {
+            await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
+            {
+                ProjectId = model.ProjectId,
+                Start = model.Start,
+                End = model.End
+            });
+        }
+        else
+        {
+            await TimeEntryService.UpdateTimeEntry(Id.Value, new TimeEntryUpdateRequest
+            {
+                ProjectId = model.ProjectId,
+                Start = model.Start,
+                End = model.End
+            });
+        }
+        NavigationManager.NavigateTo("/timeentries");
+    }
+
+    private async Task DeleteEntry()
+    {
+        if (Id is not null && await JSRuntime.InvokeAsync<bool>("confirm", "Do you really want to delete this entry?"))
+        {
+            await TimeEntryService.DeleteTimeEntry(Id.Value);
+            NavigationManager.NavigateTo("/timeentries");
+        }
+    }
+}

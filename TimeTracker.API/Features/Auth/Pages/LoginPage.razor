@@ -1,0 +1,45 @@
+@page "/login"
+@rendermode InteractiveServer
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login</PageTitle>
+
+<div class="lg:px-32">
+    <h3>Login</h3>
+    <EditForm Model="model" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <MyInputText Label="Username" Id="username" @bind-Value="model.UserName"
+            ValidationFor="() => model.UserName" />
+        <MyInputText Label="Password" Id="password" @bind-Value="model.Password"
+            ValidationFor="() => model.Password" Type="password" />
+        <MyButton Text="Login" Type="submit" AddMarginTop />
+    </EditForm>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <span class="text-xs text-red-600 font-bold my-1">@errorMessage</span>
+    }
+</div>
+
+@code {
+    private LoginModel model = new();
+    private string? errorMessage;
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = null;
+        var (succeeded, error) = await AuthService.LoginAsync(model.UserName, model.Password);
+        if (succeeded)
+            NavigationManager.NavigateTo("/timeentries", forceLoad: true);
+        else
+            errorMessage = error ?? "An unexpected error occurred.";
+    }
+
+    private class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string UserName { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

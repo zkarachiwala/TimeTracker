@@ -1,0 +1,86 @@
+@page "/project"
+@page "/project/{id:int}"
+@rendermode InteractiveServer
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@attribute [Authorize]
+
+<PageTitle>@(Id is null ? "Create Project" : "Edit Project")</PageTitle>
+<h3>@(Id is null ? "Create a new Project" : $"Edit the Project \"{model.Name}\"")</h3>
+
+<EditForm Model="model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <MyInputText Id="name" Label="Name" @bind-Value="model.Name" ValidationFor="() => model.Name" />
+    <MyInputTextArea Id="description" Label="Description" @bind-Value="model.Description"
+        ValidationFor="() => model.Description" />
+    <MyInputDateNullable Id="startDate" Label="Start" @bind-Value="model.StartDate"
+        ValidationFor="() => model.StartDate" />
+    <MyInputDateNullable Id="endDate" Label="End" @bind-Value="model.EndDate"
+        ValidationFor="() => model.EndDate" />
+    <div class="flex gap-4">
+        @if (Id is not null)
+        {
+            <MyButton Type="button" Level="MyButton.ButtonLevel.Danger" Text="Delete"
+                OnClick="DeleteProject" AddMarginTop />
+        }
+        <MyButton Text="Submit" Type="submit" AddMarginTop />
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private ProjectRequest model = new() { Name = string.Empty };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is not null)
+        {
+            var result = await ProjectService.GetProjectById(Id.Value);
+            if (result is not null)
+                model = new ProjectRequest
+                {
+                    Id = result.Id,
+                    Name = result.Name,
+                    Description = result.Description,
+                    StartDate = result.StartDate,
+                    EndDate = result.EndDate
+                };
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (Id is null)
+        {
+            await ProjectService.CreateProject(new ProjectCreateRequest
+            {
+                Name = model.Name,
+                Description = model.Description,
+                StartDate = model.StartDate,
+                EndDate = model.EndDate
+            });
+        }
+        else
+        {
+            await ProjectService.UpdateProject(Id.Value, new ProjectUpdateRequest
+            {
+                Name = model.Name,
+                Description = model.Description,
+                StartDate = model.StartDate,
+                EndDate = model.EndDate
+            });
+        }
+        NavigationManager.NavigateTo("/projects");
+    }
+
+    private async Task DeleteProject()
+    {
+        if (Id is not null && await JSRuntime.InvokeAsync<bool>("confirm", "Do you really want to delete this project?"))
+        {
+            await ProjectService.DeleteProject(Id.Value);
+            NavigationManager.NavigateTo("/projects");
+        }
+    }
+}

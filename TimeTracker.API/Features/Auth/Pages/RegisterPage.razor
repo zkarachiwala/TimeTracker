@@ -1,0 +1,52 @@
+@page "/register"
+@rendermode InteractiveServer
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Register</PageTitle>
+
+<div class="lg:px-32">
+    <h3>Register</h3>
+    <EditForm Model="model" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <MyInputText Label="Username" Id="username" @bind-Value="model.UserName"
+            ValidationFor="() => model.UserName" />
+        <MyInputText Label="Email" Id="email" @bind-Value="model.Email"
+            ValidationFor="() => model.Email" />
+        <MyInputText Label="Password" Id="password" @bind-Value="model.Password"
+            ValidationFor="() => model.Password" Type="password" />
+        <MyButton Text="Register" Type="submit" AddMarginTop />
+    </EditForm>
+    @if (errors.Any())
+    {
+        @foreach (var error in errors)
+        {
+            <p class="text-xs text-red-600 font-bold my-1">@error</p>
+        }
+    }
+</div>
+
+@code {
+    private RegisterModel model = new();
+    private List<string> errors = new();
+
+    private async Task HandleSubmit()
+    {
+        errors.Clear();
+        var (succeeded, errs) = await AuthService.RegisterAsync(model.UserName, model.Email, model.Password);
+        if (succeeded)
+            NavigationManager.NavigateTo("/login");
+        else
+            errors = errs.ToList();
+    }
+
+    private class RegisterModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string UserName { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+    }
+}

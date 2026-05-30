@@ -1,22 +1,29 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Reflection;
+using TimeTracker.API;
+using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
-using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using TimeTracker.API.Data;
+using TimeTracker.API.Features.Auth;
+using TimeTracker.API.Features.Projects;
+using TimeTracker.API.Features.TimeEntries;
+using TimeTracker.API.Shared;
+using TimeTracker.Shared.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
-builder.Services.AddControllersWithViews();
-builder.Services.AddRazorPages();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
 builder.Services.AddOpenApi();
-builder.Services.AddDbContext<TimeTrackerDataContext>(options => options.UseSqlServer(timeTrackerConnection));
-builder.Services.AddDbContext<IdentityDataContext>(options => options.UseSqlServer(identityConnection));
+builder.Services.AddControllers();
+
+builder.Services.AddDbContext<TimeTrackerDataContext>(o => o.UseSqlServer(timeTrackerConnection));
+builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityConnection));
 
 builder.Services.AddIdentity<User, IdentityRole>(options =>
     {
@@ -29,75 +36,55 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
     .AddEntityFrameworkStores<IdentityDataContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication(options => {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options => {
-        options.TokenValidationParameters = new TokenValidationParameters {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["JwtIssuer"],
-            ValidAudience = builder.Configuration["JwtAudience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["JwtSecurityKey"]!)
-            )
-        };
-    });
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.LoginPath = "/login";
+    options.LogoutPath = "/logout";
+    options.ExpireTimeSpan = TimeSpan.FromDays(1);
+});
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITimeEntryRepository, TimeEntryRepository>();
-builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+
+builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IAccountService, AccountService>();
-builder.Services.AddScoped<ILoginService, LoginService>();
-builder.Services.AddScoped<IUserContextService, UserContextService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
+
+TypeAdapterConfig.GlobalSettings.Scan(Assembly.GetExecutingAssembly());
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-    app.UseWebAssemblyDebugging();
 }
 
-ConfigureMapster();
-
 app.UseHttpsRedirection();
-
-app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
-
-app.UseRouting();
+app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapRazorPages();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
 app.MapControllers();
-app.MapFallbackToFile("index.html");
+app.MapTimeEntryEndpoints();
+app.MapProjectEndpoints();
 
 app.Run();
 
-static void ConfigureMapster()
-{
-    TypeAdapterConfig<Project, ProjectResponse>.NewConfig()
-        .Map(dest => dest.Description, src => src.ProjectDetails != null ? src.ProjectDetails.Description : null)
-        .Map(dest => dest.StartDate, src => src.ProjectDetails != null ? src.ProjectDetails.StartDate : null)
-        .Map(dest => dest.EndDate, src => src.ProjectDetails != null ? src.ProjectDetails.EndDate : null);
-}
-
-static string? GetConnectionString(WebApplicationBuilder builder,
-                                  string connectionCfgName,
-                                  string userCfgName,
-                                  string passwordCfgName)
+static string? GetConnectionString(WebApplicationBuilder builder, string connectionCfgName,
+    string userCfgName, string passwordCfgName)
 {
     var connectionString = builder.Configuration.GetConnectionString(connectionCfgName);
-    if (builder.Environment.IsDevelopment()) {
+    if (builder.Environment.IsDevelopment())
+    {
         var conStrBuilder = new SqlConnectionStringBuilder(connectionString)
         {
             UserID = builder.Configuration[userCfgName],
