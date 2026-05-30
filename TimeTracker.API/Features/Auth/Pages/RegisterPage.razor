@@ -1,5 +1,4 @@
 @page "/register"
-@rendermode InteractiveServer
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 
@@ -7,15 +6,30 @@
 
 <div class="lg:px-32">
     <h3>Register</h3>
-    <EditForm Model="model" OnValidSubmit="HandleSubmit">
+    <EditForm method="post" Model="Model" OnValidSubmit="HandleSubmit" FormName="register">
         <DataAnnotationsValidator />
-        <MyInputText Label="Username" Id="username" @bind-Value="model.UserName"
-            ValidationFor="() => model.UserName" />
-        <MyInputText Label="Email" Id="email" @bind-Value="model.Email"
-            ValidationFor="() => model.Email" />
-        <MyInputText Label="Password" Id="password" @bind-Value="model.Password"
-            ValidationFor="() => model.Password" Type="password" />
-        <MyButton Text="Register" Type="submit" AddMarginTop />
+        <div>
+            <label for="username" class="block text-xs font-medium text-gray-700 mt-2">Username</label>
+            <InputText id="username" @bind-Value="Model!.UserName"
+                class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm" />
+            <ValidationMessage For="() => Model!.UserName" class="text-xs text-red-600 font-bold my-1" />
+        </div>
+        <div>
+            <label for="email" class="block text-xs font-medium text-gray-700 mt-2">Email</label>
+            <InputText id="email" @bind-Value="Model!.Email"
+                class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm" />
+            <ValidationMessage For="() => Model!.Email" class="text-xs text-red-600 font-bold my-1" />
+        </div>
+        <div>
+            <label for="password" class="block text-xs font-medium text-gray-700 mt-2">Password</label>
+            <InputText id="password" @bind-Value="Model!.Password" type="password"
+                class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm" />
+            <ValidationMessage For="() => Model!.Password" class="text-xs text-red-600 font-bold my-1" />
+        </div>
+        <button type="submit"
+            class="block rounded-md bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 mt-2">
+            Register
+        </button>
     </EditForm>
     @if (errors.Any())
     {
@@ -27,20 +41,24 @@
 </div>
 
 @code {
-    private RegisterModel model = new();
+    [SupplyParameterFromForm]
+    public RegisterFormModel? Model { get; set; }
+
     private List<string> errors = new();
+
+    protected override void OnInitialized() => Model ??= new();
 
     private async Task HandleSubmit()
     {
         errors.Clear();
-        var (succeeded, errs) = await AuthService.RegisterAsync(model.UserName, model.Email, model.Password);
+        var (succeeded, errs) = await AuthService.RegisterAsync(Model!.UserName, Model.Email, Model.Password);
         if (succeeded)
             NavigationManager.NavigateTo("/login");
         else
             errors = errs.ToList();
     }
 
-    private class RegisterModel
+    public class RegisterFormModel
     {
         [System.ComponentModel.DataAnnotations.Required]
         public string UserName { get; set; } = string.Empty;

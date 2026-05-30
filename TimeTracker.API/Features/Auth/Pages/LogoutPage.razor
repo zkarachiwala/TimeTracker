@@ -1,5 +1,4 @@
 @page "/logout"
-@rendermode InteractiveServer
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 
@@ -7,6 +6,6 @@
     protected override async Task OnInitializedAsync()
     {
         await AuthService.LogoutAsync();
-        NavigationManager.NavigateTo("/login", forceLoad: true);
+        NavigationManager.NavigateTo("/login");
     }
 }
