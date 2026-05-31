@@ -19,7 +19,13 @@ var builder = WebApplication.CreateBuilder(args);
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+{
+    // MudPopoverProvider IS in MainLayout. The default check fires too early
+    // in Blazor 9 per-page InteractiveServer mode (race between provider
+    // registration and component initialization). Disable the eager check.
+    config.PopoverOptions.CheckForPopoverProvider = false;
+});
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
