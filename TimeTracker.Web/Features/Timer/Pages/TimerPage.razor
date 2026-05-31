@@ -47,7 +47,7 @@
         </MudCardContent>
     </MudCard>
 }
-else
+else if (_providersReady)
 {
     @* ── Idle: start timer card ── *@
     <MudCard Class="mb-4" Style="border-radius:16px" Elevation="4">
@@ -140,6 +140,7 @@ else
     private TimeEntryResponse? sheetEntry;
     private PeriodicTimer? ticker;
     private Task? tickTask;
+    private bool _providersReady;
 
     private double TodayMinutes => todaysEntries
         .Where(e => e.End.HasValue)
@@ -167,6 +168,16 @@ else
     }
 
     protected override async Task OnInitializedAsync() => await LoadData();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _providersReady = true;
+            StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
 
     private async Task LoadData()
     {
