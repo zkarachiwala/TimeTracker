@@ -1,0 +1,51 @@
+@page "/clients"
+@rendermode InteractiveServer
+@inject IClientService ClientService
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Clients</PageTitle>
+<h3>Clients</h3>
+
+<div class="flex items-center gap-4 mt-4">
+    <MyButton Text="Create Client" OnClick="NavigateToCreate" />
+    <label class="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" @bind="showArchived" @bind:after="LoadClients" />
+        Show archived
+    </label>
+</div>
+
+<QuickGrid Items="FilteredClients" Pagination="paginator">
+    <TemplateColumn Title="Name">
+        <span class="@(context.IsArchived ? "text-gray-400 italic" : "")">@context.Name</span>
+        @if (context.IsArchived)
+        {
+            <span class="ml-2 text-xs text-gray-400">(archived)</span>
+        }
+    </TemplateColumn>
+    <PropertyColumn Property="c => c.ContactName" Title="Contact" />
+    <PropertyColumn Property="c => c.DefaultHourlyRate" Title="Default Rate (ex GST)" Format="C2" />
+    <TemplateColumn>
+        <button class="block rounded-md bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            @onclick="() => NavigateToEdit(context.Id)">
+            Edit
+        </button>
+    </TemplateColumn>
+</QuickGrid>
+<Paginator State="paginator" />
+
+@code {
+    private List<ClientResponse> clients = new();
+    private bool showArchived = false;
+    private PaginationState paginator = new() { ItemsPerPage = 10 };
+
+    private IQueryable<ClientResponse> FilteredClients => clients.AsQueryable();
+
+    protected override async Task OnInitializedAsync() => await LoadClients();
+
+    private async Task LoadClients() =>
+        clients = await ClientService.GetAllClients(includeArchived: showArchived);
+
+    private void NavigateToCreate() => NavigationManager.NavigateTo("/client");
+    private void NavigateToEdit(int id) => NavigationManager.NavigateTo($"/client/{id}");
+}

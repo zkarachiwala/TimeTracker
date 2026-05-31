@@ -70,7 +70,23 @@ Replace username/password login with external OAuth (Google initial provider).
 
 ---
 
-### Phase 5 — MudBlazor UI uplift
+### Phase 5 — Client Management ✅
+
+Add a shared `Clients` table replacing the free-text client field on projects.
+
+- `Client` entity: `Name` (unique), `DefaultHourlyRate` (nullable, ex GST), `ContactName`, `ContactEmail`, `ContactPhone` (all nullable)
+- `Project.ClientId` nullable FK — SET NULL on client delete; service layer blocks delete when active projects exist
+- Clients shared across all users — no per-user scoping
+- Clients CRUD pages + nav link (Admin only)
+- Project create/edit form includes client dropdown
+- `IClientService` / `ClientService` / `ClientEndpoints` following VSA pattern
+- 12 new service integration tests (51 total)
+
+**Branch:** `feature/client-management`
+
+---
+
+### Phase 6 — MudBlazor UI uplift
 
 Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-first responsive design.
 
@@ -85,7 +101,7 @@ Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-first responsive de
 
 ---
 
-### Phase 6 — Security hardening
+### Phase 7 — Security hardening
 
 Applied before deployment.
 
@@ -101,7 +117,7 @@ Applied before deployment.
 
 ---
 
-### Phase 7 — Azure deployment + CI/CD
+### Phase 8 — Azure deployment + CI/CD
 
 - **Azure SQL Database** — free offer (32GB, automatic backups, Managed Identity auth)
 - **Azure App Service F1** — free fixed plan; throttles at limit, never charges overage; sleeps after 20 min idle
@@ -124,7 +140,7 @@ The REST API layer (Phase 3) is retained specifically to support this. Direction
 ## Phase dependency order
 
 ```
-Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 → Phase 6 → Phase 7 → Zoho integration
+Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 ✅ → Phase 6 → Phase 7 → Phase 8 → Zoho integration
 ```
 
 ## Free tier summary

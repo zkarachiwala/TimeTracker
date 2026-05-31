@@ -10,6 +10,7 @@ TimeTracker is a personal timesheeting application built to replace Clockify. It
 
 | Date | Change | PR |
 |------|--------|----|
+| 2026-05 | Added `Clients` table; client CRUD feature; project–client FK; 12 new tests (51 total) | #29 |
 | 2026-05 | Renamed `TimeTracker.API` → `TimeTracker.Web` to align with documentation | #26 |
 | 2026-05 | Added `TimeTracker.Tests` — 31 service integration tests (EF InMemory); CI runs `dotnet test` on every PR | #25 |
 | 2026-05 | Migrated to Blazor SSR + Vertical Slice Architecture; removed `TimeTracker.Client` | #25 |
@@ -32,7 +33,8 @@ TimeTracker.sln
 ```
 TimeTracker.Web/
   Features/
-    Auth/          — IAuthService, AuthService, Login/Register/Logout pages
+    Auth/          — Login/Logout pages, ExternalLoginService
+    Clients/       — IClientService, ClientService, ClientModels, ClientEndpoints, Pages/
     Projects/      — IProjectService, ProjectService, ProjectModels, ProjectEndpoints, Pages/
     TimeEntries/   — ITimeEntryService, TimeEntryService, TimeEntryModels, TimeEntryEndpoints, Pages/
   Shared/
@@ -54,10 +56,11 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 
 | Context | Schema | Tables |
 |---------|--------|--------|
-| `TimeTrackerDataContext` | `app` | `TimeEntries`, `Projects`, `ProjectDetails`, `ProjectUsers` |
+| `TimeTrackerDataContext` | `app` | `Clients`, `TimeEntries`, `Projects`, `ProjectDetails`, `ProjectUsers` |
 | `IdentityDataContext` | `id` | ASP.NET Identity tables |
 
-- `Project` uses soft-delete (`SoftDeleteableEntity`)
+- `Client` is shared across all users — no `UserId` scoping. `Name` has a unique index. `DefaultHourlyRate` is nullable (ex GST). Supports soft-delete (`IsDeleted`) for recoverability and archiving (`IsArchived`) to hide inactive clients from dropdowns without deleting them.
+- `Project` uses soft-delete (`SoftDeleteableEntity`). `ClientId` is a nullable FK — deleting a client with active projects is blocked at the service layer; the DB cascades to `SET NULL` if bypassed.
 - `TimeEntry` stores `UserId` (string) rather than a navigation property to avoid cascade delete issues
 - **Mapster** handles entity ↔ DTO mapping, configured via per-feature `IRegister` classes scanned at startup
 
@@ -72,9 +75,10 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 
 ### Authentication
 
-**Cookie-based** with ASP.NET Identity (username/password, temporary — replaced by Google OAuth in Phase 4):
-- HTTP-only, Secure, SameSite=Strict cookies
-- 1-day expiration
+**Cookie-based** with ASP.NET Identity + Google OAuth:
+- HTTP-only, Secure, SameSite=Strict cookies; 1-day expiration
+- Google OAuth via `Microsoft.AspNetCore.Authentication.Google`; provider-agnostic callback via `SignInManager`
+- Allowed emails gated via `Authentication:AllowedEmails` config list
 - Login at `/login`, logout at `/logout`
 - Local dev DB credentials via **.NET User Secrets** (`DbUser`, `DbPassword`)
 
@@ -90,7 +94,7 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 - **Hosting:** Local only — not yet deployed
 - **Database:** SQL Server in Docker (port 1435)
 - **CI:** GitHub Actions — `dotnet test` + CodeQL on every push/PR to `main`
-- **Tests:** 31 service integration tests in `TimeTracker.Tests` (EF InMemory, no DB required)
+- **Tests:** 51 service integration tests in `TimeTracker.Tests` (EF InMemory, no DB required)
 
 ---
 
@@ -100,6 +104,19 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 
 ```mermaid
 erDiagram
+    Client {
+        int Id PK
+        string Name "unique"
+        bool IsArchived
+        bool IsDeleted
+        datetime DateDeleted "nullable"
+        decimal DefaultHourlyRate "nullable, ex GST"
+        string ContactName "nullable"
+        string ContactEmail "nullable"
+        string ContactPhone "nullable"
+        datetime DateCreated
+        datetime DateUpdated "nullable"
+    }
     TimeEntry {
         int Id PK
         int ProjectId FK
@@ -112,6 +129,8 @@ erDiagram
     Project {
         int Id PK
         string Name
+        int ClientId FK "nullable"
+        decimal HourlyRate "nullable, ex GST"
         bool IsDeleted
         datetime DateDeleted "nullable"
         datetime DateCreated
@@ -130,6 +149,7 @@ erDiagram
         string UserId "ASP.NET Identity user Id"
     }
 
+    Client ||--o{ Project : "ClientId (SET NULL on delete)"
     TimeEntry }o--|| Project : "ProjectId (nullable)"
     Project ||--o| ProjectDetails : "ProjectId"
     Project ||--o{ ProjectUser : "ProjectId"
@@ -200,19 +220,29 @@ TimeTracker.sln
 
 ### Planned phases
 
-#### Phase 4 — Google OAuth
+#### Phase 4 — Google OAuth ✅
 
-Replace username/password login with Google OAuth. Cookie auth middleware is already in place.
+Replace username/password login with Google OAuth.
 
-- Add `Microsoft.AspNetCore.Authentication.Google`
-- On OAuth callback: find or create local user by email, sign in via existing cookie middleware
-- Remove username/password login pages, `IAuthService` / `AuthService`, and register page
-- ASP.NET Identity retained as local user store (stores Google sub + email)
-- Google credentials in user secrets (dev), Azure App Service config (prod)
+- Added `Microsoft.AspNetCore.Authentication.Google`
+- Provider-agnostic callback via `SignInManager.GetExternalLoginInfoAsync()`
+- On callback: find-or-create local user by email, gate against `Authentication:AllowedEmails`
+- Removed `IAuthService`, `AuthService`, `RegisterPage`, username/password login
+- ASP.NET Identity retained as local user store
 
-**Security:** OAuth state parameter validated, CSRF via Blazor SSR antiforgery (already in place).
+#### Phase 5 — Client Management ✅
 
-#### Phase 5 — UI uplift: MudBlazor
+Add shared `Clients` table with default hourly rate; link projects to clients.
+
+- `Client` entity: `Name` (unique), `DefaultHourlyRate` (nullable, ex GST), `ContactName`, `ContactEmail`, `ContactPhone` (all nullable)
+- `Project.ClientId` nullable FK (SET NULL on client delete)
+- Clients shared across all users — no per-user scoping
+- Clients CRUD page + nav link (Admin only)
+- Project create/edit includes client dropdown
+- `IClientService` / `ClientService` / `ClientEndpoints` follow VSA pattern
+- 12 new service integration tests (51 total)
+
+#### Phase 6 — UI uplift: MudBlazor
 
 Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-responsive by default.
 
@@ -223,7 +253,7 @@ Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-responsive by defau
 - `MudChart` evaluated as replacement for `Radzen.Blazor` year chart
 - Tailwind CSS removed
 
-#### Phase 6 — Security hardening
+#### Phase 7 — Security hardening
 
 Applied before deployment. Covers DB connection security, app-level headers, and a pre-deployment secrets audit.
 
@@ -250,7 +280,7 @@ Applied before deployment. Covers DB connection security, app-level headers, and
 - Google OAuth credentials only in Azure App Service config
 - Production connection string credential-free
 
-#### Phase 7 — Azure deployment + CI/CD
+#### Phase 8 — Azure deployment + CI/CD
 
 **Azure SQL Database:**
 - Create with "Apply free offer" selected

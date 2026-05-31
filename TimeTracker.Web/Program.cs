@@ -7,6 +7,7 @@ using Microsoft.Data.SqlClient;
 using Scalar.AspNetCore;
 using TimeTracker.Web.Data;
 using TimeTracker.Web.Features.Auth;
+using TimeTracker.Web.Features.Clients;
 using TimeTracker.Web.Features.Projects;
 using TimeTracker.Web.Features.TimeEntries;
 using TimeTracker.Web.Shared;
@@ -56,6 +57,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
 
 var app = builder.Build();
@@ -81,6 +83,7 @@ app.MapRazorComponents<App>()
 app.MapControllers();
 app.MapTimeEntryEndpoints();
 app.MapProjectEndpoints();
+app.MapClientEndpoints();
 app.MapAuthEndpoints();
 
 app.Run();

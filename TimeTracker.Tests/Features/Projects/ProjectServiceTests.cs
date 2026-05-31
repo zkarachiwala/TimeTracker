@@ -19,11 +19,13 @@ public class ProjectServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 
-    private static Project MakeProject(string userId, string name = "Project", bool isDeleted = false, bool includeDetails = true) =>
+    private static Project MakeProject(string userId, string name = "Project", bool isDeleted = false, bool includeDetails = true, decimal? hourlyRate = 100m, int? clientId = null) =>
         new()
         {
             Name = name,
             IsDeleted = isDeleted,
+            HourlyRate = hourlyRate,
+            ClientId = clientId,
             ProjectDetails = includeDetails ? new ProjectDetails { Description = "Details", Project = null! } : null,
             ProjectUsers = [new ProjectUser { UserId = userId }]
         };
@@ -117,7 +119,8 @@ public class ProjectServiceTests
                 Name = "New Project",
                 Description = "A description",
                 StartDate = startDate,
-                EndDate = endDate
+                EndDate = endDate,
+                HourlyRate = 150m
             });
 
         var project = context.Projects.Single();
@@ -126,6 +129,17 @@ public class ProjectServiceTests
         Assert.Equal("A description", project.ProjectDetails.Description);
         Assert.Equal(startDate, project.ProjectDetails.StartDate);
         Assert.Equal(endDate, project.ProjectDetails.EndDate);
+    }
+
+    [Fact]
+    public async Task CreateProject_PersistsHourlyRate()
+    {
+        using var context = CreateContext();
+
+        await new ProjectService(context, new FakeUserContextService(UserId))
+            .CreateProject(new ProjectCreateRequest { Name = "Billed Project", HourlyRate = 175m });
+
+        Assert.Equal(175m, context.Projects.Single().HourlyRate);
     }
 
     [Fact]
@@ -154,13 +168,28 @@ public class ProjectServiceTests
             {
                 Name = "New Name",
                 Description = "Updated description",
-                StartDate = new DateTime(2025, 1, 1)
+                StartDate = new DateTime(2025, 1, 1),
+                HourlyRate = 200m
             });
 
         var updated = context.Projects.Single();
         Assert.Equal("New Name", updated.Name);
         Assert.Equal("Updated description", updated.ProjectDetails!.Description);
         Assert.Equal(new DateTime(2025, 1, 1), updated.ProjectDetails.StartDate);
+    }
+
+    [Fact]
+    public async Task UpdateProject_UpdatesHourlyRate()
+    {
+        using var context = CreateContext();
+        var project = MakeProject(UserId, hourlyRate: 100m);
+        context.Projects.Add(project);
+        await context.SaveChangesAsync();
+
+        await new ProjectService(context, new FakeUserContextService(UserId))
+            .UpdateProject(project.Id, new ProjectUpdateRequest { Name = project.Name, HourlyRate = 250m });
+
+        Assert.Equal(250m, context.Projects.Single().HourlyRate);
     }
 
     [Fact]
