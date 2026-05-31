@@ -62,6 +62,10 @@ API docs (dev only): `https://localhost:7006/scalar/v1`
 - [Architecture](docs/architecture.md) — current and future state, tech decisions
 - [Roadmap](docs/roadmap.md) — phased implementation plan
 
+## Credits
+
+This project started as a hands-on exercise following the **[Web API, Blazor & Blazor WebAssembly Masterclass](https://dotnetwebacademy.com/courses/web-api-blazor-blazor-webassembly-masterclass)** course by .NET Web Academy. The architecture has since been significantly evolved — Blazor SSR, Vertical Slice Architecture, Google OAuth, and a number of feature additions — but the original course provided the foundation.
+
 ## Adding EF Core migrations
 
 ```bash
