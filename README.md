@@ -64,7 +64,7 @@ API docs (dev only): `https://localhost:7006/scalar/v1`
 
 ## Credits
 
-This project started as a hands-on exercise following the **[Web API, Blazor & Blazor WebAssembly Masterclass](https://dotnetwebacademy.com/courses/web-api-blazor-blazor-webassembly-masterclass)** course by .NET Web Academy. The architecture has since been significantly evolved — Blazor SSR, Vertical Slice Architecture, Google OAuth, and a number of feature additions — but the original course provided the foundation.
+This project started as a hands-on exercise following the **[Web API, Blazor & Blazor WebAssembly Masterclass](https://dotnetwebacademy.com/courses/web-api-blazor-blazor-webassembly-masterclass)** course by .NET Web Academy. The architecture has since been significantly evolved — Blazor SSR, Vertical Slice Architecture, Google OAuth, and a number of feature additions (most of which I learned via this academy or via [Patrick God's YouTube channel](https://www.youtube.com/@PatrickGod) — but the original course provided the foundation.  I highly recommend the .NET Web Academy and Patrick's YouTube channel.
 
 ## Adding EF Core migrations
 
