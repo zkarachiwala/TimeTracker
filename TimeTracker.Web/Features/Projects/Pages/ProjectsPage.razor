@@ -45,7 +45,7 @@
             OnClick="OpenNewSheet" />
 </div>
 
-<ProjectSheet @bind-Open="sheetOpen" Project="sheetProject" OnSaved="LoadData" />
+@if (sheetOpen) { <ProjectSheet @bind-Open="sheetOpen" Project="sheetProject" OnSaved="LoadData" /> }
 
 @code {
     private List<ProjectResponse> projects = [];

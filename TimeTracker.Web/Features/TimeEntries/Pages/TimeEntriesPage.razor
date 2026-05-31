@@ -19,7 +19,7 @@
 
 <div class="pa-4">
     @* ── Range stepper or project picker ── *@
-    @if (activeTab == 3)
+    @if (activeTab == 3 && _providersReady)
     {
         <MudSelect T="int" Label="Project" @bind-Value="selectedProjectId"
                    Variant="Variant.Outlined" Class="mb-4"
@@ -107,7 +107,7 @@
             OnClick="OpenNewSheet" />
 </div>
 
-<EntrySheet @bind-Open="sheetOpen" Entry="sheetEntry" OnSaved="LoadEntries" />
+@if (sheetOpen) { <EntrySheet @bind-Open="sheetOpen" Entry="sheetEntry" OnSaved="LoadEntries" /> }
 
 @code {
     private int activeTab = 0;
@@ -117,6 +117,7 @@
     private List<ProjectResponse> projects = [];
     private bool sheetOpen;
     private TimeEntryResponse? sheetEntry;
+    private bool _providersReady;
 
     private List<TimeEntryResponse> filteredEntries => activeTab switch
     {
@@ -177,6 +178,12 @@
     {
         projects = await ProjectService.GetAllProjects();
         await LoadEntries();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) { _providersReady = true; StateHasChanged(); }
+        await base.OnAfterRenderAsync(firstRender);
     }
 
     private async Task LoadEntries()
