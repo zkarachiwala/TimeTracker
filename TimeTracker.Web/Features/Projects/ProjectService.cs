@@ -9,40 +9,43 @@ namespace TimeTracker.Web.Features.Projects;
 
 public class ProjectService : IProjectService
 {
-    private readonly TimeTrackerDataContext _context;
+    private readonly IDbContextFactory<TimeTrackerDataContext> _contextFactory;
     private readonly IUserContextService _userContextService;
 
-    public ProjectService(TimeTrackerDataContext context, IUserContextService userContextService)
+    public ProjectService(IDbContextFactory<TimeTrackerDataContext> contextFactory, IUserContextService userContextService)
     {
-        _context = context;
+        _contextFactory = contextFactory;
         _userContextService = userContextService;
     }
 
     private string GetUserId() =>
         _userContextService.GetUserId() ?? throw new EntityNotFoundException("User not found.");
 
-    private IQueryable<Project> UserProjects(string userId) =>
-        _context.Projects
+    private static IQueryable<Project> UserProjects(TimeTrackerDataContext ctx, string userId) =>
+        ctx.Projects
             .Include(p => p.ProjectDetails)
             .Where(p => !p.IsDeleted && p.ProjectUsers.Any(pu => pu.UserId == userId));
 
     public async Task<List<ProjectResponse>> GetAllProjects()
     {
         var userId = GetUserId();
-        var projects = await UserProjects(userId).ToListAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var projects = await UserProjects(ctx, userId).ToListAsync();
         return projects.Adapt<List<ProjectResponse>>();
     }
 
     public async Task<ProjectResponse?> GetProjectById(int id)
     {
         var userId = GetUserId();
-        var project = await UserProjects(userId).FirstOrDefaultAsync(p => p.Id == id);
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id);
         return project?.Adapt<ProjectResponse>();
     }
 
     public async Task CreateProject(ProjectCreateRequest request)
     {
         var userId = GetUserId();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
         var project = new Project
         {
             Name = request.Name,
@@ -58,14 +61,15 @@ public class ProjectService : IProjectService
             },
             ProjectUsers = new List<ProjectUser> { new() { UserId = userId } }
         };
-        _context.Projects.Add(project);
-        await _context.SaveChangesAsync();
+        ctx.Projects.Add(project);
+        await ctx.SaveChangesAsync();
     }
 
     public async Task UpdateProject(int id, ProjectUpdateRequest request)
     {
         var userId = GetUserId();
-        var project = await UserProjects(userId).FirstOrDefaultAsync(p => p.Id == id)
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new EntityNotFoundException($"Project {id} not found.");
 
         project.Name = request.Name;
@@ -90,17 +94,18 @@ public class ProjectService : IProjectService
             };
         }
 
-        await _context.SaveChangesAsync();
+        await ctx.SaveChangesAsync();
     }
 
     public async Task DeleteProject(int id)
     {
         var userId = GetUserId();
-        var project = await UserProjects(userId).FirstOrDefaultAsync(p => p.Id == id)
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new EntityNotFoundException($"Project {id} not found.");
 
         project.IsDeleted = true;
         project.DateDeleted = DateTime.Now;
-        await _context.SaveChangesAsync();
+        await ctx.SaveChangesAsync();
     }
 }

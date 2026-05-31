@@ -27,7 +27,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
-builder.Services.AddDbContext<TimeTrackerDataContext>(o => o.UseSqlServer(timeTrackerConnection));
+builder.Services.AddDbContextFactory<TimeTrackerDataContext>(o => o.UseSqlServer(timeTrackerConnection));
 builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityConnection));
 
 builder.Services.AddIdentity<User, IdentityRole>(options =>
