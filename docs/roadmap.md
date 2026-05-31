@@ -131,7 +131,7 @@ Applied before deployment.
 
 ### Future — Zoho Books integration
 
-TimeTracker will eventually integrate with Zoho Books to partially automate invoice generation, replacing the current manual Clockify → Zoho Books export.
+TimeTracker will eventually integrate with Zoho Books to partially automate invoice generation based on tracked time entries.
 
 The REST API layer (Phase 3) is retained specifically to support this. Direction TBD — push from TimeTracker or pull from Zoho.
 
