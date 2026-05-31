@@ -1,4 +1,5 @@
 using System.Reflection;
+using MudBlazor.Services;
 using TimeTracker.Web;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -17,6 +18,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
+
+builder.Services.AddMudServices();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

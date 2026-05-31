@@ -25,9 +25,10 @@
                     }
                 </div>
             </div>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                           OnClick:stopPropagation="true"
-                           OnClick="() => OnEdit.InvokeAsync(Project)" />
+            <div @onclick:stopPropagation="true">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               OnClick="() => OnEdit.InvokeAsync(Project)" />
+            </div>
         </div>
         <div class="d-flex justify-space-between align-center mt-3">
             <MudText Typo="Typo.caption">@YtdHours h logged YTD</MudText>
