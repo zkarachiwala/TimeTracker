@@ -1,51 +1,128 @@
 @page "/clients"
 @rendermode InteractiveServer
 @inject IClientService ClientService
-@inject NavigationManager NavigationManager
+@inject ITimeEntryService TimeEntryService
+@inject IProjectService ProjectService
 @attribute [Authorize(Roles = "Admin")]
 
-<PageTitle>Clients</PageTitle>
-<h3>Clients</h3>
+@using TimeTracker.Web.Features.Clients.Components
+@using TimeTracker.Web.Features.TimeEntries
+@using TimeTracker.Web.Features.Projects
 
-<div class="flex items-center gap-4 mt-4">
-    <MyButton Text="Create Client" OnClick="NavigateToCreate" />
-    <label class="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" @bind="showArchived" @bind:after="LoadClients" />
-        Show archived
-    </label>
+<PageTitle>Clients — TimeTracker</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h6">Clients</MudText>
+        <MudChip T="string" Color="Color.Primary">@activeCount active</MudChip>
+    </div>
+
+    @foreach (var c in sortedClients)
+    {
+        <div class="@(c.IsArchived ? "archived-item" : "") mb-3">
+            <MudCard Style="cursor:pointer" @onclick="() => OpenEditSheet(c)">
+                <MudCardContent Style="padding:16px">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Style="@($"background:{ClientColor(c)}; color:#fff; font-weight:700; width:44px; height:44px")">
+                            @c.Name[..Math.Min(2, c.Name.Length)].ToUpper()
+                        </MudAvatar>
+                        <div class="flex-1" style="min-width:0">
+                            <MudText Typo="Typo.body1" Style="font-weight:500; line-height:1.3">@c.Name</MudText>
+                            <div class="d-flex align-center gap-2 mt-1 flex-wrap">
+                                @if (!string.IsNullOrEmpty(c.ContactName))
+                                {
+                                    <span class="d-flex align-center gap-1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small"
+                                                 Style="color:var(--mud-palette-text-disabled); font-size:16px" />
+                                        <MudText Typo="Typo.caption">@c.ContactName</MudText>
+                                    </span>
+                                }
+                                @if (c.IsArchived)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:22px">archived</MudChip>
+                                }
+                                @if (c.DefaultHourlyRate is null)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:22px">internal</MudChip>
+                                }
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column align-end">
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Style="font-weight:700; font-variant-numeric:tabular-nums">
+                                @(c.DefaultHourlyRate.HasValue ? $"${c.DefaultHourlyRate}" : "—")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-disabled)">/ hr default</MudText>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-space-between align-center mt-3">
+                        <MudText Typo="Typo.caption">
+                            @GetProjectCount(c.Id) project@(GetProjectCount(c.Id) == 1 ? "" : "s") · @GetYtdHours(c.Id)h YTD
+                        </MudText>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small"
+                                 Style="color:var(--mud-palette-text-disabled)" />
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    }
 </div>
 
-<QuickGrid Items="FilteredClients" Pagination="paginator">
-    <TemplateColumn Title="Name">
-        <span class="@(context.IsArchived ? "text-gray-400 italic" : "")">@context.Name</span>
-        @if (context.IsArchived)
-        {
-            <span class="ml-2 text-xs text-gray-400">(archived)</span>
-        }
-    </TemplateColumn>
-    <PropertyColumn Property="c => c.ContactName" Title="Contact" />
-    <PropertyColumn Property="c => c.DefaultHourlyRate" Title="Default Rate (ex GST)" Format="C2" />
-    <TemplateColumn>
-        <button class="block rounded-md bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
-            @onclick="() => NavigateToEdit(context.Id)">
-            Edit
-        </button>
-    </TemplateColumn>
-</QuickGrid>
-<Paginator State="paginator" />
+<div class="bottom-nav-spacer"></div>
+
+<div class="tt-fab">
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+            OnClick="OpenNewSheet" />
+</div>
+
+<ClientSheet @bind-Open="sheetOpen" Client="sheetClient" OnSaved="LoadData" />
 
 @code {
-    private List<ClientResponse> clients = new();
-    private bool showArchived = false;
-    private PaginationState paginator = new() { ItemsPerPage = 10 };
+    private List<ClientResponse> clients = [];
+    private List<ProjectResponse> projects = [];
+    private List<TimeEntryResponse> yearEntries = [];
+    private bool sheetOpen;
+    private ClientResponse? sheetClient;
 
-    private IQueryable<ClientResponse> FilteredClients => clients.AsQueryable();
+    private static readonly string[] ColorPalette =
+        ["#0068CD","#1FACF2","#002F6F","#2e7d32","#ed6c02","#6a1b9a","#00838f","#c62828"];
 
-    protected override async Task OnInitializedAsync() => await LoadClients();
+    private string ClientColor(ClientResponse c) =>
+        ColorPalette[(c.Id - 1) % ColorPalette.Length];
 
-    private async Task LoadClients() =>
-        clients = await ClientService.GetAllClients(includeArchived: showArchived);
+    private int activeCount => clients.Count(c => !c.IsArchived);
 
-    private void NavigateToCreate() => NavigationManager.NavigateTo("/client");
-    private void NavigateToEdit(int id) => NavigationManager.NavigateTo($"/client/{id}");
+    private IEnumerable<ClientResponse> sortedClients =>
+        clients.OrderBy(c => c.IsArchived ? 1 : 0).ThenBy(c => c.Name);
+
+    private int GetProjectCount(int clientId) =>
+        projects.Count(p => p.ClientId == clientId);
+
+    private int GetYtdHours(int clientId)
+    {
+        var projectIds = projects.Where(p => p.ClientId == clientId).Select(p => p.Id).ToHashSet();
+        return (int)Math.Round(yearEntries
+            .Where(e => projectIds.Contains(e.Project.Id) && e.End.HasValue)
+            .Sum(e => (e.End!.Value - e.Start).TotalHours));
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        clients = await ClientService.GetAllClients(includeArchived: true);
+        projects = await ProjectService.GetAllProjects();
+        yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year);
+    }
+
+    private void OpenNewSheet()
+    {
+        sheetClient = null;
+        sheetOpen = true;
+    }
+
+    private void OpenEditSheet(ClientResponse client)
+    {
+        sheetClient = client;
+        sheetOpen = true;
+    }
 }

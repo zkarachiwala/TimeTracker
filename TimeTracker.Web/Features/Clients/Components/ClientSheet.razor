@@ -1,0 +1,142 @@
+@inject IClientService ClientService
+@inject ISnackbar Snackbar
+
+<MudDrawer Open="_open" OpenChanged="HandleOpenChanged" Anchor="Anchor.Bottom"
+           Variant="DrawerVariant.Temporary" Elevation="16" Class="entry-sheet"
+           CloseOnEscapeKey="true">
+    <MudDrawerHeader Class="d-flex align-center justify-space-between pa-4"
+                     Style="border-bottom:1px solid var(--mud-palette-divider)">
+        <MudText Typo="Typo.h6">@(IsEditing ? "Edit client" : "New client")</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Close" />
+    </MudDrawerHeader>
+
+    <div style="padding:16px 20px 24px; overflow-y:auto;">
+        <MudTextField Label="Client name" @bind-Value="name" Variant="Variant.Outlined" Class="mb-3" />
+
+        <MudNumericField T="decimal?" Label="Default hourly rate (AUD)" @bind-Value="defaultRate"
+                         Variant="Variant.Outlined" Class="mb-3" Min="0"
+                         HelperText="Optional — pre-fills rate on new projects. Leave blank if none." />
+
+        <MudText Typo="Typo.overline" Class="mb-2 d-block">Primary contact (optional)</MudText>
+        <MudTextField Label="Contact name" @bind-Value="contactName" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField Label="Email" @bind-Value="contactEmail" Variant="Variant.Outlined"
+                      InputType="InputType.Email" Class="mb-3" />
+        <MudTextField Label="Phone" @bind-Value="contactPhone" Variant="Variant.Outlined"
+                      InputType="InputType.Telephone" Class="mb-4" />
+
+        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary"
+                   Size="Size.Large" Disabled="!IsValid" OnClick="Save"
+                   StartIcon="@Icons.Material.Filled.Check" Class="mb-2">
+            @(IsEditing ? "Save changes" : "Create client")
+        </MudButton>
+
+        @if (IsEditing)
+        {
+            <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
+                       Style="color:var(--mud-palette-text-secondary)"
+                       StartIcon="@(Client!.IsArchived ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.EventBusy)"
+                       OnClick="ToggleArchive">
+                @(Client!.IsArchived ? "Reactivate client" : "Archive client")
+            </MudButton>
+        }
+    </div>
+</MudDrawer>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter] public ClientResponse? Client { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private string name = string.Empty;
+    private decimal? defaultRate;
+    private string contactName = string.Empty;
+    private string contactEmail = string.Empty;
+    private string contactPhone = string.Empty;
+
+    private bool _open;
+
+    protected override void OnParametersSet()
+    {
+        if (Open != _open) _open = Open;
+    }
+
+    private async Task HandleOpenChanged(bool value)
+    {
+        _open = value;
+        if (value) Reset();
+        await OpenChanged.InvokeAsync(value);
+    }
+
+    private bool IsEditing => Client?.Id > 0;
+    private bool IsValid => !string.IsNullOrWhiteSpace(name);
+
+    private void Reset()
+    {
+        if (Client is not null && Client.Id > 0)
+        {
+            name = Client.Name;
+            defaultRate = Client.DefaultHourlyRate;
+            contactName = Client.ContactName ?? string.Empty;
+            contactEmail = Client.ContactEmail ?? string.Empty;
+            contactPhone = Client.ContactPhone ?? string.Empty;
+        }
+        else
+        {
+            name = string.Empty;
+            defaultRate = null;
+            contactName = string.Empty;
+            contactEmail = string.Empty;
+            contactPhone = string.Empty;
+        }
+    }
+
+    private async Task Save()
+    {
+        if (IsEditing)
+        {
+            await ClientService.UpdateClient(Client!.Id, new ClientUpdateRequest
+            {
+                Name = name,
+                DefaultHourlyRate = defaultRate,
+                ContactName = contactName,
+                ContactEmail = contactEmail,
+                ContactPhone = contactPhone
+            });
+            Snackbar.Add("Client updated", Severity.Success);
+        }
+        else
+        {
+            await ClientService.CreateClient(new ClientCreateRequest
+            {
+                Name = name,
+                DefaultHourlyRate = defaultRate,
+                ContactName = contactName,
+                ContactEmail = contactEmail,
+                ContactPhone = contactPhone
+            });
+            Snackbar.Add("Client created", Severity.Success);
+        }
+        await Close();
+        await OnSaved.InvokeAsync();
+    }
+
+    private async Task ToggleArchive()
+    {
+        if (!IsEditing) return;
+        if (Client!.IsArchived)
+            await ClientService.UnarchiveClient(Client.Id);
+        else
+            await ClientService.ArchiveClient(Client.Id);
+        var label = Client.IsArchived ? "reactivated" : "archived";
+        Snackbar.Add($"Client {label}", Severity.Info);
+        await Close();
+        await OnSaved.InvokeAsync();
+    }
+
+    private async Task Close()
+    {
+        Open = false;
+        await OpenChanged.InvokeAsync(false);
+    }
+}

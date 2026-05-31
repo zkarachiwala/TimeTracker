@@ -1,8 +1,0 @@
-@page "/"
-@inject NavigationManager NavigationManager
-@attribute [Authorize]
-
-@code {
-    protected override void OnInitialized() =>
-        NavigationManager.NavigateTo("/timeentries");
-}

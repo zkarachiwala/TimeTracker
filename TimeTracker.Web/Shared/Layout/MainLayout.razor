@@ -1,15 +1,49 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Nav
+@implements IDisposable
 
-<div class="page">
-    <div class="sidebar">
+<MudLayout>
+    <MudAppBar Elevation="4" Color="Color.Primary">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                       Edge="Edge.Start" OnClick="ToggleDrawer"
+                       Class="d-md-none" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                       Edge="Edge.Start" OnClick="ToggleDesktopDrawer"
+                       Class="d-none d-md-flex" />
+        <MudText Typo="Typo.h6" Class="ml-2">TimeTracker</MudText>
+        <MudSpacer />
+        <LoginDisplay />
+    </MudAppBar>
+
+    @* Mobile: temporary overlay drawer *@
+    <MudDrawer @bind-Open="mobileDrawerOpen" Variant="DrawerVariant.Temporary"
+               Anchor="Anchor.Left" Elevation="16" Class="d-md-none">
+        <NavMenu OnNavClick="() => mobileDrawerOpen = false" />
+    </MudDrawer>
+
+    @* Desktop: persistent side rail *@
+    <MudDrawer @bind-Open="desktopDrawerOpen" Variant="DrawerVariant.Persistent"
+               Anchor="Anchor.Left" Elevation="1" Class="d-none d-md-flex">
         <NavMenu />
-    </div>
-    <main>
-        <div class="top-row px-4">
-            <LoginDisplay />
-        </div>
-        <article class="content px-4">
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-4 px-4">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+        <div class="bottom-nav-spacer"></div>
+    </MudMainContent>
+</MudLayout>
+
+@* Mobile bottom navigation *@
+<BottomNav />
+
+@code {
+    private bool mobileDrawerOpen = false;
+    private bool desktopDrawerOpen = true;
+
+    private void ToggleDrawer() => mobileDrawerOpen = !mobileDrawerOpen;
+    private void ToggleDesktopDrawer() => desktopDrawerOpen = !desktopDrawerOpen;
+
+    public void Dispose() { }
+}

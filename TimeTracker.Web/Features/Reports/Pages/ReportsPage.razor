@@ -1,0 +1,145 @@
+@page "/reports"
+@rendermode InteractiveServer
+@inject ITimeEntryService TimeEntryService
+@inject IProjectService ProjectService
+@attribute [Authorize]
+
+@using TimeTracker.Web.Shared
+
+<PageTitle>Reports — TimeTracker</PageTitle>
+
+<div class="pa-4">
+    <MudText Typo="Typo.h6" Class="mb-1">Reports</MudText>
+    <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)" Class="mb-4">
+        Year overview · @year
+    </MudText>
+
+    @* ── KPI cards ── *@
+    <div class="kpi-grid mb-4">
+        <MudCard Outlined="true">
+            <MudCardContent Style="padding:16px">
+                <MudText Typo="Typo.overline">YTD hours</MudText>
+                <MudText Class="tabnum" Color="Color.Secondary"
+                         Style="font-size:1.8rem; font-weight:500">
+                    @ytdTotal<span Style="font-size:1rem">h</span>
+                </MudText>
+            </MudCardContent>
+        </MudCard>
+        <MudCard Outlined="true">
+            <MudCardContent Style="padding:16px">
+                <MudText Typo="Typo.overline">Billable</MudText>
+                <MudText Class="tabnum" Color="Color.Primary"
+                         Style="font-size:1.8rem; font-weight:500">
+                    @billableTotal<span Style="font-size:1rem">h</span>
+                </MudText>
+            </MudCardContent>
+        </MudCard>
+    </div>
+
+    @* ── Monthly bar chart ── *@
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <div class="d-flex justify-space-between align-baseline mb-3">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:500">Hours by month</MudText>
+                <MudText Typo="Typo.caption">hrs</MudText>
+            </div>
+            @if (chartData.Length > 0)
+            {
+                <MudChart T="double" ChartType="ChartType.Bar"
+                          ChartSeries="chartSeries"
+                          XAxisLabels="monthLabels"
+                          Width="100%" Height="220px"
+                          ChartOptions="chartOptions" />
+            }
+        </MudCardContent>
+    </MudCard>
+
+    @* ── Project breakdown ── *@
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500" Class="mb-4">By project</MudText>
+            @foreach (var row in projectRows)
+            {
+                <div class="mb-4">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                        <div class="d-flex align-center gap-2">
+                            <span class="project-dot" style="background:@ProjectColors.ForProject(row.Project.Id)"></span>
+                            <MudText Typo="Typo.body2" Style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                                @(row.Project.ClientName ?? row.Project.Name)
+                            </MudText>
+                        </div>
+                        <MudText Typo="Typo.body2" Class="tabnum" Style="font-weight:500">
+                            @row.Hours<span Style="font-size:.75rem">h</span>
+                        </MudText>
+                    </div>
+                    <MudProgressLinear Value="@(maxProjectHours > 0 ? (double)row.Hours / maxProjectHours * 100 : 0)"
+                                       Color="Color.Primary"
+                                       Style="@($"height:8px; border-radius:4px; --mud-palette-primary:{ProjectColors.ForProject(row.Project.Id)}")" />
+                </div>
+            }
+        </MudCardContent>
+    </MudCard>
+</div>
+
+<div class="bottom-nav-spacer"></div>
+
+@code {
+    private readonly int year = DateTime.Today.Year;
+    private List<TimeEntryResponse> entries = [];
+    private List<ProjectResponse> projects = [];
+    private double ytdTotal;
+    private double billableTotal;
+    private double[] chartData = [];
+    private string[] monthLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    private List<ChartSeries<double>> chartSeries = [];
+    private ChartOptions chartOptions = new();
+
+    private record ProjectRow(ProjectResponse Project, int Hours);
+    private List<ProjectRow> projectRows = [];
+    private int maxProjectHours;
+
+    protected override async Task OnInitializedAsync()
+    {
+        entries = await TimeEntryService.GetAllTimeEntriesByYear(year);
+        projects = await ProjectService.GetAllProjects();
+        ComputeStats();
+    }
+
+    private void ComputeStats()
+    {
+        var completedEntries = entries.Where(e => e.End.HasValue).ToList();
+
+        ytdTotal = Math.Round(completedEntries.Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+
+        var billableProjectIds = projects
+            .Where(p => p.HourlyRate is > 0)
+            .Select(p => p.Id)
+            .ToHashSet();
+
+        billableTotal = Math.Round(
+            completedEntries.Where(e => billableProjectIds.Contains(e.Project.Id))
+                            .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+
+        chartData = Enumerable.Range(1, 12)
+            .Select(m => Math.Round(
+                completedEntries.Where(e => e.Start.Month == m)
+                                .Sum(e => (e.End!.Value - e.Start).TotalHours), 1))
+            .ToArray();
+
+        chartSeries =
+        [
+            new ChartSeries<double> { Name = "Hours", Data = chartData }
+        ];
+
+        projectRows = projects
+            .Select(p => new ProjectRow(p,
+                (int)Math.Round(completedEntries
+                    .Where(e => e.Project.Id == p.Id)
+                    .Sum(e => (e.End!.Value - e.Start).TotalHours))))
+            .Where(r => r.Hours > 0)
+            .OrderByDescending(r => r.Hours)
+            .ToList();
+
+        maxProjectHours = projectRows.Count > 0 ? projectRows.Max(r => r.Hours) : 1;
+    }
+}

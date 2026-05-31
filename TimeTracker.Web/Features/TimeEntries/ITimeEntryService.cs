@@ -12,4 +12,7 @@ public interface ITimeEntryService
     Task<TimeEntryResponseWrapper> GetTimeEntriesByMonth(int month, int year, int skip, int limit);
     Task<TimeEntryResponseWrapper> GetTimeEntriesByDay(int day, int month, int year, int skip, int limit);
     Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year);
+    Task<TimeEntryResponse?> GetActiveTimeEntry();
+    Task<List<TimeEntryResponse>> GetTodaysTimeEntries();
+    Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId);
 }

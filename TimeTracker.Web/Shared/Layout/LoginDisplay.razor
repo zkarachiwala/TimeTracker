@@ -1,16 +1,14 @@
 <AuthorizeView>
     <NotAuthorized>
-        <a class="block rounded-md bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
-           href="login">Login</a>
+        <MudButton Href="/login" Variant="Variant.Text" Color="Color.Inherit">Login</MudButton>
     </NotAuthorized>
     <Authorized>
-        Hello, @context.User.Identity!.Name!
-        <form method="post" action="/auth/logout" class="inline">
+        <MudText Typo="Typo.body2" Class="mr-2">@context.User.Identity!.Name</MudText>
+        <form method="post" action="/auth/logout" style="display:inline">
             <AntiforgeryToken />
-            <button type="submit"
-                class="rounded-md bg-gray-100 px-5 py-2.5 text-sm font-medium text-teal-600 transition hover:text-teal-600/75">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Text" Color="Color.Inherit">
                 Logout
-            </button>
+            </MudButton>
         </form>
     </Authorized>
 </AuthorizeView>

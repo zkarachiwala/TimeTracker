@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeTracker — Responsive Mockups</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #0b2a5b;
+      --blue: #0068cd;
+      --cyan: #1facf2;
+      --ink:  #1a2233;
+      --muted:#5b6b82;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Roboto", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(120% 80% at 15% 0%, #eef4fb 0%, #e7ecf3 45%, #e2e7ef 100%);
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    .page { padding: 30px 24px 60px; }
+
+    header.head {
+      max-width: 1180px; margin: 0 auto 6px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    header.head img { height: 46px; width: 46px; border-radius: 10px; background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1); padding: 3px; }
+    header.head .ttl { font-size: 1.5rem; font-weight: 700; color: var(--navy); line-height: 1.1; }
+    header.head .sub { font-size: .9rem; color: var(--muted); margin-top: 2px; }
+
+    /* scaled stage */
+    .stage-wrap { width: 100%; display: flex; justify-content: center; }
+    .stage {
+      display: flex; align-items: flex-end; gap: 56px;
+      transform-origin: top center;
+      padding-top: 22px;
+    }
+    .frame-col { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .frame-cap { text-align: center; }
+    .frame-cap .k { font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); }
+    .frame-cap .d { font-size: .82rem; color: var(--muted); margin-top: 3px; }
+
+    /* ---- Desktop / browser window ---- */
+    .browser {
+      width: 1180px; height: 760px; border-radius: 14px; overflow: hidden;
+      background: #fff; box-shadow: 0 30px 70px rgba(13,40,90,.22), 0 0 0 1px rgba(0,0,0,.05);
+    }
+    .browser .bar {
+      height: 44px; background: #f1f3f6; border-bottom: 1px solid #e2e6ec;
+      display: flex; align-items: center; gap: 18px; padding: 0 16px;
+    }
+    .dots { display: flex; gap: 8px; }
+    .dots i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .dots i:nth-child(1){ background:#ff5f57; } .dots i:nth-child(2){ background:#febc2e; } .dots i:nth-child(3){ background:#28c840; }
+    .urlbar {
+      flex: 1; height: 26px; background: #fff; border: 1px solid #e2e6ec; border-radius: 13px;
+      display: flex; align-items: center; padding: 0 14px; gap: 8px;
+      font-size: .78rem; color: var(--muted);
+    }
+    .urlbar svg { flex-shrink: 0; }
+    .browser iframe { width: 1180px; height: 716px; border: 0; display: block; }
+
+    /* ---- Phone ---- */
+    .phone {
+      width: 412px; height: 868px; border-radius: 54px; padding: 12px;
+      background: #0c1118; position: relative;
+      box-shadow: 0 36px 80px rgba(13,40,90,.28), 0 0 0 1px rgba(0,0,0,.2),
+                  inset 0 0 0 2px #2a3140;
+    }
+    .phone .screen {
+      width: 100%; height: 100%; border-radius: 42px; overflow: hidden; background: #fff;
+      position: relative;
+    }
+    .phone .notch {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      width: 122px; height: 34px; border-radius: 20px; background: #0c1118; z-index: 5;
+    }
+    .phone iframe { width: 388px; height: 844px; border: 0; display: block; }
+
+    .hint {
+      max-width: 1180px; margin: 30px auto 0; text-align: center;
+      font-size: .82rem; color: var(--muted);
+    }
+    .hint b { color: var(--ink); font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="head">
+      <img src="app/assets/dzk-icon.png" alt="DZK" />
+      <div>
+        <div class="ttl">TimeTracker — Responsive Preview</div>
+        <div class="sub">Live, interactive mockups · DZK Consulting · MudBlazor design language</div>
+      </div>
+    </header>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <!-- Desktop -->
+        <div class="frame-col">
+          <div class="browser">
+            <div class="bar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="urlbar">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#8a97a8"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/></svg>
+                app.dzk.com.au/timeentries
+              </span>
+            </div>
+            <iframe src="TimeTracker App.html?auth=1&screen=entries" title="Desktop" loading="eager"></iframe>
+          </div>
+          <div class="frame-cap">
+            <div class="k">Desktop · 1180px</div>
+            <div class="d">Persistent fly-out rail — toggle with the menu button</div>
+          </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="frame-col">
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <iframe src="TimeTracker App.html?auth=1&screen=timer" title="Phone" loading="eager"></iframe>
+            </div>
+          </div>
+          <div class="frame-cap">
+            <div class="k">Mobile · 390px</div>
+            <div class="d">Bottom nav · quick-log timer · tap + to add</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">
+      Both panes are the <b>same app</b> running live — resize-driven layout, not separate builds.
+      The phone shows the mobile breakpoint (bottom navigation, FAB, overlay drawer); the browser shows the desktop rail.
+    </p>
+  </div>
+
+  <script>
+    // Scale the whole stage to fit the viewport width.
+    function fit() {
+      const stage = document.getElementById('stage');
+      const avail = window.innerWidth - 48;
+      const w = stage.scrollWidth;
+      const scale = Math.min(1, avail / w);
+      stage.style.transform = `scale(${scale})`;
+      // collapse the empty space the scale leaves behind
+      stage.parentElement.style.height = (stage.scrollHeight * scale + 8) + 'px';
+    }
+    window.addEventListener('resize', fit);
+    window.addEventListener('load', fit);
+    fit();
+  </script>
+</body>
+</html>

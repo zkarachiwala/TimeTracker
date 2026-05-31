@@ -1,0 +1,210 @@
+@inject IProjectService ProjectService
+@inject IClientService ClientService
+@inject ISnackbar Snackbar
+
+@using TimeTracker.Web.Features.Clients
+
+<MudDrawer Open="_open" OpenChanged="HandleOpenChanged" Anchor="Anchor.Bottom"
+           Variant="DrawerVariant.Temporary" Elevation="16" Class="entry-sheet"
+           CloseOnEscapeKey="true">
+    <MudDrawerHeader Class="d-flex align-center justify-space-between pa-4"
+                     Style="border-bottom:1px solid var(--mud-palette-divider)">
+        <MudText Typo="Typo.h6">@(IsEditing ? "Edit project" : "New project")</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Close" />
+    </MudDrawerHeader>
+
+    <div style="padding:16px 20px 24px; overflow-y:auto;">
+        <MudTextField Label="Project name" @bind-Value="name" Variant="Variant.Outlined" Class="mb-3" />
+
+        <MudSelect T="int?" Label="Client" @bind-Value="clientId" Variant="Variant.Outlined"
+                   Class="mb-1" AnchorOrigin="Origin.BottomCenter"
+                   @bind-Value:after="OnClientChanged">
+            <MudSelectItem T="int?" Value="null">— No client —</MudSelectItem>
+            @foreach (var c in clients.Where(c => !c.IsArchived || c.Id == clientId))
+            {
+                <MudSelectItem T="int?" Value="(int?)c.Id">
+                    @c.Name@(c.DefaultHourlyRate.HasValue ? $" · ${c.DefaultHourlyRate}/h" : " · no default rate")@(c.IsArchived ? " (archived)" : "")
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        @* ── Billing toggle ── *@
+        <MudText Typo="Typo.caption" Class="mb-2" Style="color:var(--mud-palette-text-secondary)">Billing</MudText>
+        <div class="d-flex gap-2 mb-3">
+            <MudChip T="string" Color="@(billable ? Color.Primary : Color.Default)"
+                     Variant="@(billable ? Variant.Filled : Variant.Outlined)"
+                     OnClick="() => SetBillable(true)">Billable</MudChip>
+            <MudChip T="string" Color="@(!billable ? Color.Primary : Color.Default)"
+                     Variant="@(!billable ? Variant.Filled : Variant.Outlined)"
+                     OnClick="() => SetBillable(false)">Internal</MudChip>
+        </div>
+
+        @if (billable)
+        {
+            var helpText = RateHelpText;
+            <MudNumericField T="decimal?" Label="Hourly rate (AUD)" @bind-Value="hourlyRate"
+                             Variant="Variant.Outlined" Class="mb-3" Min="0"
+                             HelperText="@helpText"
+                             @bind-Value:after="() => rateTouched = true" />
+        }
+
+        <MudTextField Label="Description (optional)" @bind-Value="description"
+                      Variant="Variant.Outlined" Class="mb-4" />
+
+        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary"
+                   Size="Size.Large" Disabled="!IsValid" OnClick="Save"
+                   StartIcon="@Icons.Material.Filled.Check" Class="mb-2">
+            @(IsEditing ? "Save changes" : "Create project")
+        </MudButton>
+
+        @if (IsEditing)
+        {
+            <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
+                       Style="color:var(--mud-palette-error)"
+                       StartIcon="@Icons.Material.Filled.DeleteOutline"
+                       OnClick="Delete">
+                Delete project
+            </MudButton>
+        }
+    </div>
+</MudDrawer>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter] public ProjectResponse? Project { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private List<ClientResponse> clients = [];
+    private string name = string.Empty;
+    private int? clientId;
+    private bool billable = true;
+    private decimal? hourlyRate;
+    private bool rateTouched;
+    private string description = string.Empty;
+
+    private bool _open;
+
+    protected override void OnParametersSet()
+    {
+        if (Open != _open) _open = Open;
+    }
+
+    private async Task HandleOpenChanged(bool value)
+    {
+        _open = value;
+        if (value) Reset();
+        await OpenChanged.InvokeAsync(value);
+    }
+
+    private bool IsEditing => Project?.Id > 0;
+    private bool IsValid => !string.IsNullOrWhiteSpace(name);
+
+    private string? RateHelpText
+    {
+        get
+        {
+            if (!clientId.HasValue) return null;
+            var c = clients.FirstOrDefault(x => x.Id == clientId.Value);
+            if (c?.DefaultHourlyRate.HasValue == true && hourlyRate == c.DefaultHourlyRate)
+                return $"Default rate for {c.Name}";
+            return "Overrides client default";
+        }
+    }
+
+    protected override async Task OnInitializedAsync() =>
+        clients = await ClientService.GetAllClients(includeArchived: true);
+
+    private void Reset()
+    {
+        if (Project is not null && Project.Id > 0)
+        {
+            name = Project.Name;
+            clientId = Project.ClientId;
+            billable = Project.HourlyRate is > 0;
+            hourlyRate = billable ? Project.HourlyRate : null;
+            description = Project.Description ?? string.Empty;
+        }
+        else
+        {
+            name = string.Empty;
+            clientId = null;
+            billable = true;
+            hourlyRate = null;
+            description = string.Empty;
+        }
+        rateTouched = false;
+    }
+
+    private void OnClientChanged()
+    {
+        if (!rateTouched && clientId.HasValue)
+        {
+            var c = clients.FirstOrDefault(x => x.Id == clientId.Value);
+            if (c?.DefaultHourlyRate.HasValue == true)
+            {
+                billable = true;
+                hourlyRate = c.DefaultHourlyRate;
+            }
+            else
+            {
+                billable = false;
+                hourlyRate = null;
+            }
+        }
+    }
+
+    private void SetBillable(bool value)
+    {
+        billable = value;
+        rateTouched = true;
+        if (!billable) hourlyRate = null;
+    }
+
+    private async Task Save()
+    {
+        var rate = billable ? (hourlyRate ?? 0) : 0;
+        if (IsEditing)
+        {
+            await ProjectService.UpdateProject(Project!.Id, new ProjectUpdateRequest
+            {
+                Name = name,
+                ClientId = clientId,
+                HourlyRate = rate,
+                Description = description,
+                StartDate = Project.StartDate,
+                EndDate = Project.EndDate
+            });
+            Snackbar.Add("Project updated", Severity.Success);
+        }
+        else
+        {
+            await ProjectService.CreateProject(new ProjectCreateRequest
+            {
+                Name = name,
+                ClientId = clientId,
+                HourlyRate = rate,
+                Description = description,
+                StartDate = DateTime.Today
+            });
+            Snackbar.Add("Project created", Severity.Success);
+        }
+        await Close();
+        await OnSaved.InvokeAsync();
+    }
+
+    private async Task Delete()
+    {
+        if (!IsEditing) return;
+        await ProjectService.DeleteProject(Project!.Id);
+        Snackbar.Add("Project deleted", Severity.Info);
+        await Close();
+        await OnSaved.InvokeAsync();
+    }
+
+    private async Task Close()
+    {
+        Open = false;
+        await OpenChanged.InvokeAsync(false);
+    }
+}

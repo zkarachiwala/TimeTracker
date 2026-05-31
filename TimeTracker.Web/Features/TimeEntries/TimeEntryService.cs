@@ -49,6 +49,7 @@ public class TimeEntryService : ITimeEntryService
             ProjectId = request.ProjectId,
             Start = request.Start,
             End = request.End,
+            Note = request.Note,
             UserId = userId,
             DateCreated = DateTime.Now
         };
@@ -66,6 +67,7 @@ public class TimeEntryService : ITimeEntryService
         entry.ProjectId = request.ProjectId;
         entry.Start = request.Start;
         entry.End = request.End;
+        entry.Note = request.Note;
         entry.DateUpdated = DateTime.Now;
         await _context.SaveChangesAsync();
     }
@@ -122,6 +124,37 @@ public class TimeEntryService : ITimeEntryService
         var userId = GetUserId();
         var entries = await UserEntries(userId)
             .Where(te => te.Start.Year == year)
+            .ToListAsync();
+        return entries.Adapt<List<TimeEntryResponse>>();
+    }
+
+    public async Task<TimeEntryResponse?> GetActiveTimeEntry()
+    {
+        var userId = GetUserId();
+        var entry = await _context.TimeEntries
+            .Include(te => te.Project)
+            .ThenInclude(p => p!.ProjectDetails)
+            .FirstOrDefaultAsync(te => te.UserId == userId && te.End == null && !te.Project.IsDeleted);
+        return entry?.Adapt<TimeEntryResponse>();
+    }
+
+    public async Task<List<TimeEntryResponse>> GetTodaysTimeEntries()
+    {
+        var userId = GetUserId();
+        var today = DateTime.Today;
+        var entries = await UserEntries(userId)
+            .Where(te => te.Start.Date == today)
+            .OrderByDescending(te => te.Start)
+            .ToListAsync();
+        return entries.Adapt<List<TimeEntryResponse>>();
+    }
+
+    public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId)
+    {
+        var userId = GetUserId();
+        var entries = await UserEntries(userId)
+            .Where(te => te.ProjectId == projectId)
+            .OrderByDescending(te => te.Start)
             .ToListAsync();
         return entries.Adapt<List<TimeEntryResponse>>();
     }

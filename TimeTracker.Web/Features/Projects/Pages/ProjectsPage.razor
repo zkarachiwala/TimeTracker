@@ -1,54 +1,89 @@
 @page "/projects"
 @rendermode InteractiveServer
 @inject IProjectService ProjectService
-@inject NavigationManager NavigationManager
+@inject ITimeEntryService TimeEntryService
+@inject NavigationManager Nav
 @attribute [Authorize(Roles = "Admin")]
 
-<PageTitle>Projects</PageTitle>
-<h3>Projects</h3>
+@using TimeTracker.Web.Features.Projects.Components
+@using TimeTracker.Web.Features.TimeEntries
+@using TimeTracker.Web.Shared
 
-<MyButton AddMarginTop Text="Create Project" OnClick="NavigateToCreate" />
+<PageTitle>Projects — TimeTracker</PageTitle>
 
-<QuickGrid Items="FilteredProjects" Pagination="paginator">
-    <PropertyColumn Property="p => p.Name">
-        <ColumnOptions>
-            <input type="search" autofocus @bind="projectFilter" @bind:event="oninput"
-                placeholder="Project name..." class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm" />
-        </ColumnOptions>
-    </PropertyColumn>
-    <PropertyColumn Property="p => p.ClientName" Title="Client" />
-    <PropertyColumn Property="p => p.HourlyRate" Title="Rate (ex GST)" Format="C2" />
-    <PropertyColumn Property="p => p.Description" />
-    <PropertyColumn Property="p => p.StartDate" Format="dd/MM/yyyy" Title="Start" />
-    <PropertyColumn Property="p => p.EndDate" Format="dd/MM/yyyy" Title="End" />
-    <TemplateColumn>
-        <button class="block rounded-md bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
-            @onclick="() => NavigateToEdit(context.Id)">
-            Edit
-        </button>
-    </TemplateColumn>
-</QuickGrid>
-<Paginator State="paginator" />
+<div class="pa-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h6">Projects</MudText>
+        <MudChip T="string" Color="Color.Primary">@activeProjects.Count active</MudChip>
+    </div>
 
-@code {
-    private List<ProjectResponse> projects = new();
-    private string? projectFilter;
-    private PaginationState paginator = new() { ItemsPerPage = 5 };
-
-    private IQueryable<ProjectResponse> FilteredProjects
+    @foreach (var p in activeProjects)
     {
-        get
-        {
-            var result = projects.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(projectFilter))
-                result = result.Where(p => p.Name.Contains(projectFilter, StringComparison.CurrentCultureIgnoreCase));
-            return result;
-        }
+        <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
+                     OnOpen="NavigateToDetail"
+                     OnEdit="OpenEditSheet" />
     }
 
-    protected override async Task OnInitializedAsync() =>
-        projects = await ProjectService.GetAllProjects();
+    @if (archivedProjects.Count > 0)
+    {
+        <MudText Typo="Typo.overline" Class="mt-4 mb-2 d-block">Archived</MudText>
+        <div class="archived-item">
+            @foreach (var p in archivedProjects)
+            {
+                <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
+                             OnOpen="NavigateToDetail"
+                             OnEdit="OpenEditSheet" />
+            }
+        </div>
+    }
+</div>
 
-    private void NavigateToCreate() => NavigationManager.NavigateTo("/project");
-    private void NavigateToEdit(int id) => NavigationManager.NavigateTo($"/project/{id}");
+<div class="bottom-nav-spacer"></div>
+
+<div class="tt-fab">
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+            OnClick="OpenNewSheet" />
+</div>
+
+<ProjectSheet @bind-Open="sheetOpen" Project="sheetProject" OnSaved="LoadData" />
+
+@code {
+    private List<ProjectResponse> projects = [];
+    private List<TimeEntryResponse> yearEntries = [];
+    private bool sheetOpen;
+    private ProjectResponse? sheetProject;
+
+    private List<ProjectResponse> activeProjects => projects.Where(p => !p.EndDate.HasValue).ToList();
+    private List<ProjectResponse> archivedProjects => projects.Where(p => p.EndDate.HasValue).ToList();
+
+    private int GetYtdHours(int projectId)
+    {
+        var year = DateTime.Today.Year;
+        return (int)Math.Round(yearEntries
+            .Where(e => e.Project.Id == projectId && e.End.HasValue && e.Start.Year == year)
+            .Sum(e => (e.End!.Value - e.Start).TotalHours));
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        projects = await ProjectService.GetAllProjects();
+        yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year);
+    }
+
+    private void NavigateToDetail(int id) => Nav.NavigateTo($"/projects/{id}");
+
+    private void OpenNewSheet()
+    {
+        sheetProject = null;
+        sheetOpen = true;
+    }
+
+    private void OpenEditSheet(ProjectResponse project)
+    {
+        sheetProject = project;
+        sheetOpen = true;
+    }
 }
+
