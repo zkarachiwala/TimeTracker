@@ -1,5 +1,9 @@
 /* TimeTracker — custom styles layered on top of MudBlazor */
 
+:root {
+    --dzk-navy: #002F6F;
+}
+
 html, body, #app {
     height: 100%;
 }
@@ -62,6 +66,11 @@ html, body, #app {
     z-index: 1300;
 }
 
+/* FAB uses Material Design 3 border-radius (16px) */
+.tt-fab .mud-fab {
+    border-radius: 16px !important;
+}
+
 @media (min-width: 960px) {
     .bottom-nav {
         display: none;
@@ -119,6 +128,26 @@ html, body, #app {
 /* ── Tabular numbers ── */
 .tabnum {
     font-variant-numeric: tabular-nums;
+}
+
+/* ── MudTabs — match mockup active style ── */
+.mud-tabs .mud-tab {
+    font-size: .8125rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--mud-palette-text-secondary);
+}
+
+.mud-tabs .mud-tab.mud-tab-active {
+    color: var(--mud-palette-primary);
+}
+
+/* ── MudNavMenu — active link matches mockup (primary tint bg, primary text) ── */
+.mud-nav-link.active {
+    background: rgba(0,104,205,0.10) !important;
+    color: var(--mud-palette-primary) !important;
+    border-radius: 6px;
 }
 
 /* ── Entry sheet drawer height ── */

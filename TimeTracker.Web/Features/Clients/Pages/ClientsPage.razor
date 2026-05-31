@@ -1,5 +1,5 @@
 @page "/clients"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IClientService ClientService
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService

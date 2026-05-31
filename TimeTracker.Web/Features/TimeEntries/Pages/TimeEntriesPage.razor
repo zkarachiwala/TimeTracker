@@ -1,5 +1,5 @@
 @page "/entries"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService
 @attribute [Authorize]
@@ -181,8 +181,7 @@
 
     private async Task LoadEntries()
     {
-        var year = DateTime.Today.Year;
-        allEntries = await TimeEntryService.GetAllTimeEntriesByYear(year);
+        allEntries = await TimeEntryService.GetAllTimeEntriesByYear(cursor.Year);
     }
 
     private async Task StepBack()

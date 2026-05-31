@@ -12,7 +12,13 @@ FAIL=0
 ERRORS=()
 
 echo "=== Build ==="
-dotnet build TimeTracker.Web/TimeTracker.Web.csproj --nologo -q
+BUILD_OUT=$(dotnet build TimeTracker.Web/TimeTracker.Web.csproj --nologo 2>&1)
+BUILD_EXIT=$?
+if [ $BUILD_EXIT -ne 0 ]; then
+  echo "$BUILD_OUT" | grep -E "error|Error" | grep -v "MSB3492\|Building target"
+  echo "Build FAILED"
+  exit 1
+fi
 echo "Build OK"
 
 echo ""

@@ -1,30 +1,61 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
-@implements IDisposable
 
 <MudLayout>
-    <MudAppBar Elevation="4" Color="Color.Primary">
+    <MudAppBar Elevation="4" Color="Color.Primary" Dense="false">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
-                       Edge="Edge.Start" OnClick="ToggleDrawer"
-                       Class="d-md-none" />
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
-                       Edge="Edge.Start" OnClick="ToggleDesktopDrawer"
-                       Class="d-none d-md-flex" />
-        <MudText Typo="Typo.h6" Class="ml-2">TimeTracker</MudText>
+                       Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <img src="/images/dzk-icon.png" alt="DZK"
+             style="height:32px; width:32px; border-radius:6px; margin-left:4px; margin-right:8px; object-fit:contain;" />
+        <MudText Typo="Typo.h6" Style="font-weight:500; letter-spacing:.0075em">TimeTracker</MudText>
         <MudSpacer />
-        <LoginDisplay />
+        <AuthorizeView>
+            <Authorized>
+                <MudAvatar Style="background:var(--dzk-navy); color:#fff; font-weight:500; font-size:.9rem; width:36px; height:36px; cursor:default">
+                    @GetInitials(context.User.Identity?.Name)
+                </MudAvatar>
+            </Authorized>
+        </AuthorizeView>
     </MudAppBar>
 
-    @* Mobile: temporary overlay drawer *@
-    <MudDrawer @bind-Open="mobileDrawerOpen" Variant="DrawerVariant.Temporary"
-               Anchor="Anchor.Left" Elevation="16" Class="d-md-none">
-        <NavMenu OnNavClick="() => mobileDrawerOpen = false" />
-    </MudDrawer>
+    @* Mobile + desktop: single temporary drawer toggled by hamburger *@
+    <MudDrawer @bind-Open="drawerOpen" Variant="DrawerVariant.Temporary"
+               Anchor="Anchor.Left" Elevation="16">
+        <div style="display:flex; flex-direction:column; height:100%">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--mud-palette-divider); display:flex; align-items:center; gap:10px">
+                <img src="/images/dzk-icon.png" alt="DZK"
+                     style="width:40px; height:40px; border-radius:8px; object-fit:contain;" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight:500; color:var(--mud-palette-secondary)">TimeTracker</MudText>
+            </div>
 
-    @* Desktop: persistent side rail *@
-    <MudDrawer @bind-Open="desktopDrawerOpen" Variant="DrawerVariant.Persistent"
-               Anchor="Anchor.Left" Elevation="1" Class="d-none d-md-flex">
-        <NavMenu />
+            <div style="flex:1; overflow-y:auto">
+                <NavMenu OnNavClick="() => drawerOpen = false" />
+            </div>
+
+            <div style="border-top:1px solid var(--mud-palette-divider); padding:12px 16px">
+                <AuthorizeView>
+                    <Authorized>
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px">
+                            <MudAvatar Style="background:var(--mud-palette-secondary); color:#fff; font-weight:500; font-size:.9rem; width:36px; height:36px; flex-shrink:0">
+                                @GetInitials(context.User.Identity?.Name)
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2" Style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                                @context.User.Identity?.Name
+                            </MudText>
+                        </div>
+                        <form method="post" action="/auth/logout">
+                            <AntiforgeryToken />
+                            <MudButton ButtonType="ButtonType.Submit" FullWidth="true"
+                                       Variant="Variant.Text" Color="Color.Default"
+                                       StartIcon="@Icons.Material.Filled.Logout"
+                                       Style="justify-content:flex-start; text-transform:none">
+                                Logout
+                            </MudButton>
+                        </form>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
     </MudDrawer>
 
     <MudMainContent>
@@ -35,15 +66,28 @@
     </MudMainContent>
 </MudLayout>
 
-@* Mobile bottom navigation *@
 <BottomNav />
 
 @code {
-    private bool mobileDrawerOpen = false;
-    private bool desktopDrawerOpen = true;
+    private bool drawerOpen = false;
+    private void ToggleDrawer() => drawerOpen = !drawerOpen;
 
-    private void ToggleDrawer() => mobileDrawerOpen = !mobileDrawerOpen;
-    private void ToggleDesktopDrawer() => desktopDrawerOpen = !desktopDrawerOpen;
-
-    public void Dispose() { }
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        // Handle email addresses — use first letter only
+        if (name.Contains('@'))
+        {
+            var local = name.Split('@')[0];
+            var parts = local.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length >= 2
+                ? $"{parts[0][0]}{parts[1][0]}".ToUpper()
+                : local[..Math.Min(2, local.Length)].ToUpper();
+        }
+        // Handle display names — "Zak Karachiwala" → "ZK"
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return words.Length >= 2
+            ? $"{words[0][0]}{words[^1][0]}".ToUpper()
+            : name[..Math.Min(2, name.Length)].ToUpper();
+    }
 }

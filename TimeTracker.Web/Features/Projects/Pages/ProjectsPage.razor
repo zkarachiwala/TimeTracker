@@ -1,5 +1,5 @@
 @page "/projects"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IProjectService ProjectService
 @inject ITimeEntryService TimeEntryService
 @inject NavigationManager Nav

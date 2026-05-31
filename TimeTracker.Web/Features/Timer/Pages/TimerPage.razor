@@ -1,5 +1,5 @@
 @page "/"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService
 @inject ISnackbar Snackbar
