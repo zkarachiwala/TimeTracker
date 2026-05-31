@@ -2,7 +2,7 @@
 
 ## Overview
 
-TimeTracker is a personal timesheeting application built to replace Clockify. It provides time entry tracking, project management, and year-view reporting for a single user.
+TimeTracker is a personal timesheeting application for tracking time entries against projects, managing clients, and year-view reporting across users.
 
 ---
 

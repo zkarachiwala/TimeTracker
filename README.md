@@ -1,6 +1,6 @@
 # TimeTracker
 
-A personal timesheeting application built to replace Clockify. Tracks time entries against projects, provides year-view reporting, and will integrate with Zoho Books for invoice generation.
+A personal timesheeting application for tracking time entries against projects, with year-view reporting and planned Zoho Books integration for invoice generation.
 
 ## Tech stack
 
