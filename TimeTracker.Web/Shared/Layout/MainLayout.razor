@@ -1,6 +1,11 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
 
+<MudThemeProvider Theme="TimeTracker.Web.Shared.Theme.DzkTheme.Instance" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
 <MudLayout>
     <MudAppBar Elevation="4" Color="Color.Primary" Dense="false">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
