@@ -46,6 +46,8 @@ public class ProjectService : IProjectService
         var project = new Project
         {
             Name = request.Name,
+            ClientId = request.ClientId,
+            HourlyRate = request.HourlyRate,
             DateCreated = DateTime.Now,
             ProjectDetails = new ProjectDetails
             {
@@ -67,6 +69,8 @@ public class ProjectService : IProjectService
             ?? throw new EntityNotFoundException($"Project {id} not found.");
 
         project.Name = request.Name;
+        project.ClientId = request.ClientId;
+        project.HourlyRate = request.HourlyRate;
         project.DateUpdated = DateTime.Now;
 
         if (project.ProjectDetails is not null)

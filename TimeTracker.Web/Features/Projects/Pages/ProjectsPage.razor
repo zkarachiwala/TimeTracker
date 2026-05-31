@@ -16,6 +16,8 @@
                 placeholder="Project name..." class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm" />
         </ColumnOptions>
     </PropertyColumn>
+    <PropertyColumn Property="p => p.ClientName" Title="Client" />
+    <PropertyColumn Property="p => p.HourlyRate" Title="Rate (ex GST)" Format="C2" />
     <PropertyColumn Property="p => p.Description" />
     <PropertyColumn Property="p => p.StartDate" Format="dd/MM/yyyy" Title="Start" />
     <PropertyColumn Property="p => p.EndDate" Format="dd/MM/yyyy" Title="End" />

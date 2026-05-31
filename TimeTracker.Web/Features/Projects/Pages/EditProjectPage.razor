@@ -2,9 +2,13 @@
 @page "/project/{id:int}"
 @rendermode InteractiveServer
 @inject IProjectService ProjectService
+@inject IClientService ClientService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @attribute [Authorize]
+
+@using TimeTracker.Web.Features.Clients
+@using static TimeTracker.Web.Shared.Components.MyInputSelectNullable
 
 <PageTitle>@(Id is null ? "Create Project" : "Edit Project")</PageTitle>
 <h3>@(Id is null ? "Create a new Project" : $"Edit the Project \"{model.Name}\"")</h3>
@@ -12,6 +16,17 @@
 <EditForm Model="model" OnValidSubmit="HandleSubmit">
     <DataAnnotationsValidator />
     <MyInputText Id="name" Label="Name" @bind-Value="model.Name" ValidationFor="() => model.Name" />
+    <MyInputSelectNullable Id="clientId" Label="Client" @bind-Value="model.ClientId"
+        @bind-Value:after="OnClientChanged"
+        ValidationFor="() => model.ClientId"
+        Items="clientItems" />
+    <div>
+        <label for="rate" class="block text-xs font-medium text-gray-700 mt-2">Hourly Rate (ex GST)</label>
+        <input id="rate" type="number" step="0.01" min="0.01"
+            class="mt-1 p-2 w-full rounded-md border-gray-200 shadow-sm sm:text-sm"
+            @bind="model.HourlyRate" />
+        <ValidationMessage For="() => model.HourlyRate" class="text-xs text-red-600 font-bold my-1" />
+    </div>
     <MyInputTextArea Id="description" Label="Description" @bind-Value="model.Description"
         ValidationFor="() => model.Description" />
     <MyInputDateNullable Id="startDate" Label="Start" @bind-Value="model.StartDate"
@@ -32,6 +47,14 @@
     [Parameter] public int? Id { get; set; }
 
     private ProjectRequest model = new() { Name = string.Empty };
+    private IEnumerable<SelectListItem> clientItems = Enumerable.Empty<SelectListItem>();
+    private List<ClientResponse> allClients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        allClients = await ClientService.GetAllClients();
+        clientItems = allClients.Select(c => new SelectListItem { Value = c.Id.ToString(), DisplayName = c.Name });
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -43,10 +66,22 @@
                 {
                     Id = result.Id,
                     Name = result.Name,
+                    ClientId = result.ClientId,
+                    HourlyRate = result.HourlyRate,
                     Description = result.Description,
                     StartDate = result.StartDate,
                     EndDate = result.EndDate
                 };
+        }
+    }
+
+    private void OnClientChanged()
+    {
+        if (model.ClientId.HasValue)
+        {
+            var client = allClients.FirstOrDefault(c => c.Id == model.ClientId.Value);
+            if (client?.DefaultHourlyRate.HasValue == true)
+                model.HourlyRate = client.DefaultHourlyRate.Value;
         }
     }
 
@@ -57,6 +92,8 @@
             await ProjectService.CreateProject(new ProjectCreateRequest
             {
                 Name = model.Name,
+                ClientId = model.ClientId,
+                HourlyRate = model.HourlyRate,
                 Description = model.Description,
                 StartDate = model.StartDate,
                 EndDate = model.EndDate
@@ -67,6 +104,8 @@
             await ProjectService.UpdateProject(Id.Value, new ProjectUpdateRequest
             {
                 Name = model.Name,
+                ClientId = model.ClientId,
+                HourlyRate = model.HourlyRate,
                 Description = model.Description,
                 StartDate = model.StartDate,
                 EndDate = model.EndDate

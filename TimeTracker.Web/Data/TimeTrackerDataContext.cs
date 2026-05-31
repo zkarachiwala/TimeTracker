@@ -10,12 +10,16 @@ public class TimeTrackerDataContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema( "app" );
+        modelBuilder.HasDefaultSchema("app");
         modelBuilder.Entity<TimeEntry>().Navigation(c => c.Project).AutoInclude();
-//        modelBuilder.Entity<TimeEntry>().Navigation(c => c.AppUser).AutoInclude();
         modelBuilder.Entity<Project>().Navigation(c => c.ProjectDetails).AutoInclude();
         modelBuilder.Entity<Project>().Navigation(c => c.ProjectUsers).AutoInclude();
+        modelBuilder.Entity<Project>().Navigation(c => c.Client).AutoInclude();
         modelBuilder.Entity<Project>().HasMany(p => p.ProjectUsers).WithOne(pu => pu.Project).HasForeignKey(pu => pu.ProjectId).IsRequired();
+        modelBuilder.Entity<Project>().HasOne(p => p.Client).WithMany(c => c.Projects).HasForeignKey(p => p.ClientId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Client>().HasIndex(c => c.Name).IsUnique();
+        modelBuilder.Entity<Client>().Property(c => c.DefaultHourlyRate).HasPrecision(18, 2);
+        modelBuilder.Entity<Project>().Property(p => p.HourlyRate).HasPrecision(18, 2);
         base.OnModelCreating(modelBuilder);
     }
 
@@ -23,4 +27,5 @@ public class TimeTrackerDataContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectDetails> ProjectDetails => Set<ProjectDetails>();
     public DbSet<ProjectUser> ProjectUsers => Set<ProjectUser>();
+    public DbSet<Client> Clients => Set<Client>();
 }

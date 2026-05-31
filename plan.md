@@ -4,20 +4,27 @@
 
 Completed on `feature/google-auth`. See `docs/roadmap.md` for summary.
 
-**Before merging:** set user secrets and smoke-test the full login/logout flow locally.
+---
 
+## Phase 5 — Client Management ✅
+
+Completed on `feature/client-management`.
+
+- `Client` entity with `Name` (unique) and `DefaultHourlyRate` (nullable, ex GST)
+- `Project.ClientId` nullable FK; service blocks deleting a client with active projects
+- Clients shared across all users — Admin-only CRUD pages + nav link
+- Project form updated with client dropdown (`MyInputSelectNullable` component)
+- 12 new tests; 51 total
+
+Run migration before starting app:
 ```bash
 cd TimeTracker.Web
-dotnet user-secrets set "Authentication:Google:ClientId" "<your-client-id>"
-dotnet user-secrets set "Authentication:Google:ClientSecret" "<your-client-secret>"
-dotnet user-secrets set "Authentication:AllowedEmails:0" "zak.karachiwala@gmail.com"
+dotnet ef database update --context TimeTrackerDataContext
 ```
-
-See `docs/google-oauth-setup.md` for Google Cloud Console steps.
 
 ---
 
-## Next: Phase 5 — MudBlazor UI uplift
+## Next: Phase 6 — MudBlazor UI uplift
 
 **Branch:** `feature/mudblazor-ui`
 
