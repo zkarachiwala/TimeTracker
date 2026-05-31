@@ -93,7 +93,12 @@
     private async Task HandleOpenChanged(bool value)
     {
         _open = value;
-        if (value) Reset();
+        if (value)
+        {
+            if (clients.Count == 0)
+                clients = await ClientService.GetAllClients(includeArchived: true);
+            Reset();
+        }
         await OpenChanged.InvokeAsync(value);
     }
 
@@ -112,8 +117,7 @@
         }
     }
 
-    protected override async Task OnInitializedAsync() =>
-        clients = await ClientService.GetAllClients(includeArchived: true);
+    // Clients loaded lazily on first open to avoid concurrent DbContext usage
 
     private void Reset()
     {

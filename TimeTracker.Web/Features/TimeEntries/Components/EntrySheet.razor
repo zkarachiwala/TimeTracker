@@ -94,7 +94,12 @@
     private async Task HandleOpenChanged(bool value)
     {
         _open = value;
-        if (value) ResetFromEntry();
+        if (value)
+        {
+            if (projects.Count == 0)
+                projects = await ProjectService.GetAllProjects();
+            ResetFromEntry();
+        }
         await OpenChanged.InvokeAsync(value);
     }
 
@@ -123,8 +128,7 @@
         return diff;
     }
 
-    protected override async Task OnInitializedAsync() =>
-        projects = await ProjectService.GetAllProjects();
+    // Projects loaded lazily on first open to avoid concurrent DbContext usage
 
     private void ResetFromEntry()
     {
