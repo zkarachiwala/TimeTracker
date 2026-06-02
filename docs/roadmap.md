@@ -86,7 +86,7 @@ Add a shared `Clients` table replacing the free-text client field on projects.
 
 ---
 
-### Phase 6 — MudBlazor UI uplift
+### Phase 6 — MudBlazor UI uplift ✅
 
 Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-first responsive design.
 
@@ -94,10 +94,23 @@ Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-first responsive de
 - `MudDataGrid` replaces QuickGrid
 - `MudDialog`, `MudTextField`, `MudSelect`, `MudDatePicker` for forms
 - MudBlazor Snackbar replaces `Blazored.Toast`
-- `MudChart` evaluated as replacement for Radzen year chart
+- `MudChart` replaces Radzen year chart — stacked bar (non-billable/invoiced/uninvoiced)
 - Tailwind CSS removed
+- Custom tab bar (Day/Month/Year/Project) on Entries page
+- Dynamic app bar title per route
+- Bottom sheet components (EntrySheet, ProjectSheet, ClientSheet) with lazy-loading fix and grip pill
+- ProjectCard: chevron navigation; edit moved to ProjectDetailPage FAB
+- ProjectDetailPage: edit FAB + live reload; entry rows open EntrySheet; start/end date in stats
+- ProjectsPage: archive/unarchive replaces delete (sets EndDate with date picker prompt)
+- ClientDetailPage (new): stats, contact info, active projects list, edit FAB
+- `ProjectDetails` table merged into `Projects` table (migration: `MergeProjectDetailsIntoProject`)
+- `TimeEntry`: `InvoiceReference` + `InvoicedAt` fields added (migration: `AddInvoiceFieldsToTimeEntry`)
+- EntryRow: green receipt icon tooltip for invoiced entries
+- Reports: "Billable" KPI → "Uninvoiced"
+- `ProjectColors.ForClient()` added for algorithmic client colours
+- Dev seed/clear endpoints at `/api/dev/seed` and `/api/dev/clear` (dev only)
 
-**Branch:** `feature/mudblazor-ui`
+**Branch:** `feature/mudblazor-ui` — merged via PR #38
 
 ---
 
@@ -140,7 +153,7 @@ The REST API layer (Phase 3) is retained specifically to support this. Direction
 ## Phase dependency order
 
 ```
-Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 ✅ → Phase 6 → Phase 7 → Phase 8 → Zoho integration
+Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 ✅ → Phase 6 ✅ → Phase 7 → Phase 8 → Zoho integration
 ```
 
 ## Free tier summary
