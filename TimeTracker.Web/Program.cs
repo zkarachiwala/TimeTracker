@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using MudBlazor.Services;
 using TimeTracker.Web;
 using Mapster;
@@ -13,6 +15,7 @@ using TimeTracker.Web.Features.Auth;
 using TimeTracker.Web.Features.Clients;
 using TimeTracker.Web.Features.Projects;
 using TimeTracker.Web.Features.TimeEntries;
+using TimeTracker.Web.Infrastructure;
 using TimeTracker.Web.Shared;
 using TimeTracker.Shared.Entities;
 
@@ -64,6 +67,24 @@ builder.Services.AddAuthentication()
         options.SignInScheme = IdentityConstants.ExternalScheme;
     });
 
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("auth", policy =>
+    {
+        policy.PermitLimit = 10;
+        policy.Window = TimeSpan.FromMinutes(1);
+        policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        policy.QueueLimit = 0;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IUserContextService, UserContextService>();
@@ -114,12 +135,15 @@ if (app.Environment.IsDevelopment())
     }).RequireAuthorization(adminPolicy);
 }
 
+app.UseHsts();
 app.UseHttpsRedirection();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

@@ -13,7 +13,7 @@ public static class AuthEndpoints
             var redirectUri = $"/auth/callback?returnUrl={Uri.EscapeDataString(returnUrl ?? "/timeentries")}";
             var properties = signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUri);
             return Results.Challenge(properties, [provider]);
-        });
+        }).RequireRateLimiting("auth");
 
         app.MapGet("/auth/callback", async (
             SignInManager<User> signInManager,
@@ -39,7 +39,7 @@ public static class AuthEndpoints
             await signInManager.SignInAsync(result.User!, isPersistent: true);
             var safeReturnUrl = Uri.TryCreate(returnUrl, UriKind.Relative, out _) ? returnUrl! : "/timeentries";
             return Results.LocalRedirect(safeReturnUrl);
-        });
+        }).RequireRateLimiting("auth");
 
         app.MapPost("/auth/logout", async (SignInManager<User> signInManager) =>
         {

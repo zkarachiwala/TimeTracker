@@ -351,3 +351,7 @@ MigrationBackup/
 
 # Windows NTFS alternate data streams
 *:Zone.Identifier
+
+# .NET User Secrets (stored outside project dir by tooling, but explicit exclusion as safeguard)
+**/secrets.json
+**/secrets.*.json
