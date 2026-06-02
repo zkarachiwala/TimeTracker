@@ -20,6 +20,14 @@ public class ExternalLoginService(UserManager<User> userManager, IConfiguration 
                 return new ExternalLoginResult(ExternalLoginStatus.CreateUserFailed);
         }
 
+        var adminEmail = configuration["Authentication:AdminEmail"];
+        if (!string.IsNullOrEmpty(adminEmail) &&
+            string.Equals(email, adminEmail, StringComparison.OrdinalIgnoreCase) &&
+            !await userManager.IsInRoleAsync(user, "Admin"))
+        {
+            await userManager.AddToRoleAsync(user, "Admin");
+        }
+
         var existingLogins = await userManager.GetLoginsAsync(user);
         if (!existingLogins.Any(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey))
         {

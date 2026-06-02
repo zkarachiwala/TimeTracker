@@ -37,7 +37,8 @@ public static class AuthEndpoints
                 return Results.Redirect($"/login?error={result.Status.ToString().ToLowerInvariant().Replace("_", "-")}");
 
             await signInManager.SignInAsync(result.User!, isPersistent: true);
-            return Results.Redirect(returnUrl ?? "/timeentries");
+            var safeReturnUrl = Uri.TryCreate(returnUrl, UriKind.Relative, out _) ? returnUrl! : "/timeentries";
+            return Results.LocalRedirect(safeReturnUrl);
         });
 
         app.MapPost("/auth/logout", async (SignInManager<User> signInManager) =>

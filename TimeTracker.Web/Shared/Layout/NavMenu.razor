@@ -1,4 +1,5 @@
 @inject NavigationManager Nav
+@inject IWebHostEnvironment Env
 
 <MudNavMenu>
     <MudNavLink Href="/" Match="NavLinkMatch.All"
@@ -19,6 +20,14 @@
         <MudNavLink Href="/clients"
                     Icon="@Icons.Material.Filled.Business">Clients</MudNavLink>
     </AuthorizeView>
+
+    @if (Env.IsDevelopment())
+    {
+        <AuthorizeView Roles="Admin">
+            <MudNavLink Href="/dev"
+                        Icon="@Icons.Material.Filled.DeveloperMode">Dev Tools</MudNavLink>
+        </AuthorizeView>
+    }
 </MudNavMenu>
 
 @code {
