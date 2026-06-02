@@ -3,6 +3,7 @@ using MudBlazor.Services;
 using TimeTracker.Web;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Scalar.AspNetCore;
@@ -75,10 +76,22 @@ var app = builder.Build();
 
 TypeAdapterConfig.GlobalSettings.Scan(Assembly.GetExecutingAssembly());
 
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    if (!await roleManager.RoleExistsAsync("Admin"))
+        await roleManager.CreateAsync(new IdentityRole("Admin"));
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    var adminPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .RequireRole("Admin")
+        .Build();
 
     app.MapPost("/api/dev/seed", async (
         IDbContextFactory<TimeTrackerDataContext> ctxFactory,
@@ -86,7 +99,7 @@ if (app.Environment.IsDevelopment())
     {
         var result = await DevDataSeeder.SeedAsync(ctxFactory, userManager);
         return Results.Ok(result);
-    }).AllowAnonymous();
+    }).RequireAuthorization(adminPolicy);
 
     app.MapPost("/api/dev/clear", async (
         IDbContextFactory<TimeTrackerDataContext> ctxFactory) =>
@@ -98,7 +111,7 @@ if (app.Environment.IsDevelopment())
         ctx.Clients.RemoveRange(ctx.Clients);
         await ctx.SaveChangesAsync();
         return Results.Ok("Cleared all time entries, projects and clients.");
-    }).AllowAnonymous();
+    }).RequireAuthorization(adminPolicy);
 }
 
 app.UseHttpsRedirection();
@@ -116,6 +129,10 @@ app.MapTimeEntryEndpoints();
 app.MapProjectEndpoints();
 app.MapClientEndpoints();
 app.MapAuthEndpoints();
+
+var allowedEmails = app.Configuration.GetSection("Authentication:AllowedEmails").Get<string[]>();
+if (allowedEmails is null || allowedEmails.Length == 0)
+    throw new InvalidOperationException("Authentication:AllowedEmails must be configured with at least one entry.");
 
 app.Run();
 

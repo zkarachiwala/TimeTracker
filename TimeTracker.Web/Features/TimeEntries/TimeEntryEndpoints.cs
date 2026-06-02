@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+using TimeTracker.Shared.Exceptions;
 
 namespace TimeTracker.Web.Features.TimeEntries;
 
@@ -37,14 +37,14 @@ public static class TimeEntryEndpoints
 
         group.MapPut("/{id:int}", async (int id, TimeEntryUpdateRequest request, ITimeEntryService svc) =>
         {
-            await svc.UpdateTimeEntry(id, request);
-            return Results.NoContent();
+            try { await svc.UpdateTimeEntry(id, request); return Results.NoContent(); }
+            catch (EntityNotFoundException) { return Results.NotFound(); }
         });
 
         group.MapDelete("/{id:int}", async (int id, ITimeEntryService svc) =>
         {
-            await svc.DeleteTimeEntry(id);
-            return Results.NoContent();
+            try { await svc.DeleteTimeEntry(id); return Results.NoContent(); }
+            catch (EntityNotFoundException) { return Results.NotFound(); }
         });
     }
 }

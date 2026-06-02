@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using TimeTracker.Web.Features.Auth;
 using TimeTracker.Tests.Infrastructure;
@@ -19,20 +20,28 @@ public class ExternalLoginServiceTests
 
     // Helper that wires everything from the fixture
     private static (ExternalLoginService Service, IdentityFixture Fixture) Build(
-        params string[] allowedEmails)
+        string[] allowedEmails,
+        string? adminEmail = null)
     {
-        var configEntries = allowedEmails
-            .Select((email, i) => ($"Authentication:AllowedEmails:{i}", email))
-            .ToArray();
+        var configPairs = allowedEmails
+            .Select((e, i) => new KeyValuePair<string, string?>($"Authentication:AllowedEmails:{i}", e))
+            .ToList();
 
-        var fixture = new IdentityFixture(configEntries);
+        if (adminEmail is not null)
+            configPairs.Add(new KeyValuePair<string, string?>("Authentication:AdminEmail", adminEmail));
+
+        var fixture = new IdentityFixture(allowedEmails
+            .Select((e, i) => ($"Authentication:AllowedEmails:{i}", e)).ToArray());
+
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(allowedEmails
-                .Select((e, i) => new KeyValuePair<string, string?>($"Authentication:AllowedEmails:{i}", e)))
+            .AddInMemoryCollection(configPairs)
             .Build();
 
         return (new ExternalLoginService(fixture.UserManager, config), fixture);
     }
+
+    private static (ExternalLoginService Service, IdentityFixture Fixture) Build(
+        params string[] allowedEmails) => Build(allowedEmails, adminEmail: null);
 
     [Fact]
     public async Task Returns_EmailNotAllowed_when_email_not_in_config()
@@ -149,6 +158,88 @@ public class ExternalLoginServiceTests
             Assert.Equal(2, logins.Count);
             Assert.Contains(logins, l => l.LoginProvider == "Google");
             Assert.Contains(logins, l => l.LoginProvider == "Entra");
+        }
+    }
+
+    [Fact]
+    public async Task Assigns_Admin_role_when_email_matches_AdminEmail()
+    {
+        var (svc, fixture) = Build([AllowedEmail], adminEmail: AllowedEmail);
+        using (fixture)
+        {
+            await fixture.RoleManager.CreateAsync(new IdentityRole("Admin"));
+
+            await svc.FindOrCreateUserAsync(AllowedEmail, Provider, ProviderKey);
+
+            var user = await fixture.UserManager.FindByEmailAsync(AllowedEmail);
+            var isAdmin = await fixture.UserManager.IsInRoleAsync(user!, "Admin");
+            Assert.True(isAdmin);
+        }
+    }
+
+    [Fact]
+    public async Task Does_not_assign_Admin_role_when_email_does_not_match_AdminEmail()
+    {
+        var otherEmail = "other@example.com";
+        var (svc, fixture) = Build([AllowedEmail, otherEmail], adminEmail: AllowedEmail);
+        using (fixture)
+        {
+            await fixture.RoleManager.CreateAsync(new IdentityRole("Admin"));
+
+            await svc.FindOrCreateUserAsync(otherEmail, Provider, ProviderKey);
+
+            var user = await fixture.UserManager.FindByEmailAsync(otherEmail);
+            var isAdmin = await fixture.UserManager.IsInRoleAsync(user!, "Admin");
+            Assert.False(isAdmin);
+        }
+    }
+
+    [Fact]
+    public async Task Admin_role_assignment_is_case_insensitive()
+    {
+        var (svc, fixture) = Build([AllowedEmail], adminEmail: AllowedEmail.ToUpper());
+        using (fixture)
+        {
+            await fixture.RoleManager.CreateAsync(new IdentityRole("Admin"));
+
+            await svc.FindOrCreateUserAsync(AllowedEmail, Provider, ProviderKey);
+
+            var user = await fixture.UserManager.FindByEmailAsync(AllowedEmail);
+            var isAdmin = await fixture.UserManager.IsInRoleAsync(user!, "Admin");
+            Assert.True(isAdmin);
+        }
+    }
+
+    [Fact]
+    public async Task Admin_role_assignment_is_idempotent()
+    {
+        var (svc, fixture) = Build([AllowedEmail], adminEmail: AllowedEmail);
+        using (fixture)
+        {
+            await fixture.RoleManager.CreateAsync(new IdentityRole("Admin"));
+
+            await svc.FindOrCreateUserAsync(AllowedEmail, Provider, ProviderKey);
+            await svc.FindOrCreateUserAsync(AllowedEmail, Provider, ProviderKey);
+
+            var user = await fixture.UserManager.FindByEmailAsync(AllowedEmail);
+            var roles = await fixture.UserManager.GetRolesAsync(user!);
+            Assert.Single(roles);
+        }
+    }
+
+    [Fact]
+    public async Task Does_not_assign_Admin_role_when_AdminEmail_not_configured()
+    {
+        var (svc, fixture) = Build([AllowedEmail]);
+        using (fixture)
+        {
+            await fixture.RoleManager.CreateAsync(new IdentityRole("Admin"));
+
+            await svc.FindOrCreateUserAsync(AllowedEmail, Provider, ProviderKey);
+
+            var user = await fixture.UserManager.FindByEmailAsync(AllowedEmail);
+            var isAdmin = await fixture.UserManager.IsInRoleAsync(user!, "Admin");
+            Assert.False(isAdmin);
         }
     }
 }

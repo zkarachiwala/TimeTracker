@@ -5,8 +5,11 @@ using TimeTracker.Shared.Entities;
 
 namespace TimeTracker.Web.Features.Auth;
 
-public class AppUserClaimsPrincipalFactory(UserManager<User> userManager, IOptions<IdentityOptions> optionsAccessor)
-    : UserClaimsPrincipalFactory<User>(userManager, optionsAccessor)
+public class AppUserClaimsPrincipalFactory(
+    UserManager<User> userManager,
+    RoleManager<IdentityRole> roleManager,
+    IOptions<IdentityOptions> optionsAccessor)
+    : UserClaimsPrincipalFactory<User, IdentityRole>(userManager, roleManager, optionsAccessor)
 {
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(User user)
     {

@@ -1,3 +1,5 @@
+using TimeTracker.Shared.Exceptions;
+
 namespace TimeTracker.Web.Features.Projects;
 
 public static class ProjectEndpoints
@@ -23,14 +25,14 @@ public static class ProjectEndpoints
 
         group.MapPut("/{id:int}", async (int id, ProjectUpdateRequest request, IProjectService svc) =>
         {
-            await svc.UpdateProject(id, request);
-            return Results.NoContent();
+            try { await svc.UpdateProject(id, request); return Results.NoContent(); }
+            catch (EntityNotFoundException) { return Results.NotFound(); }
         });
 
         group.MapDelete("/{id:int}", async (int id, IProjectService svc) =>
         {
-            await svc.DeleteProject(id);
-            return Results.NoContent();
+            try { await svc.DeleteProject(id); return Results.NoContent(); }
+            catch (EntityNotFoundException) { return Results.NotFound(); }
         });
     }
 }
