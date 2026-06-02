@@ -176,6 +176,46 @@ public class ProjectServiceTests
     }
 
     [Fact]
+    public async Task UpdateProject_PersistsEndDate_ForArchive()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        var endDate = new DateTime(2026, 6, 1);
+        await CreateService(options).UpdateProject(project.Id, new ProjectUpdateRequest
+        {
+            Name = project.Name,
+            EndDate = endDate
+        });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(endDate, context.Projects.Single().EndDate);
+    }
+
+    [Fact]
+    public async Task UpdateProject_ClearsEndDate_ForUnarchive()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        project.EndDate = new DateTime(2026, 1, 1);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).UpdateProject(project.Id, new ProjectUpdateRequest
+        {
+            Name = project.Name,
+            EndDate = null
+        });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Null(context.Projects.Single().EndDate);
+    }
+
+    [Fact]
     public async Task UpdateProject_UpdatesHourlyRate()
     {
         var options = CreateOptions();
