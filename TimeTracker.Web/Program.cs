@@ -43,7 +43,8 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
         options.SignIn.RequireConfirmedEmail = false;
     })
     .AddEntityFrameworkStores<IdentityDataContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
