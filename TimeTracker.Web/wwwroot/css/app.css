@@ -130,17 +130,48 @@ html, body, #app {
     font-variant-numeric: tabular-nums;
 }
 
-/* ── MudTabs — match mockup active style ── */
-.mud-tabs .mud-tab {
+/* ── Filter tab bar (Entries page) ── */
+.tt-filter-tabs {
+    display: flex;
+    position: relative;
+    border-bottom: 1px solid var(--mud-palette-divider);
+    background: var(--mud-palette-surface);
+}
+
+.tt-filter-tab {
+    flex: 1;
+    text-align: center;
+    padding: 13px 8px;
+    cursor: pointer;
     font-size: .8125rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: .04em;
     color: var(--mud-palette-text-secondary);
+    position: relative;
+    border: none;
+    background: transparent;
+    transition: color .15s, background .15s;
+    user-select: none;
 }
 
-.mud-tabs .mud-tab.mud-tab-active {
+.tt-filter-tab:hover {
+    background: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-primary);
+}
+
+.tt-filter-tab.active {
     color: var(--mud-palette-primary);
+}
+
+.tt-filter-tab.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--mud-palette-primary);
 }
 
 /* ── MudNavMenu — active link matches mockup (primary tint bg, primary text) ── */
@@ -150,11 +181,23 @@ html, body, #app {
     border-radius: 6px;
 }
 
-/* ── Entry sheet drawer height ── */
+/* ── Entry sheet — bottom sheet ── */
 .entry-sheet .mud-drawer-content {
     max-height: 92vh;
-    border-radius: 18px 18px 0 0;
     overflow-y: auto;
+}
+.entry-sheet .mud-drawer-header {
+    border-bottom: none !important;
+}
+
+/* ── Grip pill (drag handle at top of bottom sheet) ── */
+.sheet-grip-pill {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0,0,0,.18);
+    margin: 10px auto 4px;
+    flex-shrink: 0;
 }
 
 /* ── KPI grid ── */
@@ -169,6 +212,25 @@ html, body, #app {
     background: #002F6F !important;
     color: #fff !important;
     border-radius: 12px !important;
+}
+
+/* ── Today's progress bar — rounded, correct track/fill colours ── */
+.tt-progress {
+    height: 8px !important;
+    border-radius: 99px !important;
+    background: rgba(0,0,0,.07) !important;
+}
+.tt-progress .mud-progress-linear-bar1,
+.tt-progress .mud-progress-linear-bar2 {
+    border-radius: 99px !important;
+}
+
+/* ── Outlined input label — primary colour when floating (field has value) ── */
+.mud-input-outlined.mud-input-label-animated .mud-input-label-animated {
+    color: var(--mud-palette-primary) !important;
+}
+label.mud-input-label.mud-input-label-animated.mud-input-label-inputcontrol {
+    color: var(--mud-palette-primary) !important;
 }
 
 /* ── Archived items ── */

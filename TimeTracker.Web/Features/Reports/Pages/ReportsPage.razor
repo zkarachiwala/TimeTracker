@@ -27,10 +27,10 @@
         </MudCard>
         <MudCard Outlined="true">
             <MudCardContent Style="padding:16px">
-                <MudText Typo="Typo.overline">Billable</MudText>
+                <MudText Typo="Typo.overline">Uninvoiced</MudText>
                 <MudText Class="tabnum" Color="Color.Primary"
                          Style="font-size:1.8rem; font-weight:500">
-                    @billableTotal<span Style="font-size:1rem">h</span>
+                    @uninvoicedTotal<span Style="font-size:1rem">h</span>
                 </MudText>
             </MudCardContent>
         </MudCard>
@@ -43,10 +43,11 @@
                 <MudText Typo="Typo.subtitle1" Style="font-weight:500">Hours by month</MudText>
                 <MudText Typo="Typo.caption">hrs</MudText>
             </div>
-            @if (chartData.Length > 0)
+            @if (chartSeries.Count > 0)
             {
-                <MudChart T="double" ChartType="ChartType.Bar"
+                <MudChart T="double" ChartType="ChartType.StackedBar"
                           ChartSeries="chartSeries"
+                          ChartLabels="monthLabels"
                           Width="100%" Height="220px"
                           ChartOptions="chartOptions" />
             }
@@ -87,11 +88,13 @@
     private List<TimeEntryResponse> entries = [];
     private List<ProjectResponse> projects = [];
     private double ytdTotal;
-    private double billableTotal;
-    private double[] chartData = [];
+    private double uninvoicedTotal;
     private string[] monthLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     private List<ChartSeries<double>> chartSeries = [];
-    private ChartOptions chartOptions = new();
+    private ChartOptions chartOptions = new()
+    {
+        ChartPalette = ["#9e9e9e", "#2e7d32", "#0068CD"]
+    };
 
     private record ProjectRow(ProjectResponse Project, int Hours);
     private List<ProjectRow> projectRows = [];
@@ -106,33 +109,48 @@
 
     private void ComputeStats()
     {
-        var completedEntries = entries.Where(e => e.End.HasValue).ToList();
+        var completed = entries.Where(e => e.End.HasValue).ToList();
 
-        ytdTotal = Math.Round(completedEntries.Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+        ytdTotal = Math.Round(completed.Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
 
-        var billableProjectIds = projects
-            .Where(p => p.HourlyRate is > 0)
-            .Select(p => p.Id)
-            .ToHashSet();
+        var billableIds = projects.Where(p => p.HourlyRate is > 0).Select(p => p.Id).ToHashSet();
 
-        billableTotal = Math.Round(
-            completedEntries.Where(e => billableProjectIds.Contains(e.Project.Id))
-                            .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+        uninvoicedTotal = Math.Round(
+            completed.Where(e => billableIds.Contains(e.Project.Id) && string.IsNullOrEmpty(e.InvoiceReference))
+                     .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
 
-        chartData = Enumerable.Range(1, 12)
-            .Select(m => Math.Round(
-                completedEntries.Where(e => e.Start.Month == m)
-                                .Sum(e => (e.End!.Value - e.Start).TotalHours), 1))
-            .ToArray();
+        double MonthHours(int m, Func<TimeEntryResponse, bool> predicate) =>
+            Math.Round(completed.Where(e => e.Start.Month == m && predicate(e))
+                                .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
 
         chartSeries =
         [
-            new ChartSeries<double> { Name = "Hours", Data = chartData }
+            new ChartSeries<double>
+            {
+                Name = "Non-billable",
+                Data = Enumerable.Range(1, 12)
+                    .Select(m => MonthHours(m, e => !billableIds.Contains(e.Project.Id)))
+                    .ToArray()
+            },
+            new ChartSeries<double>
+            {
+                Name = "Invoiced",
+                Data = Enumerable.Range(1, 12)
+                    .Select(m => MonthHours(m, e => billableIds.Contains(e.Project.Id) && !string.IsNullOrEmpty(e.InvoiceReference)))
+                    .ToArray()
+            },
+            new ChartSeries<double>
+            {
+                Name = "Uninvoiced",
+                Data = Enumerable.Range(1, 12)
+                    .Select(m => MonthHours(m, e => billableIds.Contains(e.Project.Id) && string.IsNullOrEmpty(e.InvoiceReference)))
+                    .ToArray()
+            },
         ];
 
         projectRows = projects
             .Select(p => new ProjectRow(p,
-                (int)Math.Round(completedEntries
+                (int)Math.Round(completed
                     .Where(e => e.Project.Id == p.Id)
                     .Sum(e => (e.End!.Value - e.Start).TotalHours))))
             .Where(r => r.Hours > 0)

@@ -14,6 +14,13 @@
     <MudText Typo="Typo.body2" Style="font-weight:500; font-variant-numeric:tabular-nums">
         @FormatDuration(Entry.Start, Entry.End)
     </MudText>
+    @if (!string.IsNullOrEmpty(Entry.InvoiceReference))
+    {
+        <MudTooltip Text="@($"Invoiced: {Entry.InvoiceReference}")">
+            <MudIcon Icon="@Icons.Material.Filled.Receipt" Size="Size.Small"
+                     Style="color:var(--mud-palette-success)" />
+        </MudTooltip>
+    }
     <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Style="color:var(--mud-palette-text-disabled)" Size="Size.Small" />
 </div>
 

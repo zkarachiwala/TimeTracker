@@ -3,15 +3,18 @@
 @inject ISnackbar Snackbar
 
 <MudDrawer Open="_open" OpenChanged="HandleOpenChanged" Anchor="Anchor.Bottom"
-           Variant="DrawerVariant.Temporary" Elevation="16" Class="entry-sheet">
+           Variant="DrawerVariant.Temporary" Elevation="16" Class="entry-sheet"
+           Style="border-radius:18px 18px 0 0; overflow:hidden;">
     @if (_open)
     {
-    <MudDrawerHeader Class="d-flex align-center justify-space-between pa-4" Style="border-bottom:1px solid var(--mud-palette-divider)">
+    <div class="sheet-grip-pill"></div>
+
+    <MudDrawerHeader Class="d-flex align-center justify-space-between pa-4">
         <MudText Typo="Typo.h6">@(IsEditing ? "Edit entry" : "New time entry")</MudText>
         <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Close" />
     </MudDrawerHeader>
 
-    <div style="padding:16px 20px 24px; overflow-y:auto;">
+    <div style="padding:8px 20px 24px; overflow-y:auto;">
         <MudSelect T="int" Label="Project" @bind-Value="projectId" Variant="Variant.Outlined"
                    Class="mb-3" AnchorOrigin="Origin.BottomCenter">
             @foreach (var p in projects)
@@ -21,13 +24,13 @@
         </MudSelect>
 
         <MudDatePicker Label="Date" @bind-Date="date" Variant="Variant.Outlined"
-                       DateFormat="yyyy-MM-dd" Class="mb-3" />
+                       DateFormat="yyyy-MM-dd" Class="mb-3" PickerVariant="PickerVariant.Dialog" />
 
         <div class="d-flex gap-3 mb-2">
             <MudTimePicker Label="Start" @bind-Time="startTime" Variant="Variant.Outlined"
-                           AmPm="false" Class="flex-1" />
+                           AmPm="false" Class="flex-1" PickerVariant="PickerVariant.Dialog" />
             <MudTimePicker Label="End" @bind-Time="endTime" Variant="Variant.Outlined"
-                           AmPm="false" Class="flex-1" />
+                           AmPm="false" Class="flex-1" PickerVariant="PickerVariant.Dialog" />
         </div>
 
         <MudText Typo="Typo.caption" Class="mb-2" Style="color:var(--mud-palette-text-secondary)">
@@ -36,15 +39,21 @@
         <div class="d-flex flex-wrap gap-2 mb-4">
             @foreach (var mins in new[] { 15, 30, 45, 60, 90, 120 })
             {
+                var label = mins < 60 ? $"{mins}m" : $"{mins / 60}h{(mins % 60 > 0 ? $" {mins % 60}m" : "")}";
                 <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small"
                          OnClick="() => QuickDuration(mins)">
-                    @(mins < 60 ? $"{mins}m" : $"{mins / 60}h")
+                    @label
                 </MudChip>
             }
         </div>
 
         <MudTextField Label="Note (optional)" @bind-Value="note" Variant="Variant.Outlined"
-                      Class="mb-3" />
+                      ShrinkLabel="true" Class="mb-3" />
+
+        <MudTextField Label="Invoice reference (optional)" @bind-Value="invoiceReference"
+                      Variant="Variant.Outlined" ShrinkLabel="true" Class="mb-3"
+                      Placeholder="e.g. INV-0042"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Receipt" />
 
         <MudPaper Outlined="true" Class="d-flex align-center justify-space-between pa-3 mb-4"
                   Style="background:rgba(0,104,205,0.06); border-radius:8px; border-color:transparent">
@@ -85,24 +94,32 @@
     private TimeSpan? startTime;
     private TimeSpan? endTime;
     private string note = string.Empty;
+    private string? invoiceReference;
 
     private bool _open;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (Open != _open) _open = Open;
-    }
-
-    private async Task HandleOpenChanged(bool value)
-    {
-        _open = value;
-        if (value)
+        if (Open && !_open)
         {
+            _open = true;
             if (projects.Count == 0)
                 projects = await ProjectService.GetAllProjects();
             ResetFromEntry();
         }
-        await OpenChanged.InvokeAsync(value);
+        else if (!Open && _open)
+        {
+            _open = false;
+        }
+    }
+
+    private async Task HandleOpenChanged(bool value)
+    {
+        if (!value)
+        {
+            _open = false;
+            await OpenChanged.InvokeAsync(false);
+        }
     }
 
     private bool IsEditing => Entry?.Id > 0;
@@ -118,7 +135,7 @@
             if (d is null || d.Value.TotalMinutes <= 0) return "—";
             var h = (int)d.Value.TotalHours;
             var m = d.Value.Minutes;
-            return h > 0 ? $"{h}h {m}m" : $"{m}m";
+            return $"{h}h {m}m";
         }
     }
 
@@ -141,6 +158,7 @@
             startTime = Entry.Start.TimeOfDay;
             endTime = Entry.End?.TimeOfDay;
             note = Entry.Note ?? string.Empty;
+            invoiceReference = Entry.InvoiceReference;
         }
         else
         {
@@ -149,6 +167,7 @@
             startTime = null;
             endTime = null;
             note = string.Empty;
+            invoiceReference = null;
         }
     }
 
@@ -172,7 +191,9 @@
                 ProjectId = projectId,
                 Start = start,
                 End = end,
-                Note = note
+                Note = note,
+                InvoiceReference = string.IsNullOrWhiteSpace(invoiceReference) ? null : invoiceReference.Trim(),
+                InvoicedAt = string.IsNullOrWhiteSpace(invoiceReference) ? null : (Entry.InvoicedAt ?? DateTime.Now)
             });
             Snackbar.Add("Entry updated", Severity.Success);
         }

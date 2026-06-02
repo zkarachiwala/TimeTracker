@@ -14,14 +14,13 @@
 <div class="pa-4">
     <div class="d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h6">Projects</MudText>
-        <MudChip T="string" Color="Color.Primary">@activeProjects.Count active</MudChip>
+        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">@activeProjects.Count active</MudChip>
     </div>
 
     @foreach (var p in activeProjects)
     {
         <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
-                     OnOpen="NavigateToDetail"
-                     OnEdit="OpenEditSheet" />
+                     OnOpen="NavigateToDetail" />
     }
 
     @if (archivedProjects.Count > 0)
@@ -31,8 +30,7 @@
             @foreach (var p in archivedProjects)
             {
                 <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
-                             OnOpen="NavigateToDetail"
-                             OnEdit="OpenEditSheet" />
+                             OnOpen="NavigateToDetail" />
             }
         </div>
     }
@@ -45,13 +43,12 @@
             OnClick="OpenNewSheet" />
 </div>
 
-@if (sheetOpen) { <ProjectSheet @bind-Open="sheetOpen" Project="sheetProject" OnSaved="LoadData" /> }
+@if (sheetOpen) { <ProjectSheet @bind-Open="sheetOpen" OnSaved="LoadData" /> }
 
 @code {
     private List<ProjectResponse> projects = [];
     private List<TimeEntryResponse> yearEntries = [];
     private bool sheetOpen;
-    private ProjectResponse? sheetProject;
 
     private List<ProjectResponse> activeProjects => projects.Where(p => !p.EndDate.HasValue).ToList();
     private List<ProjectResponse> archivedProjects => projects.Where(p => p.EndDate.HasValue).ToList();
@@ -76,13 +73,6 @@
 
     private void OpenNewSheet()
     {
-        sheetProject = null;
-        sheetOpen = true;
-    }
-
-    private void OpenEditSheet(ProjectResponse project)
-    {
-        sheetProject = project;
         sheetOpen = true;
     }
 }

@@ -11,6 +11,6 @@ public static class ProjectColors
     public static string ForProject(int projectId) =>
         Palette[(projectId - 1) % Palette.Length];
 
-    public static string ForProjectInitials(int projectId) =>
-        ForProject(projectId);
+    public static string ForClient(int clientId) =>
+        Palette[(clientId - 1) % Palette.Length];
 }

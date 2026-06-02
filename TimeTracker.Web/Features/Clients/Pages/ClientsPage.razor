@@ -3,27 +3,29 @@
 @inject IClientService ClientService
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService
+@inject NavigationManager Nav
 @attribute [Authorize(Roles = "Admin")]
 
 @using TimeTracker.Web.Features.Clients.Components
 @using TimeTracker.Web.Features.TimeEntries
 @using TimeTracker.Web.Features.Projects
+@using TimeTracker.Web.Shared
 
 <PageTitle>Clients — TimeTracker</PageTitle>
 
 <div class="pa-4">
     <div class="d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h6">Clients</MudText>
-        <MudChip T="string" Color="Color.Primary">@activeCount active</MudChip>
+        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">@activeCount active</MudChip>
     </div>
 
     @foreach (var c in sortedClients)
     {
         <div class="@(c.IsArchived ? "archived-item" : "") mb-3">
-            <MudCard Style="cursor:pointer" @onclick="() => OpenEditSheet(c)">
+            <MudCard Style="cursor:pointer" @onclick="() => NavigateToClient(c.Id)">
                 <MudCardContent Style="padding:16px">
                     <div class="d-flex align-center gap-3">
-                        <MudAvatar Style="@($"background:{ClientColor(c)}; color:#fff; font-weight:700; width:44px; height:44px")">
+                        <MudAvatar Class="avatar-sq" Style="@($"background:{ProjectColors.ForClient(c.Id)}22; color:{ProjectColors.ForClient(c.Id)}; font-weight:700; width:44px; height:44px")">
                             @c.Name[..Math.Min(2, c.Name.Length)].ToUpper()
                         </MudAvatar>
                         <div class="flex-1" style="min-width:0">
@@ -74,20 +76,13 @@
             OnClick="OpenNewSheet" />
 </div>
 
-@if (sheetOpen) { <ClientSheet @bind-Open="sheetOpen" Client="sheetClient" OnSaved="LoadData" /> }
+@if (sheetOpen) { <ClientSheet @bind-Open="sheetOpen" OnSaved="LoadData" /> }
 
 @code {
     private List<ClientResponse> clients = [];
     private List<ProjectResponse> projects = [];
     private List<TimeEntryResponse> yearEntries = [];
     private bool sheetOpen;
-    private ClientResponse? sheetClient;
-
-    private static readonly string[] ColorPalette =
-        ["#0068CD","#1FACF2","#002F6F","#2e7d32","#ed6c02","#6a1b9a","#00838f","#c62828"];
-
-    private string ClientColor(ClientResponse c) =>
-        ColorPalette[(c.Id - 1) % ColorPalette.Length];
 
     private int activeCount => clients.Count(c => !c.IsArchived);
 
@@ -114,15 +109,6 @@
         yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year);
     }
 
-    private void OpenNewSheet()
-    {
-        sheetClient = null;
-        sheetOpen = true;
-    }
-
-    private void OpenEditSheet(ClientResponse client)
-    {
-        sheetClient = client;
-        sheetOpen = true;
-    }
+    private void NavigateToClient(int id) => Nav.NavigateTo($"/clients/{id}");
+    private void OpenNewSheet() => sheetOpen = true;
 }

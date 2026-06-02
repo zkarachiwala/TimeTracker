@@ -24,7 +24,7 @@ public class TimeEntryService : ITimeEntryService
     private static IQueryable<TimeEntry> UserEntries(TimeTrackerDataContext ctx, string userId) =>
         ctx.TimeEntries
             .Include(te => te.Project)
-            .ThenInclude(p => p!.ProjectDetails)
+
             .Where(te => te.UserId == userId && !te.Project.IsDeleted);
 
     private static TimeSpan CalculateTotalDuration(IEnumerable<TimeEntry> entries) =>
@@ -37,7 +37,7 @@ public class TimeEntryService : ITimeEntryService
         await using var ctx = await _contextFactory.CreateDbContextAsync();
         var entry = await ctx.TimeEntries
             .Include(te => te.Project)
-            .ThenInclude(p => p!.ProjectDetails)
+
             .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId);
         return entry?.Adapt<TimeEntryResponse>();
     }
@@ -71,6 +71,8 @@ public class TimeEntryService : ITimeEntryService
         entry.Start = request.Start;
         entry.End = request.End;
         entry.Note = request.Note;
+        entry.InvoiceReference = request.InvoiceReference;
+        entry.InvoicedAt = request.InvoicedAt;
         entry.DateUpdated = DateTime.Now;
         await ctx.SaveChangesAsync();
     }
@@ -139,7 +141,7 @@ public class TimeEntryService : ITimeEntryService
         await using var ctx = await _contextFactory.CreateDbContextAsync();
         var entry = await ctx.TimeEntries
             .Include(te => te.Project)
-            .ThenInclude(p => p!.ProjectDetails)
+
             .FirstOrDefaultAsync(te => te.UserId == userId && te.End == null && !te.Project.IsDeleted);
         return entry?.Adapt<TimeEntryResponse>();
     }

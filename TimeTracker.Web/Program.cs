@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Scalar.AspNetCore;
 using TimeTracker.Web.Data;
+using TimeTracker.Web.Dev;
 using TimeTracker.Web.Features.Auth;
 using TimeTracker.Web.Features.Clients;
 using TimeTracker.Web.Features.Projects;
@@ -77,6 +78,26 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    app.MapPost("/api/dev/seed", async (
+        IDbContextFactory<TimeTrackerDataContext> ctxFactory,
+        UserManager<User> userManager) =>
+    {
+        var result = await DevDataSeeder.SeedAsync(ctxFactory, userManager);
+        return Results.Ok(result);
+    }).AllowAnonymous();
+
+    app.MapPost("/api/dev/clear", async (
+        IDbContextFactory<TimeTrackerDataContext> ctxFactory) =>
+    {
+        await using var ctx = await ctxFactory.CreateDbContextAsync();
+        ctx.TimeEntries.RemoveRange(ctx.TimeEntries);
+        ctx.ProjectUsers.RemoveRange(ctx.ProjectUsers);
+        ctx.Projects.RemoveRange(ctx.Projects);
+        ctx.Clients.RemoveRange(ctx.Clients);
+        await ctx.SaveChangesAsync();
+        return Results.Ok("Cleared all time entries, projects and clients.");
+    }).AllowAnonymous();
 }
 
 app.UseHttpsRedirection();

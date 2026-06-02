@@ -52,7 +52,7 @@ else if (_providersReady)
     @* ── Idle: start timer card ── *@
     <MudCard Class="mb-4" Style="border-radius:16px" Elevation="4">
         <MudCardContent Style="padding:20px">
-            <MudText Typo="Typo.overline" Class="mb-3">Start a timer</MudText>
+            <MudText Typo="Typo.subtitle2" Style="text-transform:uppercase; letter-spacing:.08em; font-weight:600; color:var(--mud-palette-text-secondary)" Class="mb-3">Start a timer</MudText>
 
             <MudSelect T="int" Label="Project" @bind-Value="selectedProjectId"
                        Variant="Variant.Outlined" Class="mb-3"
@@ -93,7 +93,7 @@ else if (_providersReady)
         @TodayDisplay / 8h
     </MudText>
 </div>
-<MudProgressLinear Value="@TodayProgress" Color="Color.Primary" Class="mb-4" Style="height:6px; border-radius:3px" />
+<MudProgressLinear Value="@TodayProgress" Color="Color.Primary" Class="mb-4 tt-progress" Rounded="true" />
 
 @* ── Today's entries ── *@
 <MudCard>

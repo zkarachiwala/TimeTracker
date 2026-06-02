@@ -9,7 +9,9 @@ public record TimeEntryResponse(
     ProjectSummary Project,
     DateTime Start,
     DateTime? End,
-    string? Note
+    string? Note,
+    string? InvoiceReference,
+    DateTime? InvoicedAt
 );
 
 public record ProjectSummary(int Id, string Name);
@@ -38,6 +40,8 @@ public class TimeEntryUpdateRequest
     public DateTime Start { get; set; }
     public DateTime? End { get; set; }
     public string? Note { get; set; }
+    public string? InvoiceReference { get; set; }
+    public DateTime? InvoicedAt { get; set; }
 }
 
 public class TimeEntryResponseWrapper

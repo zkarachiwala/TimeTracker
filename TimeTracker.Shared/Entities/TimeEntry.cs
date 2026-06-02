@@ -7,6 +7,8 @@ public class TimeEntry : BaseEntity
     public DateTime Start { get; set; } = DateTime.Now;
     public DateTime? End { get; set; }
     public string? Note { get; set; }
+    public string? InvoiceReference { get; set; }
+    public DateTime? InvoicedAt { get; set; }
     public string UserId { get; set; } = string.Empty;
     //public AppUser? AppUser { get; set; } = null!;
 }

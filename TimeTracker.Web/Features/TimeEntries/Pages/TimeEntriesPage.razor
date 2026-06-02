@@ -9,13 +9,16 @@
 <PageTitle>Entries — TimeTracker</PageTitle>
 
 @* ── Filter tabs ── *@
-<MudTabs @bind-ActivePanelIndex="activeTab" Rounded="true"
-         Color="Color.Primary">
-    <MudTabPanel Text="Day" />
-    <MudTabPanel Text="Month" />
-    <MudTabPanel Text="Year" />
-    <MudTabPanel Text="Project" />
-</MudTabs>
+<div class="tt-filter-tabs">
+    @foreach (var (label, index) in new[] { ("Day", 0), ("Month", 1), ("Year", 2), ("Project", 3) })
+    {
+        var i = index;
+        <button class="tt-filter-tab @(activeTab == i ? "active" : "")"
+                @onclick="() => activeTab = i">
+            @label
+        </button>
+    }
+</div>
 
 <div class="pa-4">
     @* ── Range stepper or project picker ── *@

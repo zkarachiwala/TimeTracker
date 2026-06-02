@@ -5,11 +5,13 @@
 @using TimeTracker.Web.Features.Clients
 
 <MudDrawer Open="_open" OpenChanged="HandleOpenChanged" Anchor="Anchor.Bottom"
-           Variant="DrawerVariant.Temporary" Elevation="16" Class="entry-sheet">
+           Variant="DrawerVariant.Temporary" Elevation="16" Class="entry-sheet"
+           Style="border-radius:18px 18px 0 0; overflow:hidden;">
     @if (_open)
     {
-    <MudDrawerHeader Class="d-flex align-center justify-space-between pa-4"
-                     Style="border-bottom:1px solid var(--mud-palette-divider)">
+    <div class="sheet-grip-pill"></div>
+
+    <MudDrawerHeader Class="d-flex align-center justify-space-between pa-4">
         <MudText Typo="Typo.h6">@(IsEditing ? "Edit project" : "New project")</MudText>
         <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Close" />
     </MudDrawerHeader>
@@ -60,12 +62,31 @@
 
         @if (IsEditing)
         {
-            <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
-                       Style="color:var(--mud-palette-error)"
-                       StartIcon="@Icons.Material.Filled.DeleteOutline"
-                       OnClick="Delete">
-                Delete project
-            </MudButton>
+            @if (_confirmingArchive)
+            {
+                <MudDatePicker Label="End date" @bind-Date="_archiveDate" Variant="Variant.Outlined"
+                               DateFormat="yyyy-MM-dd" Class="mt-2 mb-2" PickerVariant="PickerVariant.Dialog" />
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.Archive"
+                               Disabled="_archiveDate is null"
+                               OnClick="ToggleArchive">
+                        Confirm archive
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" OnClick="() => _confirmingArchive = false">
+                        Cancel
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
+                           Style="@(IsArchived ? "color:var(--mud-palette-text-secondary)" : "color:var(--mud-palette-warning-darken)")"
+                           StartIcon="@(IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Archive)"
+                           OnClick="@(IsArchived ? (Func<Task>)ToggleArchive : BeginArchive)">
+                    @(IsArchived ? "Unarchive project" : "Archive project")
+                </MudButton>
+            }
         }
     </div>
     } @* end @if (_open) *@
@@ -86,25 +107,35 @@
     private string description = string.Empty;
 
     private bool _open;
+    private bool _confirmingArchive;
+    private DateTime? _archiveDate;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (Open != _open) _open = Open;
-    }
-
-    private async Task HandleOpenChanged(bool value)
-    {
-        _open = value;
-        if (value)
+        if (Open && !_open)
         {
+            _open = true;
             if (clients.Count == 0)
                 clients = await ClientService.GetAllClients(includeArchived: true);
             Reset();
         }
-        await OpenChanged.InvokeAsync(value);
+        else if (!Open && _open)
+        {
+            _open = false;
+        }
+    }
+
+    private async Task HandleOpenChanged(bool value)
+    {
+        if (!value)
+        {
+            _open = false;
+            await OpenChanged.InvokeAsync(false);
+        }
     }
 
     private bool IsEditing => Project?.Id > 0;
+    private bool IsArchived => Project?.EndDate.HasValue == true;
     private bool IsValid => !string.IsNullOrWhiteSpace(name);
 
     private string? RateHelpText
@@ -140,6 +171,8 @@
             description = string.Empty;
         }
         rateTouched = false;
+        _confirmingArchive = false;
+        _archiveDate = null;
     }
 
     private void OnClientChanged()
@@ -199,11 +232,27 @@
         await OnSaved.InvokeAsync();
     }
 
-    private async Task Delete()
+    private Task BeginArchive()
+    {
+        _archiveDate = DateTime.Today;
+        _confirmingArchive = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task ToggleArchive()
     {
         if (!IsEditing) return;
-        await ProjectService.DeleteProject(Project!.Id);
-        Snackbar.Add("Project deleted", Severity.Info);
+        var newEndDate = IsArchived ? null : _archiveDate;
+        await ProjectService.UpdateProject(Project!.Id, new ProjectUpdateRequest
+        {
+            Name = Project.Name,
+            ClientId = Project.ClientId,
+            HourlyRate = Project.HourlyRate ?? 0,
+            Description = Project.Description,
+            StartDate = Project.StartDate,
+            EndDate = newEndDate
+        });
+        Snackbar.Add(IsArchived ? "Project unarchived" : "Project archived", Severity.Success);
         await Close();
         await OnSaved.InvokeAsync();
     }

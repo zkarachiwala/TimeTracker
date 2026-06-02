@@ -23,7 +23,6 @@ public class ProjectService : IProjectService
 
     private static IQueryable<Project> UserProjects(TimeTrackerDataContext ctx, string userId) =>
         ctx.Projects
-            .Include(p => p.ProjectDetails)
             .Where(p => !p.IsDeleted && p.ProjectUsers.Any(pu => pu.UserId == userId));
 
     public async Task<List<ProjectResponse>> GetAllProjects()
@@ -51,14 +50,10 @@ public class ProjectService : IProjectService
             Name = request.Name,
             ClientId = request.ClientId,
             HourlyRate = request.HourlyRate,
+            Description = request.Description,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
             DateCreated = DateTime.Now,
-            ProjectDetails = new ProjectDetails
-            {
-                Description = request.Description,
-                StartDate = request.StartDate,
-                EndDate = request.EndDate,
-                Project = null!
-            },
             ProjectUsers = new List<ProjectUser> { new() { UserId = userId } }
         };
         ctx.Projects.Add(project);
@@ -75,24 +70,10 @@ public class ProjectService : IProjectService
         project.Name = request.Name;
         project.ClientId = request.ClientId;
         project.HourlyRate = request.HourlyRate;
+        project.Description = request.Description;
+        project.StartDate = request.StartDate;
+        project.EndDate = request.EndDate;
         project.DateUpdated = DateTime.Now;
-
-        if (project.ProjectDetails is not null)
-        {
-            project.ProjectDetails.Description = request.Description;
-            project.ProjectDetails.StartDate = request.StartDate;
-            project.ProjectDetails.EndDate = request.EndDate;
-        }
-        else
-        {
-            project.ProjectDetails = new ProjectDetails
-            {
-                Description = request.Description,
-                StartDate = request.StartDate,
-                EndDate = request.EndDate,
-                Project = null!
-            };
-        }
 
         await ctx.SaveChangesAsync();
     }

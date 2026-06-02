@@ -9,6 +9,7 @@
 @using TimeTracker.Web.Features.TimeEntries.Components
 @using TimeTracker.Web.Features.Projects.Components
 @using TimeTracker.Web.Shared
+@using TimeTracker.Web.Features.Clients
 
 <PageTitle>Project — TimeTracker</PageTitle>
 
@@ -45,7 +46,7 @@
                     <div>
                         <MudText Typo="Typo.overline">Rate</MudText>
                         <MudText Typo="Typo.h6" Class="tabnum">
-                            @(project.HourlyRate is > 0 ? $"${project.HourlyRate}" : "—")
+                            @(project.HourlyRate is > 0 ? $"${project.HourlyRate}/h" : "—")
                         </MudText>
                     </div>
                     @if (project.HourlyRate is > 0 && ytdHours > 0)
@@ -54,6 +55,21 @@
                             <MudText Typo="Typo.overline">Est. value</MudText>
                             <MudText Typo="Typo.h6" Class="tabnum">
                                 $@((ytdHours * (double)project.HourlyRate!.Value).ToString("N0"))
+                            </MudText>
+                        </div>
+                    }
+                    <div>
+                        <MudText Typo="Typo.overline">Start date</MudText>
+                        <MudText Typo="Typo.h6" Class="tabnum">
+                            @(project.StartDate?.ToString("d MMM yyyy") ?? "—")
+                        </MudText>
+                    </div>
+                    @if (project.EndDate.HasValue)
+                    {
+                        <div>
+                            <MudText Typo="Typo.overline">End date</MudText>
+                            <MudText Typo="Typo.h6" Class="tabnum" Style="color:var(--mud-palette-warning-darken)">
+                                @project.EndDate.Value.ToString("d MMM yyyy")
                             </MudText>
                         </div>
                     }
@@ -76,7 +92,7 @@
                     @for (int i = 0; i < recentEntries.Count; i++)
                     {
                         var entry = recentEntries[i];
-                        <EntryRow Entry="entry" ShowProject="false" />
+                        <EntryRow Entry="entry" ShowProject="false" OnEdit="OpenEditSheet" />
                         @if (i < recentEntries.Count - 1) { <MudDivider /> }
                     }
                 </MudList>
@@ -84,6 +100,21 @@
         </MudCard>
     </div>
     <div class="bottom-nav-spacer"></div>
+
+    <div class="tt-fab">
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
+                OnClick="OpenProjectSheet" />
+    </div>
+}
+
+@if (projectSheetOpen && project is not null)
+{
+    <ProjectSheet @bind-Open="projectSheetOpen" Project="project" OnSaved="Reload" />
+}
+
+@if (entrySheetOpen)
+{
+    <EntrySheet @bind-Open="entrySheetOpen" Entry="sheetEntry" OnSaved="Reload" />
 }
 
 @code {
@@ -92,13 +123,18 @@
     private ProjectResponse? project;
     private List<TimeEntryResponse> recentEntries = [];
     private double ytdHours;
+    private bool projectSheetOpen;
+    private bool entrySheetOpen;
+    private TimeEntryResponse? sheetEntry;
 
     private string Initials => project is null ? "" :
         (project.ClientName ?? project.Name).Length >= 2
             ? (project.ClientName ?? project.Name)[..2].ToUpper()
             : (project.ClientName ?? project.Name).ToUpper();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
     {
         project = await ProjectService.GetProjectById(Id);
         if (project is null) return;
@@ -110,5 +146,13 @@
         ytdHours = Math.Round(allEntries
             .Where(e => e.End.HasValue && e.Start.Year == year)
             .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+    }
+
+    private void OpenProjectSheet() => projectSheetOpen = true;
+
+    private void OpenEditSheet(TimeEntryResponse entry)
+    {
+        sheetEntry = entry;
+        entrySheetOpen = true;
     }
 }

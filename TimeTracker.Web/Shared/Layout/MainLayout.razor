@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
+@implements IDisposable
 
 <MudThemeProvider Theme="TimeTracker.Web.Shared.Theme.DzkTheme.Instance" />
 <MudPopoverProvider />
@@ -10,9 +11,7 @@
     <MudAppBar Elevation="4" Color="Color.Primary" Dense="false">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
                        Edge="Edge.Start" OnClick="ToggleDrawer" />
-        <img src="/images/dzk-icon.png" alt="DZK"
-             style="height:32px; width:32px; border-radius:6px; margin-left:4px; margin-right:8px; object-fit:contain;" />
-        <MudText Typo="Typo.h6" Style="font-weight:500; letter-spacing:.0075em">TimeTracker</MudText>
+        <MudText Typo="Typo.h6" Style="font-weight:500; letter-spacing:.0075em">@PageTitle</MudText>
         <MudSpacer />
         <AuthorizeView>
             <Authorized>
@@ -23,7 +22,7 @@
         </AuthorizeView>
     </MudAppBar>
 
-    <MudDrawer @bind-Open="drawerOpen" Variant="DrawerVariant.Temporary"
+    <MudDrawer @bind-Open="drawerOpen" Variant="DrawerVariant.Persistent"
                Anchor="Anchor.Left" Elevation="16">
         <div style="display:flex; flex-direction:column; height:100%">
             <div style="padding:14px 16px; border-bottom:1px solid var(--mud-palette-divider); display:flex; align-items:center; gap:10px">
@@ -73,6 +72,42 @@
 @code {
     private bool drawerOpen = false;
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
+
+    private static readonly Dictionary<string, string> TitleMap = new()
+    {
+        { "",         "TimeTracker" },
+        { "entries",  "Time Entries" },
+        { "reports",  "Reports" },
+        { "projects", "Projects" },
+        { "clients",  "Clients" },
+    };
+
+    private string PageTitle
+    {
+        get
+        {
+            var path = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/').Split('?')[0];
+            if (TitleMap.TryGetValue(path, out var t)) return t;
+            if (path.StartsWith("projects/")) return "Project";
+            if (path.StartsWith("clients/")) return "Client";
+            return "TimeTracker";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
 
     private static string GetInitials(string? name)
     {
