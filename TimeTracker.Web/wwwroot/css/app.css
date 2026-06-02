@@ -174,11 +174,27 @@ html, body, #app {
     background: var(--mud-palette-primary);
 }
 
-/* ── MudNavMenu — active link matches mockup (primary tint bg, primary text) ── */
+/* ── MudNavMenu — nav link styles matching mockup ── */
+.mud-nav-link {
+    border-radius: 6px !important;
+    margin: 2px 8px !important;
+    font-weight: 600 !important;
+    min-height: 46px;
+}
+
+.mud-nav-link:hover {
+    background: rgba(0,0,0,0.06) !important;
+    border-radius: 6px !important;
+}
+
 .mud-nav-link.active {
     background: rgba(0,104,205,0.10) !important;
     color: var(--mud-palette-primary) !important;
-    border-radius: 6px;
+    border-radius: 6px !important;
+}
+
+.mud-nav-link.active .mud-icon-root {
+    color: var(--mud-palette-primary) !important;
 }
 
 /* ── Entry sheet — bottom sheet ── */
