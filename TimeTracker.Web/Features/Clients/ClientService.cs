@@ -8,16 +8,17 @@ namespace TimeTracker.Web.Features.Clients;
 
 public class ClientService : IClientService
 {
-    private readonly TimeTrackerDataContext _context;
+    private readonly IDbContextFactory<TimeTrackerDataContext> _contextFactory;
 
-    public ClientService(TimeTrackerDataContext context)
+    public ClientService(IDbContextFactory<TimeTrackerDataContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<List<ClientResponse>> GetAllClients(bool includeArchived = false)
     {
-        var query = _context.Clients
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var query = ctx.Clients
             .Where(c => !c.IsDeleted)
             .Where(c => includeArchived || !c.IsArchived)
             .OrderBy(c => c.IsArchived)
@@ -27,12 +28,14 @@ public class ClientService : IClientService
 
     public async Task<ClientResponse?> GetClientById(int id)
     {
-        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
         return client?.Adapt<ClientResponse>();
     }
 
     public async Task CreateClient(ClientCreateRequest request)
     {
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
         var client = new Client
         {
             Name = request.Name,
@@ -41,13 +44,14 @@ public class ClientService : IClientService
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone
         };
-        _context.Clients.Add(client);
-        await _context.SaveChangesAsync();
+        ctx.Clients.Add(client);
+        await ctx.SaveChangesAsync();
     }
 
     public async Task UpdateClient(int id, ClientUpdateRequest request)
     {
-        var client = await _context.Clients.FindAsync(id)
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var client = await ctx.Clients.FindAsync(id)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
         client.Name = request.Name;
@@ -56,40 +60,43 @@ public class ClientService : IClientService
         client.ContactEmail = request.ContactEmail;
         client.ContactPhone = request.ContactPhone;
         client.DateUpdated = DateTime.Now;
-        await _context.SaveChangesAsync();
+        await ctx.SaveChangesAsync();
     }
 
     public async Task ArchiveClient(int id)
     {
-        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
         client.IsArchived = true;
         client.DateUpdated = DateTime.Now;
-        await _context.SaveChangesAsync();
+        await ctx.SaveChangesAsync();
     }
 
     public async Task UnarchiveClient(int id)
     {
-        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
         client.IsArchived = false;
         client.DateUpdated = DateTime.Now;
-        await _context.SaveChangesAsync();
+        await ctx.SaveChangesAsync();
     }
 
     public async Task DeleteClient(int id)
     {
-        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
-        var hasProjects = await _context.Projects.AnyAsync(p => p.ClientId == id && !p.IsDeleted);
+        var hasProjects = await ctx.Projects.AnyAsync(p => p.ClientId == id && !p.IsDeleted);
         if (hasProjects)
             throw new InvalidOperationException("Cannot delete a client that has active projects.");
 
         client.IsDeleted = true;
         client.DateDeleted = DateTime.Now;
-        await _context.SaveChangesAsync();
+        await ctx.SaveChangesAsync();
     }
 }

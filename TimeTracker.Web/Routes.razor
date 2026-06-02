@@ -1,3 +1,5 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
 <Router AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Shared.Layout.MainLayout)">

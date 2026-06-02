@@ -54,10 +54,6 @@ public class ProjectMappingConfig : IRegister
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<Project, ProjectResponse>()
-            .Map(dest => dest.ClientName, src => src.Client != null ? src.Client.Name : null)
-            .Map(dest => dest.HourlyRate, src => src.HourlyRate)
-            .Map(dest => dest.Description, src => src.ProjectDetails != null ? src.ProjectDetails.Description : null)
-            .Map(dest => dest.StartDate, src => src.ProjectDetails != null ? src.ProjectDetails.StartDate : null)
-            .Map(dest => dest.EndDate, src => src.ProjectDetails != null ? src.ProjectDetails.EndDate : null);
+            .Map(dest => dest.ClientName, src => src.Client != null ? src.Client.Name : null);
     }
 }

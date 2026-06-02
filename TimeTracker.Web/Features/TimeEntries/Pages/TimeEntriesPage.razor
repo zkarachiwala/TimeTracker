@@ -1,128 +1,230 @@
-@page "/timeentries"
-@rendermode InteractiveServer
+@page "/entries"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService
-@inject NavigationManager NavigationManager
 @attribute [Authorize]
 
-<PageTitle>Time Entries</PageTitle>
-<h3>Time Entries</h3>
+@using TimeTracker.Web.Features.TimeEntries.Components
 
-<TimeEntryTabs Current="currentFilter" OnTabChanged="HandleTabChanged" />
-<TimeEntryFilter FilterType="currentFilter"
-    Day="selectedDay" Month="selectedMonth" Year="selectedYear"
-    SelectedProjectId="selectedProjectId"
-    Projects="projects"
-    OnDateSelected="HandleDateSelected"
-    OnProjectSelected="HandleProjectSelected" />
+<PageTitle>Entries — TimeTracker</PageTitle>
 
-<QuickGrid ItemsProvider="timeEntriesProvider" Pagination="paginator">
-    <PropertyColumn Property="t => t.Start" />
-    <PropertyColumn Property="t => t.End" />
-    <PropertyColumn Property="t => GetDuration(t.Start, t.End)" Title="Duration" />
-    <PropertyColumn Property="t => t.Project.Name" Title="Project" />
-    <TemplateColumn>
-        <button class="block rounded-md bg-teal-600 px-2.5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
-            @onclick="() => NavigateToEdit(context.Id)">
-            Edit
+@* ── Filter tabs ── *@
+<div class="tt-filter-tabs">
+    @foreach (var (label, index) in new[] { ("Day", 0), ("Month", 1), ("Year", 2), ("Project", 3) })
+    {
+        var i = index;
+        <button class="tt-filter-tab @(activeTab == i ? "active" : "")"
+                @onclick="() => activeTab = i">
+            @label
         </button>
-    </TemplateColumn>
-</QuickGrid>
-<Paginator State="paginator" />
-
-<div class="flex justify-content-between items-end">
-    <MyButton AddMarginTop Text="Create Time Entry" OnClick="NavigateToCreate" />
-    <span class="font-bold text-lg">Total: @FormatDuration(totalDuration)</span>
+    }
 </div>
 
-@if (currentFilter == TimeEntryTabs.FilterType.Year)
-{
-    <TimeEntryYearChart Entries="yearEntries" Year="selectedYear" />
-}
+<div class="pa-4">
+    @* ── Range stepper or project picker ── *@
+    @if (activeTab == 3 && _providersReady)
+    {
+        <MudSelect T="int" Label="Project" @bind-Value="selectedProjectId"
+                   Variant="Variant.Outlined" Class="mb-4"
+                   AnchorOrigin="Origin.BottomCenter">
+            <MudSelectItem Value="0">All projects</MudSelectItem>
+            @foreach (var p in projects)
+            {
+                <MudSelectItem Value="p.Id">@p.Name</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else
+    {
+        <MudCard Class="mb-4" Style="border-radius:10px" Outlined="true">
+            <div class="d-flex align-center justify-space-between pa-1 pl-3">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="StepBack" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight:500; text-align:center; flex:1">
+                    @RangeLabel
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="StepForward" />
+            </div>
+        </MudCard>
+    }
+
+    @* ── Summary card ── *@
+    <MudCard Class="summary-card mb-4">
+        <MudCardContent Class="d-flex justify-space-between align-center" Style="padding:14px 18px">
+            <div>
+                <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,.7)">Total tracked</MudText>
+                <MudText Class="tabnum" Style="font-size:1.9rem; font-weight:300; color:#fff">
+                    @SummaryDisplay
+                </MudText>
+            </div>
+            <div class="d-flex flex-column align-end">
+                <MudText Typo="Typo.h6" Style="color:#fff">@filteredEntries.Count</MudText>
+                <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.7)">entries</MudText>
+            </div>
+        </MudCardContent>
+    </MudCard>
+
+    @* ── Grouped entries ── *@
+    @if (filteredEntries.Count == 0)
+    {
+        <div class="d-flex flex-column align-center py-12" style="color:var(--mud-palette-text-disabled)">
+            <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" />
+            <MudText Typo="Typo.body2" Class="mt-2">No entries in this range</MudText>
+        </div>
+    }
+    else
+    {
+        @foreach (var group in GroupedEntries)
+        {
+            <div class="mb-4">
+                @if (activeTab != 0)
+                {
+                    <div class="d-flex justify-space-between mb-1 px-1">
+                        <MudText Typo="Typo.subtitle2" Style="color:var(--mud-palette-text-secondary)">
+                            @group.Date.ToString("dddd")
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="font-weight:500; font-variant-numeric:tabular-nums">
+                            @GroupDuration(group.Entries)
+                        </MudText>
+                    </div>
+                }
+                <MudCard>
+                    <MudList T="string" Style="padding:4px 12px">
+                        @for (int i = 0; i < group.Entries.Count; i++)
+                        {
+                            var entry = group.Entries[i];
+                            <EntryRow Entry="entry" OnEdit="OpenEditSheet" />
+                            @if (i < group.Entries.Count - 1) { <MudDivider /> }
+                        }
+                    </MudList>
+                </MudCard>
+            </div>
+        }
+    }
+</div>
+
+<div class="bottom-nav-spacer"></div>
+
+@* ── FAB ── *@
+<div class="tt-fab">
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+            OnClick="OpenNewSheet" />
+</div>
+
+@if (sheetOpen) { <EntrySheet @bind-Open="sheetOpen" Entry="sheetEntry" OnSaved="LoadEntries" /> }
 
 @code {
-    private TimeEntryTabs.FilterType currentFilter = TimeEntryTabs.FilterType.Day;
-    private int selectedDay = DateTime.Now.Day;
-    private int selectedMonth = DateTime.Now.Month;
-    private int selectedYear = DateTime.Now.Year;
-    private int selectedProjectId;
-    private TimeSpan totalDuration;
-    private List<TimeEntryResponse> yearEntries = new();
-    private List<ProjectResponse> projects = new();
-    private PaginationState paginator = new() { ItemsPerPage = 5 };
-    private GridItemsProvider<TimeEntryResponse>? timeEntriesProvider;
+    private int activeTab = 0;
+    private DateTime cursor = DateTime.Today;
+    private int selectedProjectId = 0;
+    private List<TimeEntryResponse> allEntries = [];
+    private List<ProjectResponse> projects = [];
+    private bool sheetOpen;
+    private TimeEntryResponse? sheetEntry;
+    private bool _providersReady;
+
+    private List<TimeEntryResponse> filteredEntries => activeTab switch
+    {
+        0 => allEntries.Where(e => e.Start.Date == cursor.Date).OrderByDescending(e => e.Start).ToList(),
+        1 => allEntries.Where(e => e.Start.Month == cursor.Month && e.Start.Year == cursor.Year).OrderByDescending(e => e.Start).ToList(),
+        2 => allEntries.Where(e => e.Start.Year == cursor.Year).OrderByDescending(e => e.Start).ToList(),
+        _ => (selectedProjectId == 0
+            ? allEntries
+            : allEntries.Where(e => e.Project.Id == selectedProjectId)).OrderByDescending(e => e.Start).ToList()
+    };
+
+    private string RangeLabel => activeTab switch
+    {
+        0 => $"{DayName(cursor)}, {cursor:d MMM}",
+        1 => cursor.ToString("MMMM yyyy"),
+        _ => cursor.Year.ToString()
+    };
+
+    private string SummaryDisplay
+    {
+        get
+        {
+            var total = filteredEntries.Where(e => e.End.HasValue)
+                .Sum(e => (e.End!.Value - e.Start).TotalMinutes);
+            var h = (int)(total / 60);
+            var m = (int)(total % 60);
+            return $"{h}h {m}m";
+        }
+    }
+
+    private record EntryGroup(DateTime Date, List<TimeEntryResponse> Entries);
+
+    private List<EntryGroup> GroupedEntries
+    {
+        get
+        {
+            return filteredEntries
+                .GroupBy(e => e.Start.Date)
+                .OrderByDescending(g => g.Key)
+                .Select(g => new EntryGroup(g.Key, g.ToList()))
+                .ToList();
+        }
+    }
+
+    private static string GroupDuration(List<TimeEntryResponse> entries)
+    {
+        var total = (int)entries.Where(e => e.End.HasValue)
+            .Sum(e => (e.End!.Value - e.Start).TotalMinutes);
+        return $"{total / 60}h {total % 60}m";
+    }
+
+    private static string DayName(DateTime d) =>
+        d.Date == DateTime.Today ? "Today" :
+        d.Date == DateTime.Today.AddDays(-1) ? "Yesterday" :
+        d.DayOfWeek.ToString();
 
     protected override async Task OnInitializedAsync()
     {
         projects = await ProjectService.GetAllProjects();
-        InitProvider();
+        await LoadEntries();
     }
 
-    private void InitProvider()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        timeEntriesProvider = async req =>
+        if (firstRender) { _providersReady = true; StateHasChanged(); }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task LoadEntries()
+    {
+        allEntries = await TimeEntryService.GetAllTimeEntriesByYear(cursor.Year);
+    }
+
+    private async Task StepBack()
+    {
+        cursor = activeTab switch
         {
-            var count = req.Count ?? paginator.ItemsPerPage;
-            var wrapper = currentFilter switch
-            {
-                TimeEntryTabs.FilterType.Day =>
-                    await TimeEntryService.GetTimeEntriesByDay(selectedDay, selectedMonth, selectedYear, req.StartIndex, count),
-                TimeEntryTabs.FilterType.Month =>
-                    await TimeEntryService.GetTimeEntriesByMonth(selectedMonth, selectedYear, req.StartIndex, count),
-                TimeEntryTabs.FilterType.Year =>
-                    await TimeEntryService.GetTimeEntriesByYear(selectedYear, req.StartIndex, count),
-                TimeEntryTabs.FilterType.Project =>
-                    selectedProjectId <= 0
-                        ? await TimeEntryService.GetTimeEntries(req.StartIndex, count)
-                        : await TimeEntryService.GetTimeEntriesByProjectId(selectedProjectId, req.StartIndex, count),
-                _ => await TimeEntryService.GetTimeEntries(req.StartIndex, count)
-            };
-
-            totalDuration = wrapper.TotalDuration;
-
-            if (currentFilter == TimeEntryTabs.FilterType.Year)
-                yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(selectedYear);
-
-            return GridItemsProviderResult.From(wrapper.TimeEntries, wrapper.Count);
+            0 => cursor.AddDays(-1),
+            1 => cursor.AddMonths(-1),
+            _ => cursor.AddYears(-1)
         };
+        await LoadEntries();
     }
 
-    private async Task HandleTabChanged(TimeEntryTabs.FilterType type)
+    private async Task StepForward()
     {
-        currentFilter = type;
-        InitProvider();
-        await paginator.SetCurrentPageIndexAsync(0);
+        cursor = activeTab switch
+        {
+            0 => cursor.AddDays(1),
+            1 => cursor.AddMonths(1),
+            _ => cursor.AddYears(1)
+        };
+        await LoadEntries();
     }
 
-    private async Task HandleDateSelected((int Day, int Month, int Year) filter)
+    private void OpenNewSheet()
     {
-        selectedDay = filter.Day;
-        selectedMonth = filter.Month;
-        selectedYear = filter.Year;
-        InitProvider();
-        await paginator.SetCurrentPageIndexAsync(0);
+        sheetEntry = null;
+        sheetOpen = true;
     }
 
-    private async Task HandleProjectSelected(int projectId)
+    private void OpenEditSheet(TimeEntryResponse entry)
     {
-        selectedProjectId = projectId;
-        InitProvider();
-        await paginator.SetCurrentPageIndexAsync(0);
-    }
-
-    private void NavigateToCreate() => NavigationManager.NavigateTo("/timeentry");
-    private void NavigateToEdit(int id) => NavigationManager.NavigateTo($"/timeentry/{id}");
-
-    private static string GetDuration(DateTime start, DateTime? end)
-    {
-        if (end is null) return string.Empty;
-        var d = end.Value - start;
-        return $"{(int)d.TotalHours}h {d.Minutes}m";
-    }
-
-    private static string FormatDuration(TimeSpan duration)
-    {
-        var total = (int)duration.TotalMinutes;
-        return $"{total / 60}h {total % 60}m";
+        sheetEntry = entry;
+        sheetOpen = true;
     }
 }

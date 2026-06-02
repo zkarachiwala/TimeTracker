@@ -9,22 +9,22 @@ namespace TimeTracker.Web.Features.TimeEntries;
 
 public class TimeEntryService : ITimeEntryService
 {
-    private readonly TimeTrackerDataContext _context;
+    private readonly IDbContextFactory<TimeTrackerDataContext> _contextFactory;
     private readonly IUserContextService _userContextService;
 
-    public TimeEntryService(TimeTrackerDataContext context, IUserContextService userContextService)
+    public TimeEntryService(IDbContextFactory<TimeTrackerDataContext> contextFactory, IUserContextService userContextService)
     {
-        _context = context;
+        _contextFactory = contextFactory;
         _userContextService = userContextService;
     }
 
-    private string GetUserId() =>
-        _userContextService.GetUserId() ?? throw new EntityNotFoundException("User not found.");
+    private async Task<string> GetUserIdAsync() =>
+        await _userContextService.GetUserIdAsync() ?? throw new EntityNotFoundException("User not found.");
 
-    private IQueryable<TimeEntry> UserEntries(string userId) =>
-        _context.TimeEntries
+    private static IQueryable<TimeEntry> UserEntries(TimeTrackerDataContext ctx, string userId) =>
+        ctx.TimeEntries
             .Include(te => te.Project)
-            .ThenInclude(p => p!.ProjectDetails)
+
             .Where(te => te.UserId == userId && !te.Project.IsDeleted);
 
     private static TimeSpan CalculateTotalDuration(IEnumerable<TimeEntry> entries) =>
@@ -33,100 +33,143 @@ public class TimeEntryService : ITimeEntryService
 
     public async Task<TimeEntryResponse?> GetTimeEntryById(int id)
     {
-        var userId = GetUserId();
-        var entry = await _context.TimeEntries
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var entry = await ctx.TimeEntries
             .Include(te => te.Project)
-            .ThenInclude(p => p!.ProjectDetails)
+
             .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId);
         return entry?.Adapt<TimeEntryResponse>();
     }
 
     public async Task CreateTimeEntry(TimeEntryCreateRequest request)
     {
-        var userId = GetUserId();
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
         var entry = new TimeEntry
         {
             ProjectId = request.ProjectId,
             Start = request.Start,
             End = request.End,
+            Note = request.Note,
             UserId = userId,
             DateCreated = DateTime.Now
         };
-        _context.TimeEntries.Add(entry);
-        await _context.SaveChangesAsync();
+        ctx.TimeEntries.Add(entry);
+        await ctx.SaveChangesAsync();
     }
 
     public async Task UpdateTimeEntry(int id, TimeEntryUpdateRequest request)
     {
-        var userId = GetUserId();
-        var entry = await _context.TimeEntries
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var entry = await ctx.TimeEntries
             .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId)
             ?? throw new EntityNotFoundException($"Time entry {id} not found.");
 
         entry.ProjectId = request.ProjectId;
         entry.Start = request.Start;
         entry.End = request.End;
+        entry.Note = request.Note;
+        entry.InvoiceReference = request.InvoiceReference;
+        entry.InvoicedAt = request.InvoicedAt;
         entry.DateUpdated = DateTime.Now;
-        await _context.SaveChangesAsync();
+        await ctx.SaveChangesAsync();
     }
 
     public async Task DeleteTimeEntry(int id)
     {
-        var userId = GetUserId();
-        var entry = await _context.TimeEntries
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var entry = await ctx.TimeEntries
             .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId)
             ?? throw new EntityNotFoundException($"Time entry {id} not found.");
 
-        _context.TimeEntries.Remove(entry);
-        await _context.SaveChangesAsync();
+        ctx.TimeEntries.Remove(entry);
+        await ctx.SaveChangesAsync();
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit)
     {
-        var userId = GetUserId();
-        var query = UserEntries(userId);
-        return await ToWrapper(query, skip, limit);
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        return await ToWrapper(UserEntries(ctx, userId), skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByProjectId(int projectId, int skip, int limit)
     {
-        var userId = GetUserId();
-        var query = UserEntries(userId).Where(te => te.ProjectId == projectId);
-        return await ToWrapper(query, skip, limit);
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        return await ToWrapper(UserEntries(ctx, userId).Where(te => te.ProjectId == projectId), skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByYear(int year, int skip, int limit)
     {
-        var userId = GetUserId();
-        var query = UserEntries(userId).Where(te => te.Start.Year == year);
-        return await ToWrapper(query, skip, limit);
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        return await ToWrapper(UserEntries(ctx, userId).Where(te => te.Start.Year == year), skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByMonth(int month, int year, int skip, int limit)
     {
-        var userId = GetUserId();
-        var query = UserEntries(userId).Where(te => te.Start.Year == year && te.Start.Month == month);
-        return await ToWrapper(query, skip, limit);
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        return await ToWrapper(UserEntries(ctx, userId).Where(te => te.Start.Year == year && te.Start.Month == month), skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByDay(int day, int month, int year, int skip, int limit)
     {
-        var userId = GetUserId();
-        var query = UserEntries(userId)
-            .Where(te => te.Start.Year == year && te.Start.Month == month && te.Start.Day == day);
-        return await ToWrapper(query, skip, limit);
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        return await ToWrapper(UserEntries(ctx, userId)
+            .Where(te => te.Start.Year == year && te.Start.Month == month && te.Start.Day == day), skip, limit);
     }
 
     public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year)
     {
-        var userId = GetUserId();
-        var entries = await UserEntries(userId)
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var entries = await UserEntries(ctx, userId)
             .Where(te => te.Start.Year == year)
             .ToListAsync();
         return entries.Adapt<List<TimeEntryResponse>>();
     }
 
-    private async Task<TimeEntryResponseWrapper> ToWrapper(IQueryable<TimeEntry> query, int skip, int limit)
+    public async Task<TimeEntryResponse?> GetActiveTimeEntry()
+    {
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var entry = await ctx.TimeEntries
+            .Include(te => te.Project)
+
+            .FirstOrDefaultAsync(te => te.UserId == userId && te.End == null && !te.Project.IsDeleted);
+        return entry?.Adapt<TimeEntryResponse>();
+    }
+
+    public async Task<List<TimeEntryResponse>> GetTodaysTimeEntries()
+    {
+        var userId = await GetUserIdAsync();
+        var today = DateTime.Today;
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var entries = await UserEntries(ctx, userId)
+            .Where(te => te.Start.Date == today)
+            .OrderByDescending(te => te.Start)
+            .ToListAsync();
+        return entries.Adapt<List<TimeEntryResponse>>();
+    }
+
+    public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId)
+    {
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        var entries = await UserEntries(ctx, userId)
+            .Where(te => te.ProjectId == projectId)
+            .OrderByDescending(te => te.Start)
+            .ToListAsync();
+        return entries.Adapt<List<TimeEntryResponse>>();
+    }
+
+    private static async Task<TimeEntryResponseWrapper> ToWrapper(IQueryable<TimeEntry> query, int skip, int limit)
     {
         var all = await query.ToListAsync();
         var paged = all.Skip(skip).Take(limit).Adapt<List<TimeEntryResponse>>();

@@ -6,7 +6,9 @@ public class Project : SoftDeleteableEntity
     public int? ClientId { get; set; }
     public Client? Client { get; set; }
     public decimal? HourlyRate { get; set; }
+    public string? Description { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
     public List<TimeEntry>? TimeEntries { get; set; } = [];
-    public ProjectDetails? ProjectDetails { get; set; }
     public List<ProjectUser> ProjectUsers { get; set; } = [];
 }

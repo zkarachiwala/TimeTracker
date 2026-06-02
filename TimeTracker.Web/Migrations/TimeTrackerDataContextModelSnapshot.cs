@@ -91,6 +91,12 @@ namespace TimeTracker.Web.Migrations
                     b.Property<DateTime?>("DateUpdated")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal?>("HourlyRate")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -102,39 +108,14 @@ namespace TimeTracker.Web.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
-
-                    b.ToTable("Projects", "app");
-                });
-
-            modelBuilder.Entity("TimeTracker.Shared.Entities.ProjectDetails", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProjectId")
-                        .IsUnique();
+                    b.HasIndex("ClientId");
 
-                    b.ToTable("ProjectDetails", "app");
+                    b.ToTable("Projects", "app");
                 });
 
             modelBuilder.Entity("TimeTracker.Shared.Entities.ProjectUser", b =>
@@ -176,6 +157,15 @@ namespace TimeTracker.Web.Migrations
                     b.Property<DateTime?>("End")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("InvoiceReference")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("InvoicedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("ProjectId")
                         .HasColumnType("int");
 
@@ -201,17 +191,6 @@ namespace TimeTracker.Web.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Client");
-                });
-
-            modelBuilder.Entity("TimeTracker.Shared.Entities.ProjectDetails", b =>
-                {
-                    b.HasOne("TimeTracker.Shared.Entities.Project", "Project")
-                        .WithOne("ProjectDetails")
-                        .HasForeignKey("TimeTracker.Shared.Entities.ProjectDetails", "ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("TimeTracker.Shared.Entities.ProjectUser", b =>
@@ -241,8 +220,6 @@ namespace TimeTracker.Web.Migrations
 
             modelBuilder.Entity("TimeTracker.Shared.Entities.Project", b =>
                 {
-                    b.Navigation("ProjectDetails");
-
                     b.Navigation("ProjectUsers");
 
                     b.Navigation("TimeEntries");

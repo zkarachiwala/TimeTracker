@@ -1,4 +1,5 @@
 using System.Reflection;
+using MudBlazor.Services;
 using TimeTracker.Web;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Scalar.AspNetCore;
 using TimeTracker.Web.Data;
+using TimeTracker.Web.Dev;
 using TimeTracker.Web.Features.Auth;
 using TimeTracker.Web.Features.Clients;
 using TimeTracker.Web.Features.Projects;
@@ -18,13 +20,21 @@ var builder = WebApplication.CreateBuilder(args);
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
+builder.Services.AddMudServices(config =>
+{
+    // MudPopoverProvider IS in MainLayout. The default check fires too early
+    // in Blazor 9 per-page InteractiveServer mode (race between provider
+    // registration and component initialization). Disable the eager check.
+    config.PopoverOptions.CheckForPopoverProvider = false;
+});
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
-builder.Services.AddDbContext<TimeTrackerDataContext>(o => o.UseSqlServer(timeTrackerConnection));
+builder.Services.AddDbContextFactory<TimeTrackerDataContext>(o => o.UseSqlServer(timeTrackerConnection));
 builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityConnection));
 
 builder.Services.AddIdentity<User, IdentityRole>(options =>
@@ -68,6 +78,26 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    app.MapPost("/api/dev/seed", async (
+        IDbContextFactory<TimeTrackerDataContext> ctxFactory,
+        UserManager<User> userManager) =>
+    {
+        var result = await DevDataSeeder.SeedAsync(ctxFactory, userManager);
+        return Results.Ok(result);
+    }).AllowAnonymous();
+
+    app.MapPost("/api/dev/clear", async (
+        IDbContextFactory<TimeTrackerDataContext> ctxFactory) =>
+    {
+        await using var ctx = await ctxFactory.CreateDbContextAsync();
+        ctx.TimeEntries.RemoveRange(ctx.TimeEntries);
+        ctx.ProjectUsers.RemoveRange(ctx.ProjectUsers);
+        ctx.Projects.RemoveRange(ctx.Projects);
+        ctx.Clients.RemoveRange(ctx.Clients);
+        await ctx.SaveChangesAsync();
+        return Results.Ok("Cleared all time entries, projects and clients.");
+    }).AllowAnonymous();
 }
 
 app.UseHttpsRedirection();

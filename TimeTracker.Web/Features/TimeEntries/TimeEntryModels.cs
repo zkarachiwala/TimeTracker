@@ -8,7 +8,10 @@ public record TimeEntryResponse(
     int Id,
     ProjectSummary Project,
     DateTime Start,
-    DateTime? End
+    DateTime? End,
+    string? Note,
+    string? InvoiceReference,
+    DateTime? InvoicedAt
 );
 
 public record ProjectSummary(int Id, string Name);
@@ -19,6 +22,7 @@ public class TimeEntryRequest
     public int ProjectId { get; set; }
     public DateTime Start { get; set; } = DateTime.Now;
     public DateTime? End { get; set; }
+    public string? Note { get; set; }
 }
 
 public class TimeEntryCreateRequest
@@ -26,6 +30,7 @@ public class TimeEntryCreateRequest
     public int ProjectId { get; set; }
     public DateTime Start { get; set; }
     public DateTime? End { get; set; }
+    public string? Note { get; set; }
     public string UserId { get; set; } = string.Empty;
 }
 
@@ -34,6 +39,9 @@ public class TimeEntryUpdateRequest
     public int? ProjectId { get; set; }
     public DateTime Start { get; set; }
     public DateTime? End { get; set; }
+    public string? Note { get; set; }
+    public string? InvoiceReference { get; set; }
+    public DateTime? InvoicedAt { get; set; }
 }
 
 public class TimeEntryResponseWrapper

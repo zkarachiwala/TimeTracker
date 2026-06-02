@@ -62,6 +62,10 @@ API docs (dev only): `https://localhost:7006/scalar/v1`
 - [Architecture](docs/architecture.md) — current and future state, tech decisions
 - [Roadmap](docs/roadmap.md) — phased implementation plan
 
+## Design mockup
+
+An interactive HTML mockup of the full app is in the [`mockup/`](mockup/) folder.  Open [`mockup/TimeTracker App.html`](mockup/TimeTracker%20App.html) in a browser to explore the intended UI — phone viewport shows the mobile layout, and the [Mockups wrapper](mockup/TimeTracker%20Mockups.html) shows both mobile and desktop side-by-side.
+
 ## Credits
 
 This project started as a hands-on exercise following the **[Web API, Blazor & Blazor WebAssembly Masterclass](https://dotnetwebacademy.com/courses/web-api-blazor-blazor-webassembly-masterclass)** course by .NET Web Academy. The architecture has since been significantly evolved — Blazor SSR, Vertical Slice Architecture, Google OAuth, and a number of feature additions (most of which I learned via this academy or via [Patrick God's YouTube channel](https://www.youtube.com/@PatrickGod) — but the original course provided the foundation.  I highly recommend the .NET Web Academy and Patrick's YouTube channel.
