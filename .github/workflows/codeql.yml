@@ -22,12 +22,6 @@ on:
       - '**/*.css'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - '**/*.cs'
-      - '**/*.razor'
-      - '**/*.csproj'
-      - '**/*.sln'
-      - '**/*.css'
   schedule:
     - cron: '16 6 * * 6'
 
