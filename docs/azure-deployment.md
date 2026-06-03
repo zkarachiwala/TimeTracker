@@ -1,44 +1,75 @@
 # Azure Deployment Setup
 
 One-time steps to provision and wire up the Azure resources for TimeTracker.
-After this guide is complete, every push to `main` that passes CI will deploy automatically.
+After this guide is complete, every push to `main` that passes CI deploys automatically.
 
 ---
 
 ## Prerequisites
 
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed and logged in (`az login`)
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed
 - An Azure subscription (free tier is sufficient)
-- A Google Cloud project with OAuth credentials (see `docs/google-oauth-setup.md`)
+- Google OAuth credentials (see `docs/google-oauth-setup.md`)
 
 ---
 
-## 1. Create the resource group
+## Step 0 — Log in and set your variables
+
+Run these once in your terminal. Every command below uses these variables — nothing else needs editing.
 
 ```bash
-az group create --name timetracker-rg --location australiaeast
+az login
+
+# Choose a globally unique name for the App Service
+# It becomes the URL: https://<APP>.azurewebsites.net
+APP=timetracker-zak
+
+# Your Google OAuth credentials (from Google Cloud Console)
+GOOGLE_CLIENT_ID=<paste-here>
+GOOGLE_CLIENT_SECRET=<paste-here>
+
+# Email address allowed to log in
+ALLOWED_EMAIL=zak@dzk.com.au
+
+# Fixed names — change only if you want something different
+RG=timetracker-rg
+SERVER=timetracker-sql
+DB=TimeTrackerDb
+PLAN=timetracker-plan
+LOCATION=australiaeast
+
+# Derived — do not edit
+ADMIN_EMAIL=$(az ad signed-in-user show --query mail -o tsv)
+ADMIN_OID=$(az ad signed-in-user show --query id -o tsv)
+CONN="Server=${SERVER}.database.windows.net;Database=${DB};Authentication=Active Directory Managed Identity;Encrypt=True"
 ```
 
 ---
 
-## 2. Create Azure SQL Database (free offer)
+## Step 1 — Resource group
 
 ```bash
-# Create the logical server
+az group create --name $RG --location $LOCATION
+```
+
+---
+
+## Step 2 — Azure SQL Database (free offer)
+
+```bash
 az sql server create \
-  --resource-group timetracker-rg \
-  --name timetracker-sql \
-  --location australiaeast \
+  --resource-group $RG \
+  --name $SERVER \
+  --location $LOCATION \
   --enable-ad-only-auth \
   --external-admin-principal-type User \
-  --external-admin-name <your-azure-ad-email> \
-  --external-admin-sid <your-azure-ad-object-id>
+  --external-admin-name $ADMIN_EMAIL \
+  --external-admin-sid $ADMIN_OID
 
-# Create the free-tier database (32 GB, automatic backups)
 az sql db create \
-  --resource-group timetracker-rg \
-  --server timetracker-sql \
-  --name TimeTrackerDb \
+  --resource-group $RG \
+  --server $SERVER \
+  --name $DB \
   --edition GeneralPurpose \
   --compute-model Serverless \
   --family Gen5 \
@@ -46,88 +77,78 @@ az sql db create \
   --use-free-limit \
   --free-limit-exhaustion-behavior AutoPause
 
-# Allow Azure services to reach the server (App Service uses this)
 az sql server firewall-rule create \
-  --resource-group timetracker-rg \
-  --server timetracker-sql \
+  --resource-group $RG \
+  --server $SERVER \
   --name AllowAzureServices \
   --start-ip-address 0.0.0.0 \
   --end-ip-address 0.0.0.0
 ```
 
-> **Note:** `--enable-ad-only-auth` disables SQL username/password authentication entirely.
-> Only Azure AD / Managed Identity accounts can connect.
+`--enable-ad-only-auth` disables SQL username/password login entirely. Only Azure AD / Managed Identity accounts can connect.
 
 ---
 
-## 3. Create the App Service (F1 free plan)
+## Step 3 — App Service (F1 free plan)
 
 ```bash
-# Create the free App Service plan
 az appservice plan create \
-  --resource-group timetracker-rg \
-  --name timetracker-plan \
+  --resource-group $RG \
+  --name $PLAN \
   --sku F1 \
   --is-linux
 
-# Create the web app (.NET 10)
 az webapp create \
-  --resource-group timetracker-rg \
-  --plan timetracker-plan \
-  --name <your-app-name> \
+  --resource-group $RG \
+  --plan $PLAN \
+  --name $APP \
   --runtime "DOTNETCORE:10.0"
 ```
 
-Replace `<your-app-name>` with a globally unique name (e.g. `timetracker-zak`).
-This becomes the default URL: `https://<your-app-name>.azurewebsites.net`.
-
 ---
 
-## 4. Enable system-assigned Managed Identity
+## Step 4 — Enable Managed Identity
 
 ```bash
 az webapp identity assign \
-  --resource-group timetracker-rg \
-  --name <your-app-name>
-```
+  --resource-group $RG \
+  --name $APP
 
-Copy the `principalId` from the output — you need it in the next step.
+# Capture the identity's object ID for the next step
+MI_OID=$(az webapp identity show \
+  --resource-group $RG \
+  --name $APP \
+  --query principalId -o tsv)
+```
 
 ---
 
-## 5. Grant the Managed Identity access to Azure SQL
+## Step 5 — Grant the Managed Identity access to SQL
+
+This must be run by your Azure AD admin account (which you logged in as in Step 0).
 
 ```bash
-# Connect to the database as your AD admin and run:
 az sql db show-connection-string \
-  --server timetracker-sql \
-  --name TimeTrackerDb \
+  --server $SERVER \
+  --name $DB \
   --client ado.net
 ```
 
-Then connect to the database (e.g. via Azure Data Studio with your AD account) and run:
+Then open **Azure Data Studio** (or any SQL client that supports Azure AD login), connect to `${SERVER}.database.windows.net` with your Azure AD account, and run:
 
 ```sql
-CREATE USER [<your-app-name>] FROM EXTERNAL PROVIDER;
-ALTER ROLE db_datareader ADD MEMBER [<your-app-name>];
-ALTER ROLE db_datawriter ADD MEMBER [<your-app-name>];
+CREATE USER [<APP>] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [<APP>];
+ALTER ROLE db_datawriter ADD MEMBER [<APP>];
 ```
 
-Replace `<your-app-name>` with your App Service name — Azure creates the SQL user from the Managed Identity automatically.
+Replace `<APP>` with the value you set for `APP` above (e.g. `timetracker-zak`).
 
 ---
 
-## 6. Configure App Service environment variables
-
-Set all configuration values in App Service. These override `appsettings.json` at runtime.
+## Step 6 — Configure App Service
 
 ```bash
-APP=<your-app-name>
-RG=timetracker-rg
-SERVER=timetracker-sql
-
-CONN="Server=${SERVER}.database.windows.net;Database=TimeTrackerDb;Authentication=Active Directory Managed Identity;Encrypt=True"
-
 az webapp config connection-string set \
   --resource-group $RG \
   --name $APP \
@@ -140,26 +161,22 @@ az webapp config appsettings set \
   --resource-group $RG \
   --name $APP \
   --settings \
-    "Authentication__Google__ClientId=<google-client-id>" \
-    "Authentication__Google__ClientSecret=<google-client-secret>" \
-    "Authentication__AllowedEmails__0=zak@dzk.com.au" \
+    "Authentication__Google__ClientId=${GOOGLE_CLIENT_ID}" \
+    "Authentication__Google__ClientSecret=${GOOGLE_CLIENT_SECRET}" \
+    "Authentication__AllowedEmails__0=${ALLOWED_EMAIL}" \
     "ASPNETCORE_ENVIRONMENT=Production"
 ```
 
-The connection string uses `Authentication=Active Directory Managed Identity` — no username or password anywhere.
-
 ---
 
-## 7. Add GitHub Actions secrets and variables
+## Step 7 — Add GitHub Actions secrets and variables
 
-In your GitHub repository go to **Settings → Secrets and variables → Actions**.
-
-### Download the publish profile
+### Get the publish profile
 
 ```bash
 az webapp deployment list-publishing-profiles \
-  --resource-group timetracker-rg \
-  --name <your-app-name> \
+  --resource-group $RG \
+  --name $APP \
   --xml
 ```
 
@@ -167,21 +184,22 @@ Copy the entire XML output.
 
 ### Add to GitHub
 
+In your repository go to **Settings → Secrets and variables → Actions** and add:
+
 | Type | Name | Value |
 |------|------|-------|
-| Secret | `AZURE_WEBAPP_PUBLISH_PROFILE` | The publish profile XML |
-| Variable | `AZURE_WEBAPP_NAME` | `<your-app-name>` |
+| Secret | `AZURE_WEBAPP_PUBLISH_PROFILE` | The XML from the command above |
+| Variable | `AZURE_WEBAPP_NAME` | The value of `APP` (e.g. `timetracker-zak`) |
 
 ---
 
-## 8. First deployment
+## Step 8 — First deployment
 
-Push any commit to `main` (or re-run the CI workflow). Once CI passes, the Deploy workflow fires automatically and deploys to Azure.
+Merge PR #44 (or push any commit to `main`). Once CI passes, the Deploy workflow fires and deploys the app. Migrations run automatically on startup.
 
-The app applies EF Core migrations on startup — no manual `dotnet ef database update` needed.
+Check progress at: `https://github.com/zkarachiwala/TimeTracker/actions`
 
-Check the deployment log at:
-`https://github.com/zkarachiwala/TimeTracker/actions`
+Your app will be live at: `https://${APP}.azurewebsites.net`
 
 ---
 
