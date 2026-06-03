@@ -10,7 +10,12 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 
 | Date | Change | PR |
 |------|--------|----|
+| 2026-06 | Decision: migrate hosting from App Service F1 → Azure Container Apps; migrate UI from Blazor Interactive Server → Blazor WASM | — |
+| 2026-06 | Deployed to Azure App Service F1 + Azure SQL; GitHub Actions OIDC push-to-deploy | #43–45 |
+| 2026-06 | Security hardening: CSP, HSTS, rate limiting on auth endpoints, 82 tests | #42 |
+| 2026-05 | MudBlazor UI uplift; replaced Tailwind + Radzen + QuickGrid | #38 |
 | 2026-05 | Added `Clients` table; client CRUD feature; project–client FK; 12 new tests (51 total) | #29 |
+| 2026-05 | Google OAuth; removed username/password login | #28 |
 | 2026-05 | Renamed `TimeTracker.API` → `TimeTracker.Web` to align with documentation | #26 |
 | 2026-05 | Added `TimeTracker.Tests` — 31 service integration tests (EF InMemory); CI runs `dotnet test` on every PR | #25 |
 | 2026-05 | Migrated to Blazor SSR + Vertical Slice Architecture; removed `TimeTracker.Client` | #25 |
@@ -47,7 +52,8 @@ TimeTracker.Web/
 ### Runtime
 
 - **.NET 10**
-- Single process: Blazor SSR serves pages server-side; REST API endpoints on the same host
+- Single process: Blazor Interactive Server serves pages via SignalR; REST API endpoints on the same host
+- Deployed to **Azure App Service F1** with **Azure SQL Database** (free offer)
 - Runs at `https://localhost:7006` (dev). API docs at `/scalar/v1` (dev only).
 
 ### Data layer
@@ -84,17 +90,17 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 
 ### Frontend
 
-**Blazor SSR** with:
-- **Radzen.Blazor** — year-view chart (interactive server component)
-- **Tailwind CSS** — utility styling
-- **Microsoft.AspNetCore.Components.QuickGrid** — paginated data tables
+**Blazor Interactive Server** (`InteractiveServerRenderMode`) with **MudBlazor** component library. All pages run over a persistent SignalR WebSocket connection.
 
 ### Infrastructure (current)
 
-- **Hosting:** Local only — not yet deployed
-- **Database:** SQL Server in Docker (port 1435)
-- **CI:** GitHub Actions — `dotnet test` + CodeQL on every push/PR to `main`
-- **Tests:** 51 service integration tests in `TimeTracker.Tests` (EF InMemory, no DB required)
+| Concern | Solution | Cost |
+|---------|----------|------|
+| Hosting | Azure App Service F1 | Free (60 CPU min/day, no custom domain) |
+| Database | Azure SQL Database free offer | Free (100K vCore-sec/mo, 32 GB, automated backups) |
+| Auth | Google OAuth 2.0 via ASP.NET Identity | Free |
+| CI/CD | GitHub Actions — OIDC push-to-deploy | Free |
+| Tests | 82 service integration tests (EF InMemory) | — |
 
 ---
 
@@ -186,39 +192,69 @@ erDiagram
 
 ---
 
-## Future State
+## Migration decisions
 
-### Goals
+### Why we moved away from App Service F1
 
-- Zero-cost 24x7 hosting on Azure
-- Google OAuth (Gmail as login identity)
-- Mobile-responsive unified UI (MudBlazor)
-- Security best practices throughout
+App Service F1 was the original deployment target but has two hard blockers:
 
-### Target architecture
+- **No custom domain support** — binding `timetracker.dzk.com.au` requires B1 or higher (~$13/month). F1 only serves traffic on `*.azurewebsites.net`.
+- **No managed SSL on custom domains** — follows from the above.
+
+Upgrading to B1 introduces a recurring cost with no hard spending cap.
+
+**Decision: migrate to Azure Container Apps (Consumption plan).** ACA provides native custom domain binding and free managed SSL (auto-renewed DigiCert certificates) at no additional cost. The consumption plan free grants (180K vCPU-seconds, 360K GiB-seconds, 2M requests per month) are **permanent monthly allocations** — not initial credits — and reset each calendar month. A personal timesheeting app running on a scale-to-zero container uses a fraction of these grants. Azure SQL stays on the same subscription, Managed Identity auth is unchanged, and the existing GitHub Actions OIDC workflow is reused with a container push step replacing the zip deploy.
+
+### Why we moved away from Blazor Interactive Server (SignalR)
+
+Blazor Interactive Server maintains a **persistent SignalR WebSocket connection** for the entire duration any page is open. For this app that means:
+
+- The server holds a circuit in memory while the user is doing actual client work — potentially for hours at a time
+- Keepalive pings traverse the connection continuously even when nothing is happening
+- An active WebSocket connection can prevent the container from scaling to zero
+- If the connection drops during a session the UI freezes, requiring a full page reload
+
+SignalR is the right tool for genuinely real-time collaborative applications. For a single-user timesheeting app where interactions are discrete button presses separated by long idle periods, it is unnecessary overhead.
+
+**Decision: migrate to Blazor WebAssembly.** The .NET runtime executes in the browser. The server becomes a thin stateless API — it wakes on an HTTP request, responds, and returns to sleep. No persistent connection is held. The timer's elapsed display (`DateTime.Now - Start`) has always been client-side arithmetic; the `Start` timestamp is written to the database on first click and survives any server sleep. Cold starts only affect the discrete API calls (start timer, stop timer, load data) — never the working session in between.
+
+Cookie-based auth (`SameSite=Strict`) works without modification because the WASM static files and the API endpoints are served from the **same host** — no cross-origin split, no proxy required.
+
+---
+
+## Target architecture
 
 ```
-Browser
-  │
-  ▼
-Azure App Service F1 (free, fixed plan)
-  ├── ASP.NET Core + Blazor SSR
-  │     ├── Google OAuth ────────────► Google OAuth 2.0
-  │     ├── Cookie auth (server-side sessions)
-  │     ├── EF Core (SQL Server / Npgsql) ──► Azure SQL Database (free offer)
-  │     └── Blazor SSR pages (server-rendered, interactive where needed)
-  └── Automatic backups via Azure SQL (weekly full, daily differential, 5-min log)
+timetracker.dzk.com.au
+        │
+  Azure Container Apps (Consumption — free within monthly grants)
+        ├── /* ─────────────── Blazor WASM static files (wwwroot)
+        └── /api/* ──────────── Minimal API endpoints
+                │
+          Azure SQL Database (free offer — permanent, automated backups included)
 ```
+
+**Properties:**
+- $0 within free grants (permanent monthly allocations, not credits)
+- Custom domain + free managed SSL — natively supported, no reverse proxy
+- Scale to zero — server sleeps between requests, wakes in ~5–15s
+- No SignalR — server is stateless, no persistent connections
+- Automated DB backups — only free database option that includes this
+- Same Azure subscription — no cross-cloud boundaries, existing OIDC auth reused
 
 ### Target solution structure
 
 ```
 TimeTracker.sln
-├── TimeTracker.Web     — ASP.NET Core + Blazor SSR + Vertical Slice features
-└── TimeTracker.Shared  — EF Core entities only
+├── TimeTracker.Web      — ASP.NET Core host: static SSR pages + WASM islands + Minimal API
+├── TimeTracker.Showcase — Standalone Blazor WASM project (GitHub Pages portfolio)
+├── TimeTracker.Shared   — EF Core entities + DTOs + service interfaces
+└── TimeTracker.Tests    — xUnit service integration tests (EF InMemory)
 ```
 
-### Planned phases
+---
+
+## Completed phases
 
 #### Phase 4 — Google OAuth ✅
 
@@ -237,89 +273,77 @@ Add shared `Clients` table with default hourly rate; link projects to clients.
 - `Client` entity: `Name` (unique), `DefaultHourlyRate` (nullable, ex GST), `ContactName`, `ContactEmail`, `ContactPhone` (all nullable)
 - `Project.ClientId` nullable FK (SET NULL on client delete)
 - Clients shared across all users — no per-user scoping
-- Clients CRUD page + nav link (Admin only)
-- Project create/edit includes client dropdown
 - `IClientService` / `ClientService` / `ClientEndpoints` follow VSA pattern
 - 12 new service integration tests (51 total)
 
-#### Phase 6 — UI uplift: MudBlazor
+#### Phase 6 — MudBlazor UI uplift ✅
 
-Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-responsive by default.
+Replaced Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-responsive by default.
 
-- `MudLayout` + responsive `MudNavMenu` drawer (works on phone and desktop)
-- `MudDataGrid` replaces QuickGrid
-- `MudDialog`, `MudTextField`, `MudSelect`, `MudDatePicker` for forms
-- MudBlazor Snackbar replaces `Blazored.Toast`
-- `MudChart` evaluated as replacement for `Radzen.Blazor` year chart
-- Tailwind CSS removed
+#### Phase 7 — Security hardening ✅
 
-#### Phase 7 — Security hardening
+- `SecurityHeadersMiddleware`: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `X-XSS-Protection`
+- HSTS (365 days)
+- Rate limiting on auth endpoints (10 req/min fixed window)
+- Managed Identity DB auth — no credentials in connection string
+- 82 tests passing
 
-Applied before deployment. Covers DB connection security, app-level headers, and a pre-deployment secrets audit.
+#### Phase 8 — Azure deployment + CI/CD ✅
 
-**Database — Managed Identity (no passwords):**
-- App Service gets a system-assigned Managed Identity (free)
-- Azure SQL gets a contained user mapped to that identity with `db_datareader` + `db_datawriter` only — no DDL rights in prod
-- Production connection string has no `User Id` or `Password` — token exchange handled automatically by `Microsoft.Data.SqlClient` + `Azure.Identity`
-- Local dev continues to use SQL auth against Docker SQL Server
-- Azure SQL firewall restricted to Azure services only — no public internet access to port 1433
-- Migrations run via privileged identity during deployment, never by the running app
+- Azure SQL Database with free offer applied; Managed Identity auth
+- Azure App Service F1; HTTPS-only; system-assigned Managed Identity
+- GitHub Actions: OIDC login → publish → deploy on merge to `main`
+- Custom domain `timetracker.dzk.com.au` documented (blocked on F1 — resolved in Phase 9)
 
-**Application headers:**
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Content-Security-Policy`
-- HSTS in production
+---
 
-**Rate limiting:**
-- ASP.NET Core built-in rate limiting on `/auth/callback` and OAuth endpoints
+## Planned phases
 
-**Secrets audit:**
-- No secrets in `appsettings.json` or source control
-- Google OAuth credentials only in Azure App Service config
-- Production connection string credential-free
+#### Phase 9 — Migrate to Azure Container Apps
 
-#### Phase 8 — Azure deployment + CI/CD
+Replace App Service F1 with Azure Container Apps to unblock custom domain and SSL.
 
-**Azure SQL Database:**
-- Create with "Apply free offer" selected
-- 32GB data storage, automatic backups (weekly full, daily differential, 5-min transaction log)
-- Managed Identity auth — no credentials in connection string
+- Add `Dockerfile` to `TimeTracker.Web`
+- Update GitHub Actions workflow: build image → push to GHCR → deploy to ACA
+- Bind `timetracker.dzk.com.au` in ACA; provision free managed certificate
+- Remove App Service resources
+- Keep all other code unchanged — SSR + SignalR remains temporarily
 
-**Azure App Service:**
-- F1 (Free) plan — fixed plan, throttles at limit, never charges overage
-- .NET 10 runtime
-- System-assigned Managed Identity enabled
-- HTTPS-only enforced
-- Application Settings: connection string (credential-free), Google OAuth client ID + secret
-- Sleep after 20 min idle — cold start on next visit (~20–30s)
+#### Phase 10 — WASM islands (remove SignalR)
 
-**CI/CD:**
-- GitHub Actions: push to `main` → build → publish → deploy to App Service
-- Publish profile stored as GitHub secret
+Replace Blazor Interactive Server with static SSR + targeted WASM islands. Not a full WASM migration — the server still hosts and renders everything. Only components that genuinely require client-side interactivity use `@rendermode InteractiveWebAssembly`.
 
-### Key package changes
+- Remove global `InteractiveServerRenderMode` from `Routes.razor` — pages default to static SSR
+- Add `Microsoft.AspNetCore.Components.WebAssembly.Server`; create HTTP service implementations for WASM context
+- **WASM islands:** `TimerPage`, `EntrySheet`, `ProjectSheet`, `ClientSheet` — `.NET` runs in browser for these components only, no SignalR connection
+- **Static SSR:** all other pages — plain server-rendered HTML, no persistent connection
+- `TimeEntriesPage` tab/date navigation replaced with URL query params
+- Timer elapsed display (`DateTime.Now - Start`) ticks in browser; server only called on Start/Stop button press
+- Same origin throughout — `SameSite=Strict` cookies unchanged, Google OAuth unaffected
 
-| Package | Action | Phase | Status |
-|---------|--------|-------|--------|
-| `Microsoft.AspNetCore.Authentication.JwtBearer` | Remove | 3 | ✅ Done |
-| `Microsoft.AspNetCore.Components.WebAssembly.Server` | Remove | 3 | ✅ Done |
-| `Blazored.LocalStorage` | Remove | 3 | ✅ Done |
-| `Blazored.Toast` | Remove | 3 | ✅ Done |
-| `Microsoft.AspNetCore.Authentication.Google` | Add | 4 | Pending |
-| `Microsoft.AspNetCore.Components.QuickGrid` | Remove | 5 | Pending |
-| `Radzen.Blazor` | Remove | 5 | Pending |
-| `MudBlazor` | Add | 5 | Pending |
+#### Phase 10 — Playwright UX regression testing
 
-### Infrastructure (future)
+Establish a UI regression baseline against the deployed ACA app before the WASM migration. Golden paths covered: login, start/stop timer, log fixed block, add/edit/delete entries, project and client management, reports. Auth strategy (Google OAuth bypass vs storage state) to be resolved before implementation. See `plan.md` for open questions.
+
+#### Phase 12 — GitHub Pages showcase ⚠️ Needs detailed planning
+
+Add `TimeTracker.Showcase` standalone WASM project to the solution. Shares Razor components with the live app; runs entirely in the browser with mock data — no backend required. Deployed to GitHub Pages via a second job in the existing GitHub Actions workflow.
+
+Key questions to resolve in planning: component sharing strategy, mock data design, auth approach, page scope, and URL.
+
+See `plan.md` Phase 11 for the full list of open questions.
+
+---
+
+## Infrastructure (target)
 
 | Concern | Solution | Cost | Notes |
 |---------|----------|------|-------|
-| Hosting | Azure App Service F1 | Free | Sleeps after 20 min idle |
-| Database | Azure SQL Database free offer | Free | 32GB, automatic backups |
-| Auth provider | Google OAuth 2.0 | Free | Gmail as identity |
-| CI/CD | GitHub Actions | Free | Within monthly limits |
+| Hosting | Azure Container Apps (Consumption) | Free within grants | Custom domain + SSL native |
+| Database | Azure SQL Database free offer | Free | 32 GB, automated backups, no expiry |
+| Auth | Google OAuth 2.0 via ASP.NET Identity | Free | Cookie-based, SameSite=Strict |
+| Container registry | GitHub Container Registry (GHCR) | Free | 30-day notice before any billing change |
+| CI/CD | GitHub Actions — OIDC | Free | Within monthly limits |
 | API docs | Scalar UI (dev only) | — | `/scalar/v1` |
 
 ---
