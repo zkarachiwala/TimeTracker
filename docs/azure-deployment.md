@@ -169,33 +169,81 @@ az webapp config appsettings set \
 
 ---
 
-## Step 7 — Add GitHub Actions secrets and variables
+## Step 7 — Set up OIDC authentication for GitHub Actions
 
-### Get the publish profile
+The deploy workflow authenticates to Azure using OpenID Connect (OIDC) — no stored credentials anywhere.
+
+### 7a — Create the app registration and service principal
 
 ```bash
-az webapp deployment list-publishing-profiles \
-  --resource-group $RG \
-  --name $APP \
-  --xml
+# Create the app registration
+az ad app create --display-name "timetracker-github-deploy"
+
+# Capture both the client ID (appId) and the object ID (id) — you need both
+APP_ID=$(az ad app list --display-name "timetracker-github-deploy" --query "[0].appId" -o tsv)
+APP_OID=$(az ad app list --display-name "timetracker-github-deploy" --query "[0].id" -o tsv)
+
+# Create the service principal
+az ad sp create --id $APP_ID
+SP_OID=$(az ad sp show --id $APP_ID --query id -o tsv)
+
+# Capture tenant and subscription IDs
+TENANT=$(az account show --query tenantId -o tsv)
+SUB=$(az account show --query id -o tsv)
 ```
 
-Copy the entire XML output.
+### 7b — Assign the minimum required role
 
-### Add to GitHub
+`Website Contributor` scoped to just your App Service — no broader access needed:
+
+```bash
+az role assignment create \
+  --role "Website Contributor" \
+  --subscription $SUB \
+  --assignee-object-id $SP_OID \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Web/sites/$APP
+```
+
+### 7c — Create the federated credential
+
+This tells Azure to trust tokens issued by GitHub Actions for the `main` branch of your repo:
+
+```bash
+az ad app federated-credential create \
+  --id $APP_OID \
+  --parameters "{
+    \"name\": \"timetracker-main\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"repo:zkarachiwala/TimeTracker:ref:refs/heads/main\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+```
+
+### 7d — Print the values you need for GitHub
+
+```bash
+echo "AZURE_CLIENT_ID:       $APP_ID"
+echo "AZURE_TENANT_ID:       $TENANT"
+echo "AZURE_SUBSCRIPTION_ID: $SUB"
+```
+
+### 7e — Add to GitHub
 
 In your repository go to **Settings → Secrets and variables → Actions** and add:
 
 | Type | Name | Value |
 |------|------|-------|
-| Secret | `AZURE_WEBAPP_PUBLISH_PROFILE` | The XML from the command above |
+| Secret | `AZURE_CLIENT_ID` | From step 7d |
+| Secret | `AZURE_TENANT_ID` | From step 7d |
+| Secret | `AZURE_SUBSCRIPTION_ID` | From step 7d |
 | Variable | `AZURE_WEBAPP_NAME` | The value of `APP` (e.g. `timetracker-zak`) |
 
 ---
 
 ## Step 8 — First deployment
 
-Merge PR #44 (or push any commit to `main`). Once CI passes, the Deploy workflow fires and deploys the app. Migrations run automatically on startup.
+Push any commit to `main` (or re-run the Deploy workflow from the Actions tab). Once CI passes, the Deploy workflow authenticates via OIDC, publishes, and deploys. Migrations run automatically on startup.
 
 Check progress at: `https://github.com/zkarachiwala/TimeTracker/actions`
 
