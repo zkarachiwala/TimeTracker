@@ -203,6 +203,76 @@ Your app will be live at: `https://${APP}.azurewebsites.net`
 
 ---
 
+## Step 9 — Custom domain (timetracker.dzk.com.au)
+
+Do this after the app is deployed and responding at the default `.azurewebsites.net` URL.
+
+### 9a — Get the domain verification ID
+
+```bash
+az webapp show \
+  --resource-group $RG \
+  --name $APP \
+  --query customDomainVerificationId -o tsv
+```
+
+Copy the value — you need it for the DNS record below.
+
+### 9b — Add DNS records at your registrar
+
+Log in to wherever `dzk.com.au` is managed and add **both** records:
+
+| Type | Host | Value |
+|------|------|-------|
+| `CNAME` | `timetracker` | `${APP}.azurewebsites.net` |
+| `TXT` | `asuid.timetracker` | The verification ID from 9a |
+
+The CNAME points the subdomain at Azure. The TXT record proves you own the domain.
+
+DNS propagation can take a few minutes to a few hours. You can check with:
+
+```bash
+dig timetracker.dzk.com.au CNAME +short
+dig asuid.timetracker.dzk.com.au TXT +short
+```
+
+Both should return the expected values before continuing.
+
+### 9c — Add the custom domain to App Service
+
+```bash
+az webapp config hostname add \
+  --resource-group $RG \
+  --webapp-name $APP \
+  --hostname timetracker.dzk.com.au
+```
+
+### 9d — Create and bind a free SSL certificate
+
+```bash
+# Create a free App Service Managed Certificate
+az webapp config ssl create \
+  --resource-group $RG \
+  --name $APP \
+  --hostname timetracker.dzk.com.au
+
+# Get the certificate thumbprint
+THUMB=$(az webapp config ssl list \
+  --resource-group $RG \
+  --query "[?subjectName=='timetracker.dzk.com.au'].thumbprint" -o tsv)
+
+# Bind it
+az webapp config ssl bind \
+  --resource-group $RG \
+  --name $APP \
+  --certificate-thumbprint $THUMB \
+  --ssl-type SNI
+```
+
+The app is now reachable at `https://timetracker.dzk.com.au` with a valid certificate — no cost.
+
+---
+
 ## Free tier limits
 
 | Resource | Plan | Limit | When exceeded |
