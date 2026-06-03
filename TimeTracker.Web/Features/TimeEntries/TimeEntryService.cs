@@ -27,9 +27,6 @@ public class TimeEntryService : ITimeEntryService
 
             .Where(te => te.UserId == userId && !te.Project.IsDeleted);
 
-    private static TimeSpan CalculateTotalDuration(IEnumerable<TimeEntry> entries) =>
-        entries.Where(e => e.End.HasValue)
-               .Aggregate(TimeSpan.Zero, (acc, e) => acc + (e.End!.Value - e.Start));
 
     public async Task<TimeEntryResponse?> GetTimeEntryById(int id)
     {
@@ -92,37 +89,32 @@ public class TimeEntryService : ITimeEntryService
     public async Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        return await ToWrapper(UserEntries(ctx, userId), skip, limit);
+        return await ToWrapper((ctx, uid) => UserEntries(ctx, uid), userId, skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByProjectId(int projectId, int skip, int limit)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        return await ToWrapper(UserEntries(ctx, userId).Where(te => te.ProjectId == projectId), skip, limit);
+        return await ToWrapper((ctx, uid) => UserEntries(ctx, uid).Where(te => te.ProjectId == projectId), userId, skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByYear(int year, int skip, int limit)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        return await ToWrapper(UserEntries(ctx, userId).Where(te => te.Start.Year == year), skip, limit);
+        return await ToWrapper((ctx, uid) => UserEntries(ctx, uid).Where(te => te.Start.Year == year), userId, skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByMonth(int month, int year, int skip, int limit)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        return await ToWrapper(UserEntries(ctx, userId).Where(te => te.Start.Year == year && te.Start.Month == month), skip, limit);
+        return await ToWrapper((ctx, uid) => UserEntries(ctx, uid).Where(te => te.Start.Year == year && te.Start.Month == month), userId, skip, limit);
     }
 
     public async Task<TimeEntryResponseWrapper> GetTimeEntriesByDay(int day, int month, int year, int skip, int limit)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        return await ToWrapper(UserEntries(ctx, userId)
-            .Where(te => te.Start.Year == year && te.Start.Month == month && te.Start.Day == day), skip, limit);
+        return await ToWrapper((ctx, uid) => UserEntries(ctx, uid)
+            .Where(te => te.Start.Year == year && te.Start.Month == month && te.Start.Day == day), userId, skip, limit);
     }
 
     public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year)
@@ -169,15 +161,31 @@ public class TimeEntryService : ITimeEntryService
         return entries.Adapt<List<TimeEntryResponse>>();
     }
 
-    private static async Task<TimeEntryResponseWrapper> ToWrapper(IQueryable<TimeEntry> query, int skip, int limit)
+    private async Task<TimeEntryResponseWrapper> ToWrapper(
+        Func<TimeTrackerDataContext, string, IQueryable<TimeEntry>> queryBuilder,
+        string userId, int skip, int limit)
     {
-        var all = await query.ToListAsync();
-        var paged = all.Skip(skip).Take(limit).Adapt<List<TimeEntryResponse>>();
+        await using var dataCtx = await _contextFactory.CreateDbContextAsync();
+        await using var countCtx = await _contextFactory.CreateDbContextAsync();
+        await using var durationCtx = await _contextFactory.CreateDbContextAsync();
+
+        var dataTask = queryBuilder(dataCtx, userId).Skip(skip).Take(limit).ToListAsync();
+        var countTask = queryBuilder(countCtx, userId).CountAsync();
+        var durationTask = queryBuilder(durationCtx, userId)
+            .Where(te => te.End.HasValue)
+            .Select(te => new { te.Start, End = te.End!.Value })
+            .ToListAsync();
+
+        await Task.WhenAll(dataTask, countTask, durationTask);
+
+        var totalDuration = durationTask.Result
+            .Aggregate(TimeSpan.Zero, (acc, e) => acc + (e.End - e.Start));
+
         return new TimeEntryResponseWrapper
         {
-            TimeEntries = paged,
-            Count = all.Count,
-            TotalDuration = CalculateTotalDuration(all)
+            TimeEntries = dataTask.Result.Adapt<List<TimeEntryResponse>>(),
+            Count = countTask.Result,
+            TotalDuration = totalDuration
         };
     }
 }
