@@ -510,4 +510,25 @@ public class TimeEntryServiceTests
         var result = await CreateService(options).GetTimeEntries(0, 10);
         Assert.Equal(TimeSpan.FromHours(2.5), result.TotalDuration);
     }
+
+    [Fact]
+    public async Task TotalDuration_ReflectsAllEntries_NotJustCurrentPage()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        seed.TimeEntries.AddRange(
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2024, 1, 1, 9, 0, 0), End = new DateTime(2024, 1, 1, 11, 0, 0) },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2024, 1, 2, 9, 0, 0), End = new DateTime(2024, 1, 2, 10, 0, 0) },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2024, 1, 3, 9, 0, 0), End = new DateTime(2024, 1, 3, 10, 30, 0) });
+        await seed.SaveChangesAsync();
+
+        // Request only the first page (1 entry) — TotalDuration must still sum all 3
+        var result = await CreateService(options).GetTimeEntries(skip: 0, limit: 1);
+        Assert.Single(result.TimeEntries);
+        Assert.Equal(3, result.Count);
+        Assert.Equal(TimeSpan.FromHours(4.5), result.TotalDuration);
+    }
 }
