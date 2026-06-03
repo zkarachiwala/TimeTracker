@@ -99,6 +99,13 @@ TypeAdapterConfig.GlobalSettings.Scan(Assembly.GetExecutingAssembly());
 
 using (var scope = app.Services.CreateScope())
 {
+    var ctxFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TimeTrackerDataContext>>();
+    await using var appCtx = await ctxFactory.CreateDbContextAsync();
+    await appCtx.Database.MigrateAsync();
+
+    var identityCtx = scope.ServiceProvider.GetRequiredService<IdentityDataContext>();
+    await identityCtx.Database.MigrateAsync();
+
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     if (!await roleManager.RoleExistsAsync("Admin"))
         await roleManager.CreateAsync(new IdentityRole("Admin"));

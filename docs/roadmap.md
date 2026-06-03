@@ -130,11 +130,14 @@ Applied before deployment.
 
 ---
 
-### Phase 8 — Azure deployment + CI/CD
+### Phase 8 — Azure deployment + CI/CD ✅
 
 - **Azure SQL Database** — free offer (32GB, automatic backups, Managed Identity auth)
 - **Azure App Service F1** — free fixed plan; throttles at limit, never charges overage; sleeps after 20 min idle
-- **GitHub Actions** — push to `main` → build → publish → deploy
+- **GitHub Actions** — push to `main` → CI passes → Deploy workflow publishes and deploys automatically
+- **EF Core migrations** — applied automatically at startup via `Database.MigrateAsync()`; no manual `dotnet ef database update` in production
+- **Managed Identity** — App Service authenticates to Azure SQL with no stored credentials
+- See `docs/azure-deployment.md` for one-time Azure resource setup steps
 
 **Free tier guarantee:** Both Azure tiers are fixed plans. Exceeding limits throttles the app — no metered overage charges.
 
@@ -153,7 +156,7 @@ The REST API layer (Phase 3) is retained specifically to support this. Direction
 ## Phase dependency order
 
 ```
-Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 ✅ → Phase 6 ✅ → Phase 7 → Phase 8 → Zoho integration
+Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 ✅ → Phase 6 ✅ → Phase 7 ✅ → Phase 8 ✅ → Zoho integration
 ```
 
 ## Free tier summary
