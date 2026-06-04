@@ -8,6 +8,15 @@ public static class TimeEntryEndpoints
     {
         var group = app.MapGroup("/api/timeentries").RequireAuthorization();
 
+        group.MapGet("/active", async (ITimeEntryService svc) =>
+            Results.Ok(await svc.GetActiveTimeEntry()));
+
+        group.MapGet("/today", async (ITimeEntryService svc) =>
+            Results.Ok(await svc.GetTodaysTimeEntries()));
+
+        group.MapGet("/year/{year:int}/all", async (int year, ITimeEntryService svc) =>
+            Results.Ok(await svc.GetAllTimeEntriesByYear(year)));
+
         group.MapGet("/{skip:int}/{limit:int}", async (int skip, int limit, ITimeEntryService svc) =>
             Results.Ok(await svc.GetTimeEntries(skip, limit)));
 
@@ -16,6 +25,9 @@ public static class TimeEntryEndpoints
             var result = await svc.GetTimeEntryById(id);
             return result is null ? Results.NotFound() : Results.Ok(result);
         });
+
+        group.MapGet("/project/{projectId:int}/all", async (int projectId, ITimeEntryService svc) =>
+            Results.Ok(await svc.GetAllTimeEntriesByProject(projectId)));
 
         group.MapGet("/project/{projectId:int}/{skip:int}/{limit:int}", async (int projectId, int skip, int limit, ITimeEntryService svc) =>
             Results.Ok(await svc.GetTimeEntriesByProjectId(projectId, skip, limit)));

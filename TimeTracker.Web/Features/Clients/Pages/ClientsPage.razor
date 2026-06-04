@@ -1,15 +1,12 @@
 @page "/clients"
-@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IClientService ClientService
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService
 @inject NavigationManager Nav
 @attribute [Authorize(Roles = "Admin")]
 
-@using TimeTracker.Web.Features.Clients.Components
-@using TimeTracker.Web.Features.TimeEntries
-@using TimeTracker.Web.Features.Projects
 @using TimeTracker.Web.Shared
+@using TimeTracker.Wasm.Features.Clients.Components
 
 <PageTitle>Clients — TimeTracker</PageTitle>
 
@@ -71,18 +68,12 @@
 
 <div class="bottom-nav-spacer"></div>
 
-<div class="tt-fab">
-    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-            OnClick="OpenNewSheet" />
-</div>
-
-@if (sheetOpen) { <ClientSheet @bind-Open="sheetOpen" OnSaved="LoadData" /> }
+<ClientSheetIsland />
 
 @code {
     private List<ClientResponse> clients = [];
     private List<ProjectResponse> projects = [];
     private List<TimeEntryResponse> yearEntries = [];
-    private bool sheetOpen;
 
     private int activeCount => clients.Count(c => !c.IsArchived);
 
@@ -100,9 +91,7 @@
             .Sum(e => (e.End!.Value - e.Start).TotalHours));
     }
 
-    protected override async Task OnInitializedAsync() => await LoadData();
-
-    private async Task LoadData()
+    protected override async Task OnInitializedAsync()
     {
         clients = await ClientService.GetAllClients(includeArchived: true);
         projects = await ProjectService.GetAllProjects();
@@ -110,5 +99,4 @@
     }
 
     private void NavigateToClient(int id) => Nav.NavigateTo($"/clients/{id}");
-    private void OpenNewSheet() => sheetOpen = true;
 }

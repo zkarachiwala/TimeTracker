@@ -3,3 +3,6 @@ global using Mapster;
 global using TimeTracker.Shared.Entities;
 global using TimeTracker.Web.Data;
 global using TimeTracker.Shared.Exceptions;
+global using TimeTracker.Contracts.Features.TimeEntries;
+global using TimeTracker.Contracts.Features.Projects;
+global using TimeTracker.Contracts.Features.Clients;

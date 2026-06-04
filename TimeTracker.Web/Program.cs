@@ -33,7 +33,8 @@ builder.Services.AddMudServices(config =>
 });
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
@@ -153,7 +154,9 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(TimeTracker.Wasm.Features.Timer.Pages.TimerPage).Assembly);
 
 app.MapControllers();
 app.MapTimeEntryEndpoints();

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
@@ -27,6 +28,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TimeTracker.Shared\TimeTracker.Shared.csproj" />
+    <ProjectReference Include="..\TimeTracker.Contracts\TimeTracker.Contracts.csproj" />
+    <ProjectReference Include="..\TimeTracker.Client\TimeTracker.Client.csproj" />
   </ItemGroup>
 
 </Project>
