@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Check for code changes
         id: changes
@@ -50,4 +50,4 @@ jobs:
 
       - name: Test
         if: steps.changes.outputs.code == 'true'
-        run: dotnet test TimeTracker.sln --no-build --configuration Release --logger "console;verbosity=normal"
+        run: dotnet test TimeTracker.Tests/TimeTracker.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
