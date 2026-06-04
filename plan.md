@@ -12,48 +12,50 @@
 
 ---
 
-## Phase 9 — Playwright UX regression testing
+## Phase 9 — Playwright UX regression testing ✅ IMPLEMENTED
 
-**Goal:** Establish a UI regression baseline against the deployed app before the WASM migration. Tests run on every PR and protect against regressions through Phase 10 and beyond.
+**Goal:** Establish a UI regression baseline against the deployed app before the WASM migration.
 
-**Why here:** Writing regression tests now captures the correct behaviour as the baseline — then Phase 10 (WASM islands) can be validated against it automatically.
+**Auth strategy:** Storage state replay — generate `playwright/.auth/user.json` locally, encode as base64, store as `PLAYWRIGHT_AUTH_STATE_B64` GitHub secret.
 
-**Branch:** `feature/playwright-tests`
+**Test target:** Deployed App Service (`timetracker-zak.azurewebsites.net`), post-deploy.
 
-### Golden paths to cover
+**CI trigger:** `playwright` job in `deploy.yml` runs after `deploy` job succeeds on `main`.
 
-| Flow | Key assertions |
-|------|---------------|
-| Unauthenticated redirect | `/` redirects to `/login` |
-| Login | Google OAuth completes, lands on timer page |
-| Start timer | Running timer card appears, elapsed ticks |
-| Stop timer | Entry appears in today's list, duration correct |
-| Log a fixed block | Entry appears with correct duration |
-| Add time entry manually | Entry saved and visible in time entries page |
-| Edit time entry | Changes persisted |
-| Delete time entry | Entry removed |
-| Add project | Project appears in list and timer dropdown |
-| Add client | Client appears in clients list |
-| Date navigation | Time entries page steps forward/back correctly |
-| Reports page | Loads without error |
+### What was built
 
-### Open questions — to be discussed before implementation
+- `TimeTracker.Playwright/` — NUnit project with `Microsoft.Playwright.NUnit` 1.52
+- `AuthenticatedPageTest.cs` — base class loading storage state + mobile viewport
+- `Tests/AuthTests.cs` — unauthenticated redirect, login page Google button
+- `Tests/TimerTests.cs` — page load, start/stop timer, log fixed block, FAB
+- `Tests/TimeEntriesTests.cs` — page load, filter tabs, summary card, date step, month/project views
+- `Tests/ProjectsTests.cs` — page load, heading, active count chip, add sheet opens
+- `Tests/ClientsTests.cs` — page load, heading, active count chip, add sheet opens
+- `Tests/ReportsTests.cs` — page load, no error, content renders
+- `deploy.yml` — `playwright` job added after `deploy`
 
-- **Auth strategy** — Google OAuth cannot be automated directly in Playwright; approach TBD
-- **Test target** — deployed App Service or local app in CI?
-- **Test project location** — new `TimeTracker.Playwright` project or inside `TimeTracker.Tests`?
-- **CI trigger** — PR only, or also on push to `main`?
-- **Flake tolerance** — timer tests are time-sensitive; cold start handling TBD
+### ⚠️ One manual step remaining — auth state setup
 
-### Steps (once open questions resolved)
+Before the CI job will pass, generate the storage state file and add it as a GitHub secret:
 
-1. Add `TimeTracker.Playwright` project — `Microsoft.Playwright.NUnit` package
-2. Implement auth setup (storage state or dev bypass)
-3. Write golden path tests
-4. Add `playwright-tests` job to GitHub Actions — runs after `deploy-live`
-5. Validate all tests green against deployed app
+```bash
+# 1. Install browsers (once)
+cd TimeTracker.Playwright
+dotnet build
+pwsh bin/Release/net10.0/playwright.ps1 install chromium
 
-**Effort:** ~1 day (excluding auth strategy decision)
+# 2. Launch codegen against the live app and log in with Google
+pwsh bin/Release/net10.0/playwright.ps1 codegen \
+  --save-storage=playwright/.auth/user.json \
+  https://timetracker-zak.azurewebsites.net
+
+# 3. Encode and copy to clipboard
+base64 -w 0 playwright/.auth/user.json | xclip -selection clipboard
+
+# 4. Add to GitHub → Settings → Secrets → New repository secret
+#    Name: PLAYWRIGHT_AUTH_STATE_B64
+#    Value: (paste)
+```
 
 ---
 

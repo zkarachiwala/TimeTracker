@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Shared", "TimeT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Tests", "TimeTracker.Tests\TimeTracker.Tests.csproj", "{A45898FA-6D5D-4E16-AC6D-25FF6AEAC879}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Playwright", "TimeTracker.Playwright\TimeTracker.Playwright.csproj", "{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{A45898FA-6D5D-4E16-AC6D-25FF6AEAC879}.Release|x64.Build.0 = Release|Any CPU
 		{A45898FA-6D5D-4E16-AC6D-25FF6AEAC879}.Release|x86.ActiveCfg = Release|Any CPU
 		{A45898FA-6D5D-4E16-AC6D-25FF6AEAC879}.Release|x86.Build.0 = Release|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Debug|x64.Build.0 = Debug|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Debug|x86.Build.0 = Debug|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Release|x64.ActiveCfg = Release|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Release|x64.Build.0 = Release|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Release|x86.ActiveCfg = Release|Any CPU
+		{E5D2C758-5184-440D-9FA1-8A2ABCF8C61A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
