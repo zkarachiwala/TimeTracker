@@ -73,10 +73,14 @@ jobs:
           dotnet restore TimeTracker.Playwright/TimeTracker.Playwright.csproj
           dotnet build TimeTracker.Playwright/TimeTracker.Playwright.csproj --no-restore --configuration Release
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('**/TimeTracker.Playwright.csproj') }}
+
       - name: Install Playwright browsers
-        run: |
-          dotnet tool install --global Microsoft.Playwright.CLI || true
-          pwsh TimeTracker.Playwright/bin/Release/net10.0/playwright.ps1 install chromium --with-deps
+        run: pwsh TimeTracker.Playwright/bin/Release/net10.0/playwright.ps1 install chromium --with-deps
 
       - name: Write auth storage state
         env:
