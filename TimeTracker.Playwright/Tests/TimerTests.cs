@@ -7,7 +7,8 @@ public class TimerTests : AuthenticatedPageTest
     public async Task NavigateToTimer()
     {
         await Page.GotoAsync("/");
-        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle, new() { Timeout = 30_000 });
+        // FAB is always rendered after Blazor connects — reliable signal on F1 cold start
+        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync(new() { Timeout = 30_000 });
     }
 
     [Test]
@@ -32,7 +33,8 @@ public class TimerTests : AuthenticatedPageTest
     [Test]
     public async Task TodaySectionIsVisible()
     {
-        await Expect(Page.GetByText("Today")).ToBeVisibleAsync();
+        // Use heading role to avoid matching "No time logged yet today"
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Today" })).ToBeVisibleAsync();
     }
 
     [Test]
