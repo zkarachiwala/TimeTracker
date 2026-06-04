@@ -153,6 +153,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+app.MapStaticAssets();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
