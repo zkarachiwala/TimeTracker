@@ -8,15 +8,16 @@ For architecture detail see [architecture.md](architecture.md).
 
 ## Goals
 
-- Zero-cost hosting on Azure Container Apps (Consumption) + Azure SQL free offer
-- Custom domain (`timetracker.dzk.com.au`) with free managed SSL
+- Zero-cost hosting on Azure App Service F1 + Cloudflare proxy (hard free tier — no overage possible)
+- Custom domain (`timetracker.dzk.com.au`) with free SSL via Cloudflare
 - Google OAuth via Gmail account
-- Blazor SSR with targeted WASM islands — removes SignalR, server scales to zero cleanly
+- Blazor SSR with targeted WASM islands — removes SignalR, server becomes stateless between requests
 - Vertical Slice Architecture — feature-organised, no repository layer, interfaces throughout
 - Modern mobile-responsive UI (MudBlazor)
 - Playwright UX regression test suite
 - GitHub Pages portfolio showcase (mock data, standalone WASM)
 - Stable REST API layer for future Zoho Books invoice integration
+- No App Service-specific coupling in app code — `Dockerfile` kept as migration artefact
 
 ---
 
@@ -80,7 +81,7 @@ For architecture detail see [architecture.md](architecture.md).
 
 ### Phase 8 — Azure deployment + CI/CD ✅
 - Azure SQL Database — free offer (32 GB, automated backups, Managed Identity auth)
-- Azure App Service F1 — deployed and functional; custom domain blocked (resolved in Phase 9)
+- Azure App Service F1 — deployed and functional
 - GitHub Actions — OIDC push-to-deploy on merge to `main`
 - EF Core migrations applied automatically at startup
 - See `docs/azure-deployment.md` for one-time Azure resource setup steps
@@ -89,15 +90,15 @@ For architecture detail see [architecture.md](architecture.md).
 
 ## Upcoming
 
-### Phase 9 — Migrate hosting to Azure Container Apps
-Fix the custom domain blocker. Containerise the existing SSR app as-is and deploy to ACA. No code changes beyond adding a Dockerfile.
+### Phase 9 — Custom domain via Cloudflare
+Resolve the custom domain blocker without leaving the F1 free tier. Cloudflare proxies `timetracker.dzk.com.au` to the existing App Service URL, providing TLS termination and free managed SSL.
 
-- `Dockerfile` added to `TimeTracker.Web` (multi-stage build)
-- GitHub Actions updated: build image → push to GHCR → deploy to ACA
-- Custom domain `timetracker.dzk.com.au` bound in ACA with free managed certificate
+- `Dockerfile` added to repo root (multi-stage build) — migration artefact, not used in deployment yet
+- Cloudflare proxy configured: `timetracker.dzk.com.au` → `timetracker-zak.azurewebsites.net`
+- `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` set in App Service — ensures HTTPS redirect and cookies behave correctly behind Cloudflare
 
 ### Phase 10 — Playwright UX regression testing
-Establish a UI regression baseline against the deployed ACA app before the WASM refactor.
+Establish a UI regression baseline before the WASM refactor.
 
 - Golden paths: login, start/stop timer, log fixed block, add/edit/delete entries, projects, clients, reports
 - Auth strategy TBD (to be discussed before implementation)
@@ -116,6 +117,20 @@ Add `TimeTracker.Showcase` standalone WASM project. Shares components with the l
 
 ---
 
+## Optional
+
+### ACA migration (if F1 free tier is removed or limits become a problem)
+The `Dockerfile` added in Phase 9 is the only prerequisite. Migration is a workflow change, not a code change — no App Service-specific logic exists in the app.
+
+- Provision ACA Consumption environment + app (see `docs/azure-deployment.md` when updated)
+- Update GitHub Actions: build image → push to GHCR → deploy to ACA
+- Bind custom domain natively in ACA (Cloudflare proxy remains optional)
+- Grant ACA Managed Identity access to Azure SQL (same SQL grants, different principal)
+
+> ⚠️ ACA Consumption has no hard spending cap. Free grant covers personal-app traffic comfortably but set a budget alert before enabling.
+
+---
+
 ## Future
 
 ### Zoho Books integration
@@ -127,14 +142,16 @@ TimeTracker will eventually integrate with Zoho Books to partially automate invo
 
 ```
 0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 → 10 → 11 → 12 → Zoho
+                                                                              ↕
+                                                                      ACA migration (optional)
 ```
 
-## Infrastructure summary (target)
+## Infrastructure summary
 
 | Service | Plan | Free grants | Overage behaviour |
 |---------|------|-------------|-------------------|
-| Azure Container Apps | Consumption | 180K vCPU-sec, 360K GiB-sec, 2M req/month (permanent) | Metered — negligible at personal-app traffic |
+| Azure App Service | F1 | 60 CPU min/day, 1 GB RAM | Throttled — no charge possible |
 | Azure SQL Database | Free offer | 32 GB data, automated backups (permanent) | Throttled — no charge |
+| Cloudflare | Free | Unlimited proxy requests | None on free plan |
 | Google OAuth | — | Unlimited personal use | — |
 | GitHub Actions | Free | 2,000 min/month | Queued — no charge |
-| GitHub Container Registry | Free (current) | No published limit | 30-day notice before billing |
