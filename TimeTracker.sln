@@ -13,7 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Playwright", "T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Contracts", "TimeTracker.Contracts\TimeTracker.Contracts.csproj", "{25E3208E-0AD6-4AC5-BCBF-F63C69B26052}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Client", "TimeTracker.Client\TimeTracker.Client.csproj", "{2F6558FF-F7BD-4627-996A-4A5F78A42166}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Wasm", "TimeTracker.Wasm\TimeTracker.Wasm.csproj", "{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -85,18 +85,18 @@ Global
 		{25E3208E-0AD6-4AC5-BCBF-F63C69B26052}.Release|x64.Build.0 = Release|Any CPU
 		{25E3208E-0AD6-4AC5-BCBF-F63C69B26052}.Release|x86.ActiveCfg = Release|Any CPU
 		{25E3208E-0AD6-4AC5-BCBF-F63C69B26052}.Release|x86.Build.0 = Release|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Debug|x64.Build.0 = Debug|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Debug|x86.Build.0 = Debug|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Release|x64.ActiveCfg = Release|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Release|x64.Build.0 = Release|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Release|x86.ActiveCfg = Release|Any CPU
-		{2F6558FF-F7BD-4627-996A-4A5F78A42166}.Release|x86.Build.0 = Release|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Debug|x64.Build.0 = Debug|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Debug|x86.Build.0 = Debug|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Release|x64.ActiveCfg = Release|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Release|x64.Build.0 = Release|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Release|x86.ActiveCfg = Release|Any CPU
+		{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
