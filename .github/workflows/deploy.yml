@@ -82,8 +82,8 @@ jobs:
         env:
           PLAYWRIGHT_AUTH_STATE_B64: ${{ secrets.PLAYWRIGHT_AUTH_STATE_B64 }}
         run: |
-          mkdir -p TimeTracker.Playwright/playwright/.auth
-          echo "$PLAYWRIGHT_AUTH_STATE_B64" | base64 --decode > TimeTracker.Playwright/playwright/.auth/user.json
+          mkdir -p TimeTracker.Playwright/bin/Release/net10.0/playwright/.auth
+          echo "$PLAYWRIGHT_AUTH_STATE_B64" | base64 --decode > TimeTracker.Playwright/bin/Release/net10.0/playwright/.auth/user.json
 
       - name: Run Playwright tests
         env:
