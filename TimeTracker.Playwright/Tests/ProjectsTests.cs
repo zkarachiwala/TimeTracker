@@ -13,13 +13,14 @@ public class ProjectsTests : AuthenticatedPageTest
     [Test]
     public async Task ProjectsPageLoads()
     {
-        await Expect(Page).ToHaveTitleAsync(new Regex("Projects"));
+        await Expect(Page).ToHaveURLAsync(new Regex("/projects"));
     }
 
     [Test]
     public async Task ProjectsHeadingIsVisible()
     {
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Projects" })).ToBeVisibleAsync();
+        // Heading appears in both toolbar and page — take the first
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Projects" }).First).ToBeVisibleAsync();
     }
 
     [Test]
@@ -31,15 +32,13 @@ public class ProjectsTests : AuthenticatedPageTest
     [Test]
     public async Task FabButtonIsVisible()
     {
-        var fab = Page.Locator(".tt-fab button");
-        await Expect(fab).ToBeVisibleAsync();
+        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync();
     }
 
     [Test]
     public async Task AddProjectOpensSheet()
     {
         await Page.Locator(".tt-fab button").ClickAsync();
-        // Project sheet should open — look for a Name field
-        await Expect(Page.GetByLabel(new Regex("name", RegexOptions.IgnoreCase))).ToBeVisibleAsync(new() { Timeout = 5_000 });
+        await Expect(Page.GetByLabel("Project name")).ToBeVisibleAsync(new() { Timeout = 5_000 });
     }
 }

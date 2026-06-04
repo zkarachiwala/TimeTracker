@@ -12,7 +12,7 @@
 
 ---
 
-## Phase 9 — Playwright UX regression testing ✅ IMPLEMENTED
+## Phase 9 — Playwright UX regression testing ✅ COMPLETE
 
 **Goal:** Establish a UI regression baseline against the deployed app before the WASM migration.
 
@@ -60,6 +60,8 @@ base64 -w 0 playwright/.auth/user.json | xclip -selection clipboard
 ---
 
 ## Phase 10 — WASM islands (remove SignalR)
+
+**Known issue to fix in this phase:** `<HeadOutlet />` in `App.razor` has no render mode, so `<PageTitle>` components never update `document.title` (browser tab always shows "TimeTracker"). This is not worth fixing now because the correct fix depends on the render model — once pages are static SSR, `<PageTitle>` will work correctly without any special render mode on `<HeadOutlet>`. Verify browser tab titles update correctly as part of Phase 10 validation.
 
 **Goal:** Replace Blazor Interactive Server with static SSR + targeted WASM islands. Eliminates the persistent SignalR WebSocket connection. Server becomes stateless between requests.
 
