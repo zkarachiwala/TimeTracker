@@ -7,7 +7,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
     public async Task NavigateToEntries()
     {
         await Page.GotoAsync("/entries");
-        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle, new() { Timeout = 30_000 });
+        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync(new() { Timeout = 30_000 });
     }
 
     [Test]

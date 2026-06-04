@@ -7,7 +7,8 @@ public class ReportsTests : AuthenticatedPageTest
     public async Task NavigateToReports()
     {
         await Page.GotoAsync("/reports");
-        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle, new() { Timeout = 30_000 });
+        // KPI cards are always rendered after Blazor connects
+        await Expect(Page.GetByText("YTD hours")).ToBeVisibleAsync(new() { Timeout = 30_000 });
     }
 
     [Test]
@@ -25,9 +26,8 @@ public class ReportsTests : AuthenticatedPageTest
     [Test]
     public async Task ReportsContentIsVisible()
     {
-        var hasContent = await Page.Locator(".mud-card, .mud-chart, canvas").CountAsync() > 0;
-        var hasEmptyState = await Page.GetByText(new Regex("no data|no entries|nothing", RegexOptions.IgnoreCase)).IsVisibleAsync();
-        Assert.That(hasContent || hasEmptyState, Is.True,
-            "Reports page should render chart content or an empty-state message");
+        // KPI cards are always rendered regardless of data — use them as the Blazor-ready signal
+        await Expect(Page.GetByText("YTD hours")).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await Expect(Page.GetByText("Hours by month")).ToBeVisibleAsync();
     }
 }
