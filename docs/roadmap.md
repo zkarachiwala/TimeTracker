@@ -1,6 +1,6 @@
 # TimeTracker — Roadmap
 
-This document describes the phased implementation plan for evolving TimeTracker into a production-ready, free-hosted personal timesheeting solution.
+This document describes the phased implementation plan for TimeTracker.
 
 For architecture detail see [architecture.md](architecture.md).
 
@@ -8,8 +8,7 @@ For architecture detail see [architecture.md](architecture.md).
 
 ## Goals
 
-- Zero-cost hosting on Azure App Service F1 + Cloudflare proxy (hard free tier — no overage possible)
-- Custom domain (`timetracker.dzk.com.au`) with free SSL via Cloudflare
+- Zero-cost hosting on Azure App Service F1 + Azure SQL free offer
 - Google OAuth via Gmail account
 - Blazor SSR with targeted WASM islands — removes SignalR, server becomes stateless between requests
 - Vertical Slice Architecture — feature-organised, no repository layer, interfaces throughout
@@ -17,7 +16,6 @@ For architecture detail see [architecture.md](architecture.md).
 - Playwright UX regression test suite
 - GitHub Pages portfolio showcase (mock data, standalone WASM)
 - Stable REST API layer for future Zoho Books invoice integration
-- No App Service-specific coupling in app code — `Dockerfile` kept as migration artefact
 
 ---
 
@@ -77,7 +75,7 @@ For architecture detail see [architecture.md](architecture.md).
 - HSTS (365 days); rate limiting on auth endpoints (10 req/min)
 - Managed Identity — App Service authenticates to Azure SQL with no stored credentials
 - Least privilege DB user (`db_datareader` + `db_datawriter` only)
-- 82 tests passing
+- 83 tests passing
 
 ### Phase 8 — Azure deployment + CI/CD ✅
 - Azure SQL Database — free offer (32 GB, automated backups, Managed Identity auth)
@@ -90,21 +88,14 @@ For architecture detail see [architecture.md](architecture.md).
 
 ## Upcoming
 
-### Phase 9 — Custom domain via Cloudflare
-Resolve the custom domain blocker without leaving the F1 free tier. Cloudflare proxies `timetracker.dzk.com.au` to the existing App Service URL, providing TLS termination and free managed SSL.
-
-- `Dockerfile` added to repo root (multi-stage build) — migration artefact, not used in deployment yet
-- Cloudflare proxy configured: `timetracker.dzk.com.au` → `timetracker-zak.azurewebsites.net`
-- `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` set in App Service — ensures HTTPS redirect and cookies behave correctly behind Cloudflare
-
-### Phase 10 — Playwright UX regression testing
-Establish a UI regression baseline before the WASM refactor.
+### Phase 9 — Playwright UX regression testing
+Establish a UI regression baseline before the WASM refactor. Tests run on every PR.
 
 - Golden paths: login, start/stop timer, log fixed block, add/edit/delete entries, projects, clients, reports
 - Auth strategy TBD (to be discussed before implementation)
 - Playwright job added to GitHub Actions — runs after `deploy-live`
 
-### Phase 11 — WASM islands (remove SignalR)
+### Phase 10 — WASM islands (remove SignalR)
 Replace Blazor Interactive Server with static SSR + targeted WASM islands. Server becomes stateless between requests.
 
 - Most pages: static SSR — no persistent connection
@@ -112,22 +103,8 @@ Replace Blazor Interactive Server with static SSR + targeted WASM islands. Serve
 - HTTP service implementations for WASM context; EF Core implementations for server context
 - `TimeEntriesPage` tab/date navigation replaced with URL query params
 
-### Phase 12 — GitHub Pages showcase ⚠️ Needs planning session
+### Phase 11 — GitHub Pages showcase ⚠️ Needs planning session
 Add `TimeTracker.Showcase` standalone WASM project. Shares components with the live app; runs in the browser with mock data. Deployed to GitHub Pages via a second job in the GitHub Actions workflow.
-
----
-
-## Optional
-
-### ACA migration (if F1 free tier is removed or limits become a problem)
-The `Dockerfile` added in Phase 9 is the only prerequisite. Migration is a workflow change, not a code change — no App Service-specific logic exists in the app.
-
-- Provision ACA Consumption environment + app (see `docs/azure-deployment.md` when updated)
-- Update GitHub Actions: build image → push to GHCR → deploy to ACA
-- Bind custom domain natively in ACA (Cloudflare proxy remains optional)
-- Grant ACA Managed Identity access to Azure SQL (same SQL grants, different principal)
-
-> ⚠️ ACA Consumption has no hard spending cap. Free grant covers personal-app traffic comfortably but set a budget alert before enabling.
 
 ---
 
@@ -141,9 +118,7 @@ TimeTracker will eventually integrate with Zoho Books to partially automate invo
 ## Phase dependency order
 
 ```
-0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 → 10 → 11 → 12 → Zoho
-                                                                              ↕
-                                                                      ACA migration (optional)
+0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 → 10 → 11 → Zoho
 ```
 
 ## Infrastructure summary
@@ -151,7 +126,6 @@ TimeTracker will eventually integrate with Zoho Books to partially automate invo
 | Service | Plan | Free grants | Overage behaviour |
 |---------|------|-------------|-------------------|
 | Azure App Service | F1 | 60 CPU min/day, 1 GB RAM | Throttled — no charge possible |
-| Azure SQL Database | Free offer | 32 GB data, automated backups (permanent) | Throttled — no charge |
-| Cloudflare | Free | Unlimited proxy requests | None on free plan |
+| Azure SQL Database | Free offer | 32 GB data, automated backups (permanent) | Auto-pauses — no charge |
 | Google OAuth | — | Unlimited personal use | — |
 | GitHub Actions | Free | 2,000 min/month | Queued — no charge |
