@@ -1,5 +1,5 @@
 @page "/projects/{id:int}"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IProjectService ProjectService
 @inject ITimeEntryService TimeEntryService
 @inject NavigationManager Nav

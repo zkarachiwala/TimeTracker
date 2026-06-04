@@ -1,5 +1,5 @@
 @page "/entries"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService
 @using TimeTracker.Wasm.Features.TimeEntries.Components

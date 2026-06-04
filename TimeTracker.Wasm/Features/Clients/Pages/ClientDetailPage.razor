@@ -1,5 +1,5 @@
 @page "/clients/{id:int}"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IClientService ClientService
 @inject IProjectService ProjectService
 @inject ITimeEntryService TimeEntryService
