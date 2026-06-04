@@ -13,7 +13,10 @@ builder.Services.AddMudServices(config =>
     config.PopoverOptions.CheckForPopoverProvider = false);
 
 builder.Services.AddScoped(sp =>
-    new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+    new HttpClient(new TimeTracker.Wasm.CookieCredentialHandler())
+    {
+        BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+    });
 
 builder.Services.AddScoped<ITimeEntryService, HttpTimeEntryService>();
 builder.Services.AddScoped<IProjectService, HttpProjectService>();
