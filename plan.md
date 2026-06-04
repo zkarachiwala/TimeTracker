@@ -12,47 +12,11 @@
 
 ---
 
-## Phase 9 — Migrate hosting to Azure Container Apps
+## Phase 9 — Playwright UX regression testing
 
-**Goal:** Fix the custom domain blocker. Containerise the existing SSR app as-is and deploy to ACA. No code changes beyond adding a Dockerfile.
+**Goal:** Establish a UI regression baseline against the deployed app before the WASM migration. Tests run on every PR and protect against regressions through Phase 10 and beyond.
 
-**Branch:** `feature/aca-migration`
-
-### Steps
-
-1. Add `Dockerfile` to `TimeTracker.Web`
-   - Multi-stage build: `sdk` image for publish, `aspnet` runtime image
-   - Expose port 8080 (ACA default)
-
-2. Update GitHub Actions `deploy.yml`
-   - Replace zip deploy with: build image → push to GHCR → deploy to ACA
-   - Reuse existing OIDC auth (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`)
-
-3. Provision ACA in Azure
-   - Create Container Apps Environment (Consumption plan)
-   - Create Container App pointing at GHCR image
-   - Set environment variables: connection string, Google OAuth credentials, `Authentication:AdminEmail`
-
-4. Bind custom domain
-   - Add `timetracker.dzk.com.au` in ACA custom domain settings
-   - Update DNS — CNAME to ACA verification domain + TXT record
-   - Provision free managed certificate (DigiCert, auto-renewed)
-
-5. Validate
-   - App loads at `timetracker.dzk.com.au`
-   - Google OAuth login works
-   - Timer start/stop persists correctly
-   - Run `dotnet test` — 82 tests green
-
-**Effort:** ~half day
-
----
-
-## Phase 10 — Playwright UX regression testing
-
-**Goal:** Establish a UI regression baseline against the deployed ACA app before the WASM migration. Tests run on every PR and protect against regressions through Phases 11 and beyond.
-
-**Why here:** Phase 9 delivers a stable, deployed app at `timetracker.dzk.com.au`. Writing regression tests now captures the correct behaviour as the baseline — then Phase 11 (WASM islands) can be validated against it automatically.
+**Why here:** Writing regression tests now captures the correct behaviour as the baseline — then Phase 10 (WASM islands) can be validated against it automatically.
 
 **Branch:** `feature/playwright-tests`
 
@@ -76,7 +40,7 @@
 ### Open questions — to be discussed before implementation
 
 - **Auth strategy** — Google OAuth cannot be automated directly in Playwright; approach TBD
-- **Test target** — deployed ACA or local app in CI?
+- **Test target** — deployed App Service or local app in CI?
 - **Test project location** — new `TimeTracker.Playwright` project or inside `TimeTracker.Tests`?
 - **CI trigger** — PR only, or also on push to `main`?
 - **Flake tolerance** — timer tests are time-sensitive; cold start handling TBD
@@ -87,15 +51,15 @@
 2. Implement auth setup (storage state or dev bypass)
 3. Write golden path tests
 4. Add `playwright-tests` job to GitHub Actions — runs after `deploy-live`
-5. Validate all tests green against ACA
+5. Validate all tests green against deployed app
 
 **Effort:** ~1 day (excluding auth strategy decision)
 
 ---
 
-## Phase 11 — WASM islands (remove SignalR)
+## Phase 10 — WASM islands (remove SignalR)
 
-**Goal:** Replace Blazor Interactive Server with static SSR + targeted WASM islands. Eliminates the persistent SignalR WebSocket connection. Server becomes stateless between requests and scales to zero cleanly.
+**Goal:** Replace Blazor Interactive Server with static SSR + targeted WASM islands. Eliminates the persistent SignalR WebSocket connection. Server becomes stateless between requests.
 
 **Branch:** `feature/wasm-islands`
 
@@ -145,15 +109,13 @@ Most pages become plain static SSR (no render mode, no connection held). Only th
 
 ---
 
-## Phase 12 — GitHub Pages showcase ⚠️ NEEDS DETAILED PLANNING
+## Phase 11 — GitHub Pages showcase ⚠️ NEEDS DETAILED PLANNING
 
 **Goal:** Deploy a mock version of the app as a public portfolio piece on GitHub Pages. Shares UI components with the live app; runs entirely in the browser with no backend.
 
 **Branch:** `feature/showcase`
 
 ### What's needed — to be planned in detail
-
-The following questions need answering before implementation begins:
 
 - **Project structure** — standalone WASM project added to the solution (`TimeTracker.Showcase`) or a publish profile on `TimeTracker.Web`?
 - **Component sharing** — do the Razor components (pages, sheets, layout) live in a Razor Class Library referenced by both, or are they duplicated?
@@ -169,19 +131,20 @@ The following questions need answering before implementation begins:
 
 ---
 
-## Deployment pipeline (target)
+## Deployment pipeline (current)
 
 ```
 git push main
       │
-      ├── ci job ────────────── dotnet test (82+ tests)
+      ├── ci job ──────────────── dotnet test
       │
-      ├── deploy-live job ────── Build TimeTracker.Web → Docker → GHCR → ACA
-      │                                    (timetracker.dzk.com.au)
+      ├── deploy-live job ──────── dotnet publish → Azure App Service F1
+      │                            (timetracker-zak.azurewebsites.net)
       │
-      ├── playwright job ──────── Run UX regression tests against ACA
-      │       (runs after deploy-live)
+      ├── playwright job ──────── Run UX regression tests against deployed app
+      │       (runs after deploy-live, Phase 9)
       │
       └── deploy-showcase job ─── dotnet publish TimeTracker.Showcase
                                     → static files → gh-pages → GitHub Pages
+                                    (Phase 11)
 ```
