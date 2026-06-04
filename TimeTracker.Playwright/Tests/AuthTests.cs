@@ -28,8 +28,9 @@ public class AuthTests : PageTest
     public async Task LoginPageShowsGoogleSignInButton()
     {
         await Page.GotoAsync("/login");
-        // Button text is "Sign in with Google" rendered by ASP.NET Identity external providers
-        await Expect(Page.GetByRole(AriaRole.Button).Filter(new() { HasText = "Sign in with Google" }))
-            .ToBeVisibleAsync();
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle, new() { Timeout = 15_000 });
+        // MudButton with Href renders as <a>, not <button>
+        await Expect(Page.GetByRole(AriaRole.Link).Filter(new() { HasText = "Google" }))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 }

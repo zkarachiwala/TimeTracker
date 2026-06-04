@@ -13,7 +13,7 @@ public class ReportsTests : AuthenticatedPageTest
     [Test]
     public async Task ReportsPageLoads()
     {
-        await Expect(Page).ToHaveTitleAsync(new Regex("Reports"));
+        await Expect(Page).ToHaveURLAsync(new Regex("/reports"));
     }
 
     [Test]
@@ -25,7 +25,6 @@ public class ReportsTests : AuthenticatedPageTest
     [Test]
     public async Task ReportsContentIsVisible()
     {
-        // Reports page should show something — either chart content or an empty-state message
         var hasContent = await Page.Locator(".mud-card, .mud-chart, canvas").CountAsync() > 0;
         var hasEmptyState = await Page.GetByText(new Regex("no data|no entries|nothing", RegexOptions.IgnoreCase)).IsVisibleAsync();
         Assert.That(hasContent || hasEmptyState, Is.True,

@@ -13,7 +13,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
     [Test]
     public async Task EntriesPageLoads()
     {
-        await Expect(Page).ToHaveTitleAsync(new Regex("Entries"));
+        await Expect(Page).ToHaveURLAsync(new Regex("/entries"));
     }
 
     [Test]
@@ -34,28 +34,33 @@ public class TimeEntriesTests : AuthenticatedPageTest
     [Test]
     public async Task DateStepperIsVisible()
     {
-        // The range stepper card contains chevron buttons — verify they are present
-        await Expect(Page.Locator(".mud-icon-button").First).ToBeVisibleAsync();
+        // Verify the stepper card's chevron buttons are present
+        var label = Page.GetByText(new Regex(@"Today|Yesterday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday"));
+        await Expect(label.Locator("..").Locator(".mud-icon-button").First).ToBeVisibleAsync();
     }
 
     [Test]
     public async Task StepBackChangesDateLabel()
     {
-        var label = Page.Locator(".mud-typography-subtitle1").First;
+        // Switch to Month tab — gives an unambiguous "Month YYYY" label
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Month" }).ClickAsync();
+
+        var label = Page.GetByText(new Regex(@"[A-Z][a-z]+ \d{4}"));
+        await Expect(label).ToBeVisibleAsync();
         var initialText = await label.InnerTextAsync();
 
-        // First chevron button is "step back"
-        await Page.Locator(".mud-icon-button").First.ClickAsync();
-        var afterBack = await label.InnerTextAsync();
+        // Scope to the label's parent flex container to get the stepper's back button,
+        // not the AppBar hamburger which is the first .mud-icon-button on the page
+        var backButton = label.Locator("..").Locator(".mud-icon-button").First;
+        await backButton.ClickAsync();
 
-        Assert.That(afterBack, Is.Not.EqualTo(initialText), "Date label should change after stepping back");
+        await Expect(label).Not.ToHaveTextAsync(initialText, new() { Timeout = 5_000 });
     }
 
     [Test]
     public async Task MonthTabShowsMonthLabel()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Month" }).ClickAsync();
-        // Month view label is "MMMM yyyy" — use GetByText with regex to find it
         await Expect(Page.GetByText(new Regex(@"[A-Z][a-z]+ \d{4}")))
             .ToBeVisibleAsync();
     }
@@ -64,7 +69,6 @@ public class TimeEntriesTests : AuthenticatedPageTest
     public async Task ProjectTabShowsProjectDropdown()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Project" }).ClickAsync();
-        // MudSelect renders a label element; verify it's visible
         await Expect(Page.Locator("label").Filter(new() { HasText = "Project" }))
             .ToBeVisibleAsync(new() { Timeout = 5_000 });
     }

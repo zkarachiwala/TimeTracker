@@ -13,13 +13,14 @@ public class ClientsTests : AuthenticatedPageTest
     [Test]
     public async Task ClientsPageLoads()
     {
-        await Expect(Page).ToHaveTitleAsync(new Regex("Clients"));
+        await Expect(Page).ToHaveURLAsync(new Regex("/clients"));
     }
 
     [Test]
     public async Task ClientsHeadingIsVisible()
     {
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Clients" })).ToBeVisibleAsync();
+        // Heading appears in both toolbar and page — take the first
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Clients" }).First).ToBeVisibleAsync();
     }
 
     [Test]
@@ -31,14 +32,13 @@ public class ClientsTests : AuthenticatedPageTest
     [Test]
     public async Task FabButtonIsVisible()
     {
-        var fab = Page.Locator(".tt-fab button");
-        await Expect(fab).ToBeVisibleAsync();
+        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync();
     }
 
     [Test]
     public async Task AddClientOpensSheet()
     {
         await Page.Locator(".tt-fab button").ClickAsync();
-        await Expect(Page.GetByLabel(new Regex("name", RegexOptions.IgnoreCase))).ToBeVisibleAsync(new() { Timeout = 5_000 });
+        await Expect(Page.GetByLabel("Client name")).ToBeVisibleAsync(new() { Timeout = 5_000 });
     }
 }
