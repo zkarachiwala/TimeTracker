@@ -8,13 +8,15 @@ For architecture detail see [architecture.md](architecture.md).
 
 ## Goals
 
-- Zero-cost 24x7 hosting on Azure (App Service F1 + Azure SQL free offer)
+- Zero-cost hosting on Azure Container Apps (Consumption) + Azure SQL free offer
+- Custom domain (`timetracker.dzk.com.au`) with free managed SSL
 - Google OAuth via Gmail account
-- Blazor SSR — single project, no separate WASM client
+- Blazor SSR with targeted WASM islands — removes SignalR, server scales to zero cleanly
 - Vertical Slice Architecture — feature-organised, no repository layer, interfaces throughout
 - Modern mobile-responsive UI (MudBlazor)
+- Playwright UX regression test suite
+- GitHub Pages portfolio showcase (mock data, standalone WASM)
 - Stable REST API layer for future Zoho Books invoice integration
-- Security best practices — Managed Identity, HTTP-only cookies, no secrets in source control
 
 ---
 
@@ -25,7 +27,6 @@ For architecture detail see [architecture.md](architecture.md).
 - Replaced Swashbuckle with native ASP.NET Core OpenAPI + Scalar UI (dev only)
 - Fixed Swagger unconditionally enabled in production
 - Removed `Microsoft.AspNetCore.Authentication` 2.2.0 (bundled since .NET Core 3)
-- Removed unused imports
 
 ### Phase 1 — Architecture + docs ✅
 - Created `docs/architecture.md`
@@ -47,123 +48,93 @@ For architecture detail see [architecture.md](architecture.md).
 - Added `TimeTracker.Tests` — 31 xUnit service integration tests (EF InMemory)
 - Added CI workflow — `dotnet test` runs on every push/PR to `main`
 - Renamed project `TimeTracker.API` → `TimeTracker.Web` to align with documentation
-- Replaced static PNG ERDs with Mermaid diagrams in `docs/architecture.md`
-
----
-
-## Upcoming phases
 
 ### Phase 4 — External OAuth ✅
-
-Replace username/password login with external OAuth (Google initial provider).
-
 - Added `Microsoft.AspNetCore.Authentication.Google`
-- Provider-agnostic callback via `SignInManager.GetExternalLoginInfoAsync()` — adding a second provider (e.g. Entra ID) only requires a new `AddX()` call in `Program.cs`
-- Login page enumerates configured providers dynamically via `GetExternalAuthenticationSchemesAsync()`
+- Provider-agnostic callback via `SignInManager.GetExternalLoginInfoAsync()`
 - On callback: find-or-create local user by email, check against `Authentication:AllowedEmails` config list
 - Removed `IAuthService`, `AuthService`, `RegisterPage`, username/password login
-- ASP.NET Identity retained as local user store (links external provider logins to local user record)
-- Google credentials in user secrets (dev), Azure App Service config (prod)
+- ASP.NET Identity retained as local user store
 - See `docs/google-oauth-setup.md` for Google Cloud Console setup steps
 
-**Branch:** `feature/google-auth`
-
----
-
 ### Phase 5 — Client Management ✅
-
-Add a shared `Clients` table replacing the free-text client field on projects.
-
-- `Client` entity: `Name` (unique), `DefaultHourlyRate` (nullable, ex GST), `ContactName`, `ContactEmail`, `ContactPhone` (all nullable)
+- `Client` entity: `Name` (unique), `DefaultHourlyRate` (nullable, ex GST), contact fields
 - `Project.ClientId` nullable FK — SET NULL on client delete; service layer blocks delete when active projects exist
-- Clients shared across all users — no per-user scoping
-- Clients CRUD pages + nav link (Admin only)
-- Project create/edit form includes client dropdown
-- `IClientService` / `ClientService` / `ClientEndpoints` following VSA pattern
+- Clients shared across all users; Admin-only CRUD
 - 12 new service integration tests (51 total)
 
-**Branch:** `feature/client-management`
-
----
-
 ### Phase 6 — MudBlazor UI uplift ✅
+- `MudLayout` + responsive `MudNavMenu` drawer
+- Bottom sheet components (EntrySheet, ProjectSheet, ClientSheet)
+- `MudChart` stacked bar (non-billable/invoiced/uninvoiced) replaces Radzen
+- Tailwind CSS, Radzen, QuickGrid removed
+- `ProjectDetails` table merged into `Projects`; `InvoiceReference` + `InvoicedAt` added to `TimeEntry`
+- Dev seed/clear endpoints (dev only)
 
-Replace Tailwind + Radzen + QuickGrid with MudBlazor. Mobile-first responsive design.
-
-- `MudLayout` + responsive `MudNavMenu` drawer (phone and desktop)
-- `MudDataGrid` replaces QuickGrid
-- `MudDialog`, `MudTextField`, `MudSelect`, `MudDatePicker` for forms
-- MudBlazor Snackbar replaces `Blazored.Toast`
-- `MudChart` replaces Radzen year chart — stacked bar (non-billable/invoiced/uninvoiced)
-- Tailwind CSS removed
-- Custom tab bar (Day/Month/Year/Project) on Entries page
-- Dynamic app bar title per route
-- Bottom sheet components (EntrySheet, ProjectSheet, ClientSheet) with lazy-loading fix and grip pill
-- ProjectCard: chevron navigation; edit moved to ProjectDetailPage FAB
-- ProjectDetailPage: edit FAB + live reload; entry rows open EntrySheet; start/end date in stats
-- ProjectsPage: archive/unarchive replaces delete (sets EndDate with date picker prompt)
-- ClientDetailPage (new): stats, contact info, active projects list, edit FAB
-- `ProjectDetails` table merged into `Projects` table (migration: `MergeProjectDetailsIntoProject`)
-- `TimeEntry`: `InvoiceReference` + `InvoicedAt` fields added (migration: `AddInvoiceFieldsToTimeEntry`)
-- EntryRow: green receipt icon tooltip for invoiced entries
-- Reports: "Billable" KPI → "Uninvoiced"
-- `ProjectColors.ForClient()` added for algorithmic client colours
-- Dev seed/clear endpoints at `/api/dev/seed` and `/api/dev/clear` (dev only)
-
-**Branch:** `feature/mudblazor-ui` — merged via PR #38
-
----
-
-### Phase 7 — Security hardening
-
-Applied before deployment.
-
-- **Managed Identity** — App Service authenticates to Azure SQL without credentials; no username/password anywhere in the production stack
-- **Least privilege** — app DB user has `db_datareader` + `db_datawriter` only; no DDL rights in prod
-- **Azure SQL firewall** — Azure services only, no public internet access
-- **Security response headers** — CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
-- **Rate limiting** — ASP.NET Core built-in rate limiting on auth endpoints
-- **HTTPS + HSTS** enforced
-- **Secrets audit** — no credentials in source control or `appsettings.json`
-
-**Branch:** `feature/security-hardening`
-
----
+### Phase 7 — Security hardening ✅
+- `SecurityHeadersMiddleware`: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `X-XSS-Protection`
+- HSTS (365 days); rate limiting on auth endpoints (10 req/min)
+- Managed Identity — App Service authenticates to Azure SQL with no stored credentials
+- Least privilege DB user (`db_datareader` + `db_datawriter` only)
+- 82 tests passing
 
 ### Phase 8 — Azure deployment + CI/CD ✅
-
-- **Azure SQL Database** — free offer (32GB, automatic backups, Managed Identity auth)
-- **Azure App Service F1** — free fixed plan; throttles at limit, never charges overage; sleeps after 20 min idle
-- **GitHub Actions** — push to `main` → CI passes → Deploy workflow publishes and deploys automatically
-- **EF Core migrations** — applied automatically at startup via `Database.MigrateAsync()`; no manual `dotnet ef database update` in production
-- **Managed Identity** — App Service authenticates to Azure SQL with no stored credentials
+- Azure SQL Database — free offer (32 GB, automated backups, Managed Identity auth)
+- Azure App Service F1 — deployed and functional; custom domain blocked (resolved in Phase 9)
+- GitHub Actions — OIDC push-to-deploy on merge to `main`
+- EF Core migrations applied automatically at startup
 - See `docs/azure-deployment.md` for one-time Azure resource setup steps
-
-**Free tier guarantee:** Both Azure tiers are fixed plans. Exceeding limits throttles the app — no metered overage charges.
-
-**Branch:** `feature/azure-deployment`
 
 ---
 
-### Future — Zoho Books integration
+## Upcoming
 
-TimeTracker will eventually integrate with Zoho Books to partially automate invoice generation based on tracked time entries.
+### Phase 9 — Migrate hosting to Azure Container Apps
+Fix the custom domain blocker. Containerise the existing SSR app as-is and deploy to ACA. No code changes beyond adding a Dockerfile.
 
-The REST API layer (Phase 3) is retained specifically to support this. Direction TBD — push from TimeTracker or pull from Zoho.
+- `Dockerfile` added to `TimeTracker.Web` (multi-stage build)
+- GitHub Actions updated: build image → push to GHCR → deploy to ACA
+- Custom domain `timetracker.dzk.com.au` bound in ACA with free managed certificate
+
+### Phase 10 — Playwright UX regression testing
+Establish a UI regression baseline against the deployed ACA app before the WASM refactor.
+
+- Golden paths: login, start/stop timer, log fixed block, add/edit/delete entries, projects, clients, reports
+- Auth strategy TBD (to be discussed before implementation)
+- Playwright job added to GitHub Actions — runs after `deploy-live`
+
+### Phase 11 — WASM islands (remove SignalR)
+Replace Blazor Interactive Server with static SSR + targeted WASM islands. Server becomes stateless between requests.
+
+- Most pages: static SSR — no persistent connection
+- `TimerPage`, `EntrySheet`, `ProjectSheet`, `ClientSheet`: `@rendermode InteractiveWebAssembly`
+- HTTP service implementations for WASM context; EF Core implementations for server context
+- `TimeEntriesPage` tab/date navigation replaced with URL query params
+
+### Phase 12 — GitHub Pages showcase ⚠️ Needs planning session
+Add `TimeTracker.Showcase` standalone WASM project. Shares components with the live app; runs in the browser with mock data. Deployed to GitHub Pages via a second job in the GitHub Actions workflow.
+
+---
+
+## Future
+
+### Zoho Books integration
+TimeTracker will eventually integrate with Zoho Books to partially automate invoice generation based on tracked time entries. The REST API layer is retained specifically to support this. Direction TBD — push from TimeTracker or pull from Zoho.
 
 ---
 
 ## Phase dependency order
 
 ```
-Phase 0 ✅ → Phase 1 ✅ → Phase 2 ✅ → Phase 3 ✅ → Phase 4 ✅ → Phase 5 ✅ → Phase 6 ✅ → Phase 7 ✅ → Phase 8 ✅ → Zoho integration
+0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 → 10 → 11 → 12 → Zoho
 ```
 
-## Free tier summary
+## Infrastructure summary (target)
 
-| Service | Plan | Limit | Overage behaviour |
-|---------|------|-------|-------------------|
-| Azure App Service | F1 Free | 60 CPU min/day, sleeps after 20 min idle | Throttled — no charge |
-| Azure SQL Database | Free offer | 32GB data, 32GB backup | Throttled — no charge |
+| Service | Plan | Free grants | Overage behaviour |
+|---------|------|-------------|-------------------|
+| Azure Container Apps | Consumption | 180K vCPU-sec, 360K GiB-sec, 2M req/month (permanent) | Metered — negligible at personal-app traffic |
+| Azure SQL Database | Free offer | 32 GB data, automated backups (permanent) | Throttled — no charge |
 | Google OAuth | — | Unlimited personal use | — |
 | GitHub Actions | Free | 2,000 min/month | Queued — no charge |
+| GitHub Container Registry | Free (current) | No published limit | 30-day notice before billing |
