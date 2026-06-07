@@ -91,6 +91,18 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddHttpContextAccessor();
 
+// Provide HttpClient for SSR prerender of WASM components that inject it.
+// The client is never called server-side — IsBrowser() guards in WASM components
+// prevent actual HTTP calls during prerender; this satisfies the DI requirement.
+builder.Services.AddScoped(sp =>
+{
+    var ctx = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+    var baseUri = ctx is not null
+        ? new Uri($"{ctx.Request.Scheme}://{ctx.Request.Host}/")
+        : new Uri("https://localhost:7006/");
+    return new HttpClient { BaseAddress = baseUri };
+});
+
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
