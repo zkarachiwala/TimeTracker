@@ -5,6 +5,6 @@ public class ClientMappingConfig : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<Client, ClientResponse>();
+        config.NewConfig<TimeTracker.Shared.Entities.Client, ClientResponse>();
     }
 }

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["CLAUDE.md", "plan.md", "docs/"],
+  "formatter": {
+    "dotnet": {
+      "command": ["dotnet", "format", "TimeTracker.sln", "--include", "$FILE"],
+      "extensions": [".cs", ".razor", ".cshtml"]
+    }
+  },
+  "lsp": true,
+  "command": {
+    "build": {
+      "template": "Run `dotnet build TimeTracker.sln` and report any errors.",
+      "description": "Build the solution"
+    },
+    "test": {
+      "template": "Run `dotnet test` and report any failures.",
+      "description": "Run all tests"
+    },
+    "plan": {
+      "template": "Read plan.md for the current phase context, then propose a detailed plan for: $ARGUMENTS",
+      "description": "Plan a feature against the roadmap",
+      "agent": "plan"
+    }
+  }
+}

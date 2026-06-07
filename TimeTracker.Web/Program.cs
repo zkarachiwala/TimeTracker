@@ -24,13 +24,7 @@ var builder = WebApplication.CreateBuilder(args);
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
-builder.Services.AddMudServices(config =>
-{
-    // MudPopoverProvider IS in MainLayout. The default check fires too early
-    // in Blazor 9 per-page InteractiveServer mode (race between provider
-    // registration and component initialization). Disable the eager check.
-    config.PopoverOptions.CheckForPopoverProvider = false;
-});
+builder.Services.AddMudServices();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -127,6 +121,20 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 
+    // Signs in the first Admin user — dev/CI only, never deployed to production
+    app.MapGet("/api/dev/login", async (
+        UserManager<User> userManager,
+        SignInManager<User> signInManager) =>
+    {
+        var adminRole = "Admin";
+        var admins = await userManager.GetUsersInRoleAsync(adminRole);
+        var user = admins.FirstOrDefault();
+        if (user is null)
+            return Results.Problem("No admin user found. Run /api/dev/seed first.");
+        await signInManager.SignInAsync(user, isPersistent: true);
+        return Results.Content($"<html><body>Signed in as {user.Email}</body></html>", "text/html");
+    });
+
     var adminPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .RequireRole("Admin")
@@ -168,7 +176,7 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(TimeTracker.Wasm.Features.Timer.Pages.TimerPage).Assembly);
+    .AddAdditionalAssemblies(typeof(TimeTracker.Client.Features.Timer.Pages.TimerPage).Assembly);
 
 app.MapControllers();
 app.MapTimeEntryEndpoints();

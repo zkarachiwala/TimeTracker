@@ -1,0 +1,54 @@
+@page "/dev"
+@attribute [Authorize(Roles = "Admin")]
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Dev Tools</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Dev Tools</MudText>
+
+<MudStack Row="true" Spacing="2">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Seed" Disabled="_busy">Seed</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="Clear" Disabled="_busy">Clear All</MudButton>
+</MudStack>
+
+@code {
+    private bool _busy;
+
+    private async Task Seed()
+    {
+        _busy = true;
+        try
+        {
+            var response = await Http.PostAsync("/api/dev/seed", null);
+            if (response.IsSuccessStatusCode)
+                Snackbar.Add(await response.Content.ReadAsStringAsync(), Severity.Success);
+            else
+                Snackbar.Add("Seed failed.", Severity.Error);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task Clear()
+    {
+        _busy = true;
+        try
+        {
+            var response = await Http.PostAsync("/api/dev/clear", null);
+            if (response.IsSuccessStatusCode)
+                Snackbar.Add("Cleared all data.", Severity.Warning);
+            else
+                Snackbar.Add("Clear failed.", Severity.Error);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+        finally { _busy = false; }
+    }
+}

@@ -9,7 +9,10 @@ public static class TimeEntryEndpoints
         var group = app.MapGroup("/api/timeentries").RequireAuthorization();
 
         group.MapGet("/active", async (ITimeEntryService svc) =>
-            Results.Ok(await svc.GetActiveTimeEntry()));
+        {
+            var entry = await svc.GetActiveTimeEntry();
+            return entry is null ? Results.NoContent() : Results.Ok(entry);
+        });
 
         group.MapGet("/today", async (ITimeEntryService svc) =>
             Results.Ok(await svc.GetTodaysTimeEntries()));

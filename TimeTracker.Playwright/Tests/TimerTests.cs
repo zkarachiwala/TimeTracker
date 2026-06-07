@@ -7,40 +7,23 @@ public class TimerTests : AuthenticatedPageTest
     public async Task NavigateToTimer()
     {
         await Page.GotoAsync("/");
-        // FAB is always rendered after Blazor connects — reliable signal on F1 cold start
         await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync(new() { Timeout = 30_000 });
-    }
-
-    [Test]
-    public async Task TimerPageLoads()
-    {
-        await Expect(Page).ToHaveURLAsync(new Regex("/$|/\\?"));
     }
 
     [Test]
     public async Task StartTimerCardOrRunningCardIsVisible()
     {
+        // Verifies the page actually rendered its content — catches component crashes (e.g. JsonException
+        // from GetActiveTimeEntry) that leave the page blank even though the URL and FAB are present.
         var running = Page.GetByText("Tracking now");
         var idle = Page.GetByText("Start a timer");
-
-        var hasRunning = await running.IsVisibleAsync();
-        var hasIdle = await idle.IsVisibleAsync();
-
-        Assert.That(hasRunning || hasIdle, Is.True,
-            "Expected either a running timer card or the start-timer card to be visible");
+        await Expect(running.Or(idle)).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
     [Test]
     public async Task TodaySectionIsVisible()
     {
-        // Use heading role to avoid matching "No time logged yet today"
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Today" })).ToBeVisibleAsync();
-    }
-
-    [Test]
-    public async Task FabButtonIsVisible()
-    {
-        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync();
     }
 
     // Write tests — skipped in CI, run locally with PLAYWRIGHT_WRITE_TESTS=true

@@ -1,0 +1,142 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@implements IDisposable
+
+<MudThemeProvider Theme="@DzkTheme.Instance" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="4" Color="Color.Primary" Dense="false">
+        <MudIconButton id="hamburger-btn" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                       Edge="Edge.Start" aria-label="Open navigation menu"
+                       OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6" Style="font-weight:500; letter-spacing:.0075em">@PageTitle</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudAvatar Style="background:var(--dzk-navy); color:#fff; font-weight:500; font-size:.9rem; width:36px; height:36px; cursor:default">
+                    @GetInitials(context.User.Identity?.Name)
+                </MudAvatar>
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="drawerOpen" Variant="DrawerVariant.Persistent"
+               Anchor="Anchor.Left" Elevation="16">
+        <div style="display:flex; flex-direction:column; height:100%">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--mud-palette-divider); display:flex; align-items:center; gap:10px">
+                <img src="/images/clock-logo.png" alt="TimeTracker"
+                     style="width:40px; height:40px; border-radius:8px; object-fit:contain;" />
+                <div style="display:flex; flex-direction:column; line-height:1.15">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700; color:var(--mud-palette-secondary); line-height:1.15">TimeTracker</MudText>
+                    <MudText Typo="Typo.caption" Style="line-height:1.15; color:var(--mud-palette-text-secondary)">DZK Consulting</MudText>
+                </div>
+            </div>
+            <div style="flex:1; overflow-y:auto">
+                <NavMenu OnNavClick="() => drawerOpen = false" />
+            </div>
+            <div style="border-top:1px solid var(--mud-palette-divider); padding:8px 12px">
+                <AuthorizeView>
+                    <Authorized>
+                        <div style="display:flex; align-items:center; gap:12px; padding:4px 6px">
+                            <MudAvatar Style="background:var(--mud-palette-secondary); color:#fff; font-weight:500; font-size:.9rem; width:36px; height:36px; flex-shrink:0">
+                                @GetInitials(context.User.Identity?.Name)
+                            </MudAvatar>
+                            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1px">
+                                <span style="font-size:.875rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.3">
+                                    @GetDisplayName(context.User.Identity?.Name)
+                                </span>
+                                <span style="font-size:.75rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.3; color:var(--mud-palette-text-secondary)">
+                                    @(context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? context.User.Identity?.Name)
+                                </span>
+                            </div>
+                            <form method="post" action="/auth/logout" style="flex-shrink:0">
+                                <AntiforgeryToken />
+                                <MudIconButton ButtonType="ButtonType.Submit" Icon="@Icons.Material.Filled.Logout"
+                                               Color="Color.Default" title="Sign out" Size="Size.Small" />
+                            </form>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-4 px-4">
+            @Body
+        </MudContainer>
+        <div class="bottom-nav-spacer"></div>
+    </MudMainContent>
+</MudLayout>
+
+<BottomNav />
+
+@code {
+    private bool drawerOpen;
+    private void ToggleDrawer() => drawerOpen = !drawerOpen;
+
+    private static readonly Dictionary<string, string> TitleMap = new()
+    {
+        { "",         "TimeTracker" },
+        { "entries",  "Time Entries" },
+        { "reports",  "Reports" },
+        { "projects", "Projects" },
+        { "clients",  "Clients" },
+    };
+
+    private string PageTitle
+    {
+        get
+        {
+            var path = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/').Split('?')[0];
+            if (TitleMap.TryGetValue(path, out var t)) return t;
+            if (path.StartsWith("projects/")) return "Project";
+            if (path.StartsWith("clients/")) return "Client";
+            return "TimeTracker";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private static string GetDisplayName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "Unknown";
+        if (!name.Contains('@')) return name;
+        var local = name.Split('@')[0];
+        var parts = local.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(" ", parts.Select(p => char.ToUpper(p[0]) + p[1..]));
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        if (name.Contains('@'))
+        {
+            var local = name.Split('@')[0];
+            var parts = local.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length >= 2
+                ? $"{parts[0][0]}{parts[1][0]}".ToUpper()
+                : local[..Math.Min(2, local.Length)].ToUpper();
+        }
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return words.Length >= 2
+            ? $"{words[0][0]}{words[^1][0]}".ToUpper()
+            : name[..Math.Min(2, name.Length)].ToUpper();
+    }
+}

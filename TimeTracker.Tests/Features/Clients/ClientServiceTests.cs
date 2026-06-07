@@ -19,7 +19,7 @@ public class ClientServiceTests
     private static ClientService CreateService(DbContextOptions<TimeTrackerDataContext> options) =>
         new(new TestDbContextFactory(options));
 
-    private static Client MakeClient(string name = "Acme Corp", decimal? rate = 150m, bool isArchived = false) =>
+    private static TimeTracker.Shared.Entities.Client MakeClient(string name = "Acme Corp", decimal? rate = 150m, bool isArchived = false) =>
         new() { Name = name, DefaultHourlyRate = rate, IsArchived = isArchived };
 
     [Fact]

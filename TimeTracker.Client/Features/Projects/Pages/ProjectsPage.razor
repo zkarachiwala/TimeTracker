@@ -1,0 +1,67 @@
+@page "/projects"
+@attribute [Authorize(Roles = "Admin")]
+@inject IProjectService ProjectService
+@inject ITimeEntryService TimeEntryService
+@inject NavigationManager Nav
+
+<PageTitle>Projects — TimeTracker</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h6">Projects</MudText>
+        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">@activeProjects.Count active</MudChip>
+    </div>
+
+    @foreach (var p in activeProjects)
+    {
+        <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
+                     OnOpen="NavigateToDetail" />
+    }
+
+    @if (archivedProjects.Count > 0)
+    {
+        <MudText Typo="Typo.overline" Class="mt-4 mb-2 d-block">Archived</MudText>
+        <div class="archived-item">
+            @foreach (var p in archivedProjects)
+            {
+                <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
+                             OnOpen="NavigateToDetail" />
+            }
+        </div>
+    }
+</div>
+
+<div class="bottom-nav-spacer"></div>
+
+<ProjectSheetIsland />
+
+@code {
+    private List<ProjectResponse> projects = [];
+    private List<TimeEntryResponse> yearEntries = [];
+
+    private List<ProjectResponse> activeProjects => projects.Where(p => !p.EndDate.HasValue).ToList();
+    private List<ProjectResponse> archivedProjects => projects.Where(p => p.EndDate.HasValue).ToList();
+
+    private int GetYtdHours(int projectId)
+    {
+        var year = DateTime.Today.Year;
+        return (int)Math.Round(yearEntries
+            .Where(e => e.Project.Id == projectId && e.End.HasValue && e.Start.Year == year)
+            .Sum(e => (e.End!.Value - e.Start).TotalHours));
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            projects = await ProjectService.GetAllProjects();
+            yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private void NavigateToDetail(int id) => Nav.NavigateTo($"/projects/{id}");
+}

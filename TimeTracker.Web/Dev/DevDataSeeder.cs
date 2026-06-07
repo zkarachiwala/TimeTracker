@@ -22,11 +22,11 @@ public static class DevDataSeeder
         // ── Clients ──────────────────────────────────────────────────────────
         var clients = new[]
         {
-            new Client { Name = "Acme Corp",            DefaultHourlyRate = 185, ContactName = "Dana Whitfield",  ContactEmail = "dana@acmecorp.com",      ContactPhone = "+61 2 9000 1100", IsArchived = false },
-            new Client { Name = "Zenith Health",         DefaultHourlyRate = 195, ContactName = "Dr. Priya Nair", ContactEmail = "p.nair@zenithhealth.org", ContactPhone = "+61 3 9555 2200", IsArchived = false },
-            new Client { Name = "Northwind Logistics",   DefaultHourlyRate = 170, ContactName = "Marco Reyes",    ContactEmail = "marco@northwind.io",      ContactPhone = "+61 7 3100 4400", IsArchived = false },
-            new Client { Name = "DZK Consulting",        DefaultHourlyRate = null, ContactName = "Zak Karachiwala", ContactEmail = "zak@dzk.com.au",        ContactPhone = "+61 4 1200 8800", IsArchived = false },
-            new Client { Name = "Meridian Bank",         DefaultHourlyRate = 210, ContactName = "Helen Cho",      ContactEmail = "h.cho@meridianbank.com",  ContactPhone = "+61 2 8200 6600", IsArchived = true  },
+            new TimeTracker.Shared.Entities.Client { Name = "Acme Corp",            DefaultHourlyRate = 185, ContactName = "Dana Whitfield",  ContactEmail = "dana@acmecorp.com",      ContactPhone = "+61 2 9000 1100", IsArchived = false },
+            new TimeTracker.Shared.Entities.Client { Name = "Zenith Health",         DefaultHourlyRate = 195, ContactName = "Dr. Priya Nair", ContactEmail = "p.nair@zenithhealth.org", ContactPhone = "+61 3 9555 2200", IsArchived = false },
+            new TimeTracker.Shared.Entities.Client { Name = "Northwind Logistics",   DefaultHourlyRate = 170, ContactName = "Marco Reyes",    ContactEmail = "marco@northwind.io",      ContactPhone = "+61 7 3100 4400", IsArchived = false },
+            new TimeTracker.Shared.Entities.Client { Name = "DZK Consulting",        DefaultHourlyRate = null, ContactName = "Zak Karachiwala", ContactEmail = "zak@dzk.com.au",        ContactPhone = "+61 4 1200 8800", IsArchived = false },
+            new TimeTracker.Shared.Entities.Client { Name = "Meridian Bank",         DefaultHourlyRate = 210, ContactName = "Helen Cho",      ContactEmail = "h.cho@meridianbank.com",  ContactPhone = "+61 2 8200 6600", IsArchived = true  },
         };
         ctx.Clients.AddRange(clients);
         await ctx.SaveChangesAsync();
@@ -35,7 +35,7 @@ public static class DevDataSeeder
             (clients[0], clients[1], clients[2], clients[3], clients[4]);
 
         // ── Projects ─────────────────────────────────────────────────────────
-        Project MakeProject(string name, Client client, string desc, string startStr, string? endStr, decimal rate) =>
+        Project MakeProject(string name, TimeTracker.Shared.Entities.Client client, string desc, string startStr, string? endStr, decimal rate) =>
             new()
             {
                 Name = name,

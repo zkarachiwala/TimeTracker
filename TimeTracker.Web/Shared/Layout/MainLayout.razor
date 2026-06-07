@@ -1,16 +1,18 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
 @implements IDisposable
+@using TimeTracker.Web.Shared.Theme
 
-<MudThemeProvider Theme="TimeTracker.Web.Shared.Theme.DzkTheme.Instance" />
+<MudThemeProvider Theme="@DzkTheme.Instance" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
     <MudAppBar Elevation="4" Color="Color.Primary" Dense="false">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
-                       Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudIconButton id="hamburger-btn" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                       Edge="Edge.Start" aria-label="Open navigation menu"
+                       OnClick="ToggleDrawer" />
         <MudText Typo="Typo.h6" Style="font-weight:500; letter-spacing:.0075em">@PageTitle</MudText>
         <MudSpacer />
         <AuthorizeView>
@@ -74,7 +76,7 @@
 <BottomNav />
 
 @code {
-    private bool drawerOpen = false;
+    private bool drawerOpen;
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
 
     private static readonly Dictionary<string, string> TitleMap = new()

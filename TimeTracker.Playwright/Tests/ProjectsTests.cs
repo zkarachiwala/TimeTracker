@@ -11,15 +11,8 @@ public class ProjectsTests : AuthenticatedPageTest
     }
 
     [Test]
-    public async Task ProjectsPageLoads()
-    {
-        await Expect(Page).ToHaveURLAsync(new Regex("/projects"));
-    }
-
-    [Test]
     public async Task ProjectsHeadingIsVisible()
     {
-        // Heading appears in both toolbar and page — take the first
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Projects" }).First).ToBeVisibleAsync();
     }
 
@@ -27,12 +20,6 @@ public class ProjectsTests : AuthenticatedPageTest
     public async Task ActiveCountChipIsVisible()
     {
         await Expect(Page.GetByText(new Regex(@"\d+ active"))).ToBeVisibleAsync();
-    }
-
-    [Test]
-    public async Task FabButtonIsVisible()
-    {
-        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync();
     }
 
     [Test]

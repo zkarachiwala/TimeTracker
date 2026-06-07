@@ -13,7 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Playwright", "T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Contracts", "TimeTracker.Contracts\TimeTracker.Contracts.csproj", "{25E3208E-0AD6-4AC5-BCBF-F63C69B26052}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Wasm", "TimeTracker.Wasm\TimeTracker.Wasm.csproj", "{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeTracker.Client", "TimeTracker.Client\TimeTracker.Client.csproj", "{5EC2CA8A-05EF-4CDF-8CA4-F48E7032C908}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -29,7 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TimeTracker.Shared\TimeTracker.Shared.csproj" />
     <ProjectReference Include="..\TimeTracker.Contracts\TimeTracker.Contracts.csproj" />
-    <ProjectReference Include="..\TimeTracker.Wasm\TimeTracker.Wasm.csproj" />
+    <ProjectReference Include="..\TimeTracker.Client\TimeTracker.Client.csproj" />
   </ItemGroup>
 
 </Project>

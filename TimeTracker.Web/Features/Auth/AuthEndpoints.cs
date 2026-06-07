@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using TimeTracker.Contracts.Auth;
 using TimeTracker.Shared.Entities;
 
 namespace TimeTracker.Web.Features.Auth;
@@ -31,7 +32,7 @@ public static class AuthEndpoints
             var result = await externalLoginService.FindOrCreateUserAsync(email, info.LoginProvider, info.ProviderKey);
 
             if (result.Status == ExternalLoginStatus.EmailNotAllowed)
-                return Results.Forbid();
+                return Results.Redirect("/access-denied");
 
             if (result.Status != ExternalLoginStatus.Success)
                 return Results.Redirect($"/login?error={result.Status.ToString().ToLowerInvariant().Replace("_", "-")}");
@@ -46,5 +47,18 @@ public static class AuthEndpoints
             await signInManager.SignOutAsync();
             return Results.Redirect("/login");
         });
+
+        app.MapGet("/api/auth/user", (HttpContext ctx) =>
+        {
+            if (ctx.User.Identity?.IsAuthenticated != true)
+                return Results.Ok(new UserInfoResponse(false, null, []));
+
+            var email = ctx.User.Identity.Name;
+            var roles = ctx.User.Claims
+                .Where(c => c.Type == System.Security.Claims.ClaimTypes.Role)
+                .Select(c => c.Value)
+                .ToArray();
+            return Results.Ok(new UserInfoResponse(true, email, roles));
+        }).RequireRateLimiting("auth");
     }
 }

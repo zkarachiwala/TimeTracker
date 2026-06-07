@@ -1,0 +1,56 @@
+@inject NavigationManager Nav
+@implements IDisposable
+
+<AuthorizeView>
+    <Authorized>
+        <div class="bottom-nav">
+            <a class="bottom-nav-item @ActiveClass("/")" href="/">
+                <MudIcon Icon="@Icons.Material.Filled.Timer" />
+                <span class="nav-label">Timer</span>
+            </a>
+            <a class="bottom-nav-item @ActiveClass("/entries")" href="/entries">
+                <MudIcon Icon="@Icons.Material.Filled.AccessTime" />
+                <span class="nav-label">Entries</span>
+            </a>
+            <a class="bottom-nav-item @ActiveClass("/reports")" href="/reports">
+                <MudIcon Icon="@Icons.Material.Filled.BarChart" />
+                <span class="nav-label">Reports</span>
+            </a>
+            <AuthorizeView Roles="Admin" Context="adminContext">
+                <a class="bottom-nav-item @ActiveClass("/projects")" href="/projects">
+                    <MudIcon Icon="@Icons.Material.Filled.FolderOpen" />
+                    <span class="nav-label">Projects</span>
+                </a>
+                <a class="bottom-nav-item @ActiveClass("/clients")" href="/clients">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" />
+                    <span class="nav-label">Clients</span>
+                </a>
+            </AuthorizeView>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private string currentPath = "/";
+
+    protected override void OnInitialized()
+    {
+        currentPath = new Uri(Nav.Uri).AbsolutePath;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentPath = new Uri(e.Location).AbsolutePath;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string ActiveClass(string href)
+    {
+        if (href == "/" && currentPath == "/") return "active";
+        if (href != "/" && currentPath.StartsWith(href, StringComparison.OrdinalIgnoreCase)) return "active";
+        return string.Empty;
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

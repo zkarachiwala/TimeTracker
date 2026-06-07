@@ -11,12 +11,6 @@ public class TimeEntriesTests : AuthenticatedPageTest
     }
 
     [Test]
-    public async Task EntriesPageLoads()
-    {
-        await Expect(Page).ToHaveURLAsync(new Regex("/entries"));
-    }
-
-    [Test]
     public async Task FilterTabsAreVisible()
     {
         foreach (var tab in new[] { "Day", "Month", "Year", "Project" })
@@ -34,7 +28,6 @@ public class TimeEntriesTests : AuthenticatedPageTest
     [Test]
     public async Task DateStepperIsVisible()
     {
-        // Verify the stepper card's chevron buttons are present
         var label = Page.GetByText(new Regex(@"Today|Yesterday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday"));
         await Expect(label.Locator("..").Locator(".mud-icon-button").First).ToBeVisibleAsync();
     }
@@ -42,15 +35,12 @@ public class TimeEntriesTests : AuthenticatedPageTest
     [Test]
     public async Task StepBackChangesDateLabel()
     {
-        // Switch to Month tab — gives an unambiguous "Month YYYY" label
         await Page.GetByRole(AriaRole.Button, new() { Name = "Month" }).ClickAsync();
 
         var label = Page.GetByText(new Regex(@"[A-Z][a-z]+ \d{4}"));
         await Expect(label).ToBeVisibleAsync();
         var initialText = await label.InnerTextAsync();
 
-        // Scope to the label's parent flex container to get the stepper's back button,
-        // not the AppBar hamburger which is the first .mud-icon-button on the page
         var backButton = label.Locator("..").Locator(".mud-icon-button").First;
         await backButton.ClickAsync();
 
@@ -71,11 +61,5 @@ public class TimeEntriesTests : AuthenticatedPageTest
         await Page.GetByRole(AriaRole.Button, new() { Name = "Project" }).ClickAsync();
         await Expect(Page.Locator("label").Filter(new() { HasText = "Project" }))
             .ToBeVisibleAsync(new() { Timeout = 5_000 });
-    }
-
-    [Test]
-    public async Task FabButtonIsVisible()
-    {
-        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync();
     }
 }

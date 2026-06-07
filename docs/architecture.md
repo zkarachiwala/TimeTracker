@@ -8,8 +8,12 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 
 ## Change log
 
-| Date | Change | PR |
-|------|--------|----|
+| Date | Change | PR/Branch |
+|------|--------|-----------|
+| 2026-06 | **Global InteractiveWebAssembly** — abandoned SSR+WASM islands hybrid; MudBlazor #9743 prevents interactive layouts in SSR | `feature/wasm-islands` |
+| 2026-06 | Renamed `TimeTracker.Wasm` → `TimeTracker.Client` (Microsoft standard .Client naming) | `feature/wasm-islands` |
+| 2026-06 | Added `TimeTracker.Contracts` — shared DTOs; `CookieAuthenticationStateProvider`; `/api/auth/user` endpoint; `ReportsCalculations` static class; 92 unit tests | `feature/wasm-islands` |
+| 2026-06 | Added `TimeTracker.Playwright` — E2E tests; Cloudflare custom domain `timetracker.dzk.com.au` | #43–56 |
 | 2026-06 | Deployed to Azure App Service F1 + Azure SQL; GitHub Actions OIDC push-to-deploy | #43–45 |
 | 2026-06 | Security hardening: CSP, HSTS, rate limiting, 83 tests | #42 |
 | 2026-05 | MudBlazor UI uplift; replaced Tailwind + Radzen + QuickGrid | #38 |
@@ -29,30 +33,46 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 
 ```
 TimeTracker.sln
-├── TimeTracker.Web         — ASP.NET Core + Blazor SSR + Vertical Slice features + REST API
-├── TimeTracker.Shared      — EF Core entities only (class library)
-└── TimeTracker.Tests       — xUnit service integration tests (EF InMemory)
+├── TimeTracker.Web         — ASP.NET Core host: App.razor shell, API endpoints, EF Core, static assets
+├── TimeTracker.Client      — Blazor WASM client: all routed pages, layouts, HTTP services
+├── TimeTracker.Contracts   — Shared DTOs and interfaces (referenced by both Web and Client)
+├── TimeTracker.Shared      — EF Core entities only (referenced by Web only)
+├── TimeTracker.Tests       — xUnit unit tests (EF InMemory, no running DB required)
+└── TimeTracker.Playwright  — End-to-end Playwright browser tests
 ```
 
 ```
 TimeTracker.Web/
   Features/
-    Auth/          — Login/Logout pages, ExternalLoginService
-    Clients/       — IClientService, ClientService, ClientModels, ClientEndpoints, Pages/
-    Projects/      — IProjectService, ProjectService, ProjectModels, ProjectEndpoints, Pages/
-    TimeEntries/   — ITimeEntryService, TimeEntryService, TimeEntryModels, TimeEntryEndpoints, Pages/
-  Shared/
-    IUserContextService, UserContextService
-    Components/    — reusable Blazor components
-    Layout/        — MainLayout, NavMenu, LoginDisplay
+    Auth/          — Login/Logout pages, ExternalLoginService, /api/auth/user endpoint
+    Clients/       — IClientService, ClientService, ClientModels, ClientEndpoints
+    Projects/      — IProjectService, ProjectService, ProjectModels, ProjectEndpoints
+    TimeEntries/   — ITimeEntryService, TimeEntryService, TimeEntryModels, TimeEntryEndpoints
+    Reports/       — ReportsEndpoints (no SSR page — page lives in Client)
   Data/            — TimeTrackerDataContext, IdentityDataContext
+
+TimeTracker.Client/
+  Routes.razor     — WASM router; must live here for WASM to boot it
+  Features/
+    Auth/          — CookieAuthenticationStateProvider
+    Clients/       — Pages/, Components/, HttpClientService
+    Projects/      — Pages/, Components/, HttpProjectService
+    TimeEntries/   — Pages/, Components/, HttpTimeEntryService
+    Timer/         — Pages/
+    Reports/       — Pages/
+  Shared/
+    Layout/        — MainLayout, NavMenu, BottomNav, LoginLayout
+    Components/    — RedirectToLogin, shared UI
+    Theme/         — DzkTheme
 ```
 
 ### Runtime
 
 - **.NET 10**
-- Single process: Blazor Interactive Server serves pages via SignalR; REST API endpoints on the same host
+- **Global InteractiveWebAssembly** rendering — `App.razor` renders `<Routes @rendermode="InteractiveWebAssembly" />`. The entire routed app runs as WASM in the browser. No SignalR.
+- REST API endpoints served from the same ASP.NET Core host
 - Deployed to **Azure App Service F1** with **Azure SQL Database** (free offer)
+- Custom domain `timetracker.dzk.com.au` via Cloudflare proxy (Cloudflare terminates TLS)
 - Runs at `https://localhost:7006` (dev). API docs at `/scalar/v1` (dev only).
 
 ### Data layer
@@ -73,23 +93,34 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 
 **Vertical Slice Architecture** — no controllers, no repository layer.
 
-- Feature services (`ITimeEntryService`, `IProjectService`, `IAuthService`) injected directly into Blazor pages and minimal API endpoints
-- `IUserContextService` extracts the current user's ID from `HttpContext` claims and scopes all queries per user
+- Feature services (`ITimeEntryService`, `IProjectService`, `IAuthService`) injected directly into minimal API endpoints on the server
+- In `TimeTracker.Client`, HTTP service implementations (`HttpTimeEntryService`, etc.) call the REST API; these are what the WASM pages inject
+- `IUserContextService` extracts the current user's ID from `HttpContext` claims and scopes all queries per user (server-side only)
 - REST API endpoints registered via `MapTimeEntryEndpoints()` / `MapProjectEndpoints()` — retained for future Zoho Books integration
-- DTOs live in feature-scoped `*Models.cs` files; entities are never exposed to the UI layer
+- DTOs live in `TimeTracker.Contracts/` — shared between Web (Mapster mapping source) and Client (HTTP deserialisation target)
 
 ### Authentication
 
 **Cookie-based** with ASP.NET Identity + Google OAuth:
 - HTTP-only, Secure, SameSite=Strict cookies; 1-day expiration
+- `CookieCredentialHandler` in Client sends `BrowserRequestCredentials.Include` with every HTTP request so the auth cookie is forwarded
+- `CookieAuthenticationStateProvider` calls `/api/auth/user` on first load to hydrate WASM auth state; result cached per circuit
+- On 401 mid-session, pages call `Nav.NavigateTo("/login", forceLoad: true)` to force full reload and reset WASM state
 - Google OAuth via `Microsoft.AspNetCore.Authentication.Google`; provider-agnostic callback via `SignInManager`
+- OAuth challenge links use `data-enhance-nav="false"` to force full-page navigation (Blazor enhanced nav would turn it into a fetch, blocked by CSP)
 - Allowed emails gated via `Authentication:AllowedEmails` config list
-- Login at `/login`, logout at `/logout`
+- Login at `/login`, logout at `/auth/logout`
 - Local dev DB credentials via **.NET User Secrets** (`DbUser`, `DbPassword`)
 
-### Frontend
+### Rendering
 
-**Blazor Interactive Server** (`InteractiveServerRenderMode`) with **MudBlazor** component library. All pages run over a persistent SignalR WebSocket connection. SignalR is removed in Phase 10.
+**Global InteractiveWebAssembly** with **MudBlazor** component library.
+
+- `App.razor` (server) is a non-interactive HTML shell only; it renders `<Routes @rendermode="InteractiveWebAssembly" />`
+- `Routes.razor` and all layout/page components live in `TimeTracker.Client` — the WASM bundle does not include `TimeTracker.Web.dll`
+- MudBlazor providers (`MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider`, `MudSnackbarProvider`) live once in `MainLayout.razor` — never on individual pages
+- Never add `@rendermode` to individual pages — render mode is inherited globally
+- `IWebAssemblyHostEnvironment` (not `IWebHostEnvironment`) is used in Client for environment checks
 
 ### Infrastructure
 
@@ -193,40 +224,13 @@ erDiagram
 
 ## Planned phases
 
-#### Phase 9 — Playwright UX regression testing
+#### Current — Global WASM migration (`feature/wasm-islands`)
 
-Establish a UI regression baseline before the WASM migration.
+In progress. Migrating all remaining SSR pages to `TimeTracker.Client` so the WASM router can reach them. Full verification (build → unit tests → Playwright) required before merge.
 
-- Add `TimeTracker.Playwright` project
-- Implement auth setup (storage state or dev bypass — TBD)
-- Cover all golden paths: login, timer, entries, projects, clients, reports
-- Playwright job in GitHub Actions runs after `deploy-live`
+#### Next — GitHub Pages showcase ⚠️ Needs planning session
 
-#### Phase 10 — WASM islands (remove SignalR)
-
-Replace Blazor Interactive Server with static SSR + targeted WASM islands.
-
-- Remove global `InteractiveServerRenderMode` from `Routes.razor` — pages default to static SSR
-- Add `Microsoft.AspNetCore.Components.WebAssembly.Server`; create HTTP service implementations for WASM context
-- **WASM islands:** `TimerPage`, `EntrySheet`, `ProjectSheet`, `ClientSheet`
-- **Static SSR:** all other pages
-- `TimeEntriesPage` tab/date navigation replaced with URL query params
-
-#### Phase 11 — GitHub Pages showcase ⚠️ Needs detailed planning
-
-Add `TimeTracker.Showcase` standalone WASM project. Shares Razor components with the live app; runs entirely in the browser with mock data. Deployed to GitHub Pages via a second job in the existing GitHub Actions workflow.
-
----
-
-## Target solution structure (Phase 11)
-
-```
-TimeTracker.sln
-├── TimeTracker.Web      — ASP.NET Core host: static SSR pages + WASM islands + Minimal API
-├── TimeTracker.Showcase — Standalone Blazor WASM project (GitHub Pages portfolio)
-├── TimeTracker.Shared   — EF Core entities + DTOs + service interfaces
-└── TimeTracker.Tests    — xUnit service integration tests (EF InMemory)
-```
+Add a standalone WASM showcase project. Shares Razor components with the live app; runs in the browser with mock data. Deployed to GitHub Pages.
 
 ---
 
