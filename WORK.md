@@ -12,7 +12,7 @@ gh issue view <number>   # full technical spec for the active issue
 `feature/wasm-islands`
 
 ## Active issue
-**[#58 — Login and access-denied pages not reachable from WASM Router](https://github.com/zkarachiwala/TimeTracker/issues/58)**
+**[#59 — ProjectEndpoints missing Admin role on mutations](https://github.com/zkarachiwala/TimeTracker/issues/59)**
 
 Read the GitHub issue. It contains the full technical spec, files to change, and acceptance criteria. No other context needed.
 
@@ -21,8 +21,8 @@ Read the GitHub issue. It contains the full technical spec, files to change, and
 | # | Title | Status |
 |---|-------|--------|
 | [#57](https://github.com/zkarachiwala/TimeTracker/issues/57) | Duplicate @page routes — 500 on hard refresh | Done `a574ab4` |
-| [#58](https://github.com/zkarachiwala/TimeTracker/issues/58) | Login/access-denied not reachable from WASM Router | **Active** |
-| [#59](https://github.com/zkarachiwala/TimeTracker/issues/59) | ProjectEndpoints missing Admin role on mutations | Todo |
+| [#58](https://github.com/zkarachiwala/TimeTracker/issues/58) | Login/access-denied not reachable from WASM Router | Done `a4ab148` |
+| [#59](https://github.com/zkarachiwala/TimeTracker/issues/59) | ProjectEndpoints missing Admin role on mutations | **Active** |
 | [#60](https://github.com/zkarachiwala/TimeTracker/issues/60) | ITimeEntryService NotSupportedException contract violation | Todo |
 | [#61](https://github.com/zkarachiwala/TimeTracker/issues/61) | Architectural test for duplicate @page routes | Todo |
 
