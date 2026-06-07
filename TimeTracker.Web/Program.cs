@@ -27,7 +27,6 @@ var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbU
 builder.Services.AddMudServices();
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddOpenApi();
@@ -174,7 +173,6 @@ app.UseRateLimiter();
 app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(TimeTracker.Client.Features.Timer.Pages.TimerPage).Assembly);
 
