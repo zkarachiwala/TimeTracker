@@ -122,6 +122,26 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 - Never add `@rendermode` to individual pages — render mode is inherited globally
 - `IWebAssemblyHostEnvironment` (not `IWebHostEnvironment`) is used in Client for environment checks
 
+#### Why global WASM — not SSR + WASM islands
+
+This was an explicit, researched decision. Do not revisit without re-reading this section.
+
+The original Phase 10 plan targeted true WASM islands: SSR router, only interactive components in `TimeTracker.Client`. This was abandoned because **MudBlazor is architecturally incompatible with hybrid/islands rendering** in the following concrete ways:
+
+1. **`MudDrawer` is broken in SSR layouts** — [MudBlazor #9743](https://github.com/MudBlazor/MudBlazor/issues/9743) documents that `MudDrawer` does not work on SSR pages in mobile layout. The drawer toggle state is managed through Blazor's component tree; when the layout is SSR, clicking the hamburger does nothing. Closed as **not planned** by MudBlazor maintainers.
+
+2. **`MudNavMenu` cannot be toggled on SSR pages** — [MudBlazor/Templates #478](https://github.com/MudBlazor/Templates/issues/478) confirms that on SSR-rendered pages the nav drawer is non-functional on mobile. This is a showstopper for a mobile-first app.
+
+3. **MudBlazor providers require an interactive render context** — `MudThemeProvider`, `MudDialogProvider`, `MudSnackbarProvider`, and `MudPopoverProvider` cannot function in static SSR. The `MainLayout` cannot be fully SSR-rendered. Confirmed in [MudBlazor Discussion #7430](https://github.com/MudBlazor/MudBlazor/discussions/7430).
+
+4. **Theme flash** — In a hybrid model, `MudThemeProvider` applies theme colours at SSR render time, then reapplies when WASM boots, causing a visible colour flash. No MudBlazor fix exists; the workaround requires a custom JavaScript shim reading from `localStorage` before render. Documented in [MudBlazor #10946](https://github.com/MudBlazor/MudBlazor/issues/10946).
+
+5. **These are MudBlazor limitations, not .NET limitations** — .NET 10 supports hybrid rendering perfectly. The constraint is MudBlazor's architecture. Switching UI libraries would re-open the islands option, but that is a far larger refactor than the current approach.
+
+**The workaround for islands** (putting MudBlazor providers on every individual page and using `@rendermode InteractiveAuto` on the drawer) was evaluated and rejected: it requires JavaScript interop hacks for drawer state, produces an inconsistent UX, and creates ongoing maintenance burden for every new page.
+
+**Conclusion:** Global `InteractiveWebAssembly` is the correct and stable choice for a MudBlazor app. All routed pages and layouts must live in `TimeTracker.Client`. The server project (`TimeTracker.Web`) is a shell: API endpoints, EF Core, and the `App.razor` HTML wrapper only.
+
 ### Infrastructure
 
 | Concern | Solution | Cost |
