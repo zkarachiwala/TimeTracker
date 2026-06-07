@@ -75,6 +75,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        errorMessage = Error switch
+        {
+            "external-login-failed" => "Sign-in failed. Please try again.",
+            "no-email"              => "Your account did not provide an email address.",
+            "create-user-failed"    => "Could not create a local account. Please contact the administrator.",
+            "link-provider-failed"  => "Could not link your account. Please contact the administrator.",
+            _                       => null
+        };
+
+        // HttpClient is only available in WASM (not during SSR prerender)
+        if (!OperatingSystem.IsBrowser()) return;
+
         try
         {
             var providers = await Http.GetFromJsonAsync<List<ProviderInfo>>("/api/auth/providers");
@@ -84,14 +96,5 @@
         {
             externalProviders = [];
         }
-
-        errorMessage = Error switch
-        {
-            "external-login-failed" => "Sign-in failed. Please try again.",
-            "no-email"              => "Your account did not provide an email address.",
-            "create-user-failed"    => "Could not create a local account. Please contact the administrator.",
-            "link-provider-failed"  => "Could not link your account. Please contact the administrator.",
-            _                       => null
-        };
     }
 }
