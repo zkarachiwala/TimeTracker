@@ -27,8 +27,8 @@ Work through these in order. Each issue = one PR or one commit minimum.
 
 | # | Title | Status |
 |---|-------|--------|
-| [#57](https://github.com/zkarachiwala/TimeTracker/issues/57) | bug: duplicate @page routes cause 500 on hard refresh | **Next** |
-| [#58](https://github.com/zkarachiwala/TimeTracker/issues/58) | bug: login and access-denied pages not reachable from WASM Router | Todo |
+| [#57](https://github.com/zkarachiwala/TimeTracker/issues/57) | bug: duplicate @page routes cause 500 on hard refresh | Done (a574ab4) |
+| [#58](https://github.com/zkarachiwala/TimeTracker/issues/58) | bug: login and access-denied pages not reachable from WASM Router | **Next** |
 | [#59](https://github.com/zkarachiwala/TimeTracker/issues/59) | security: ProjectEndpoints missing Admin role on mutations | Todo |
 | [#60](https://github.com/zkarachiwala/TimeTracker/issues/60) | refactor: ITimeEntryService contract violation (NotSupportedException) | Todo |
 | [#61](https://github.com/zkarachiwala/TimeTracker/issues/61) | test: architectural test for duplicate @page routes | Todo |
