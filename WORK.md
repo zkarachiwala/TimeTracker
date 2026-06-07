@@ -12,9 +12,7 @@ gh issue view <number>   # full technical spec for the active issue
 `feature/wasm-islands`
 
 ## Active issue
-**[#61 — Architectural test for duplicate @page routes](https://github.com/zkarachiwala/TimeTracker/issues/61)**
-
-Read the GitHub issue. It contains the full technical spec, files to change, and acceptance criteria. No other context needed.
+**None — all issues resolved. Ready to merge `feature/wasm-islands` → `main`.**
 
 ## Issue queue
 
@@ -24,7 +22,7 @@ Read the GitHub issue. It contains the full technical spec, files to change, and
 | [#58](https://github.com/zkarachiwala/TimeTracker/issues/58) | Login/access-denied not reachable from WASM Router | Done `a4ab148` |
 | [#59](https://github.com/zkarachiwala/TimeTracker/issues/59) | ProjectEndpoints missing Admin role on mutations | Done `642575f` |
 | [#60](https://github.com/zkarachiwala/TimeTracker/issues/60) | ITimeEntryService NotSupportedException contract violation | Done `201413b` |
-| [#61](https://github.com/zkarachiwala/TimeTracker/issues/61) | Architectural test for duplicate @page routes | **Active** |
+| [#61](https://github.com/zkarachiwala/TimeTracker/issues/61) | Architectural test for duplicate @page routes | Done `f639788` |
 
 ## Rules
 - Every issue has a complete technical spec on GitHub. WORK.md is the index only.
