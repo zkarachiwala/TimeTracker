@@ -7,7 +7,7 @@ using TimeTracker.Shared.Exceptions;
 
 namespace TimeTracker.Web.Features.TimeEntries;
 
-public class TimeEntryService : ITimeEntryService
+public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
 {
     private readonly IDbContextFactory<TimeTrackerDataContext> _contextFactory;
     private readonly IUserContextService _userContextService;

@@ -41,21 +41,6 @@ public class HttpTimeEntryService(HttpClient http) : ITimeEntryService
     public Task<TimeEntryResponse?> GetTimeEntryById(int id) =>
         http.GetFromJsonAsync<TimeEntryResponse>($"api/timeentries/{id}");
 
-    public Task<TimeEntryResponseWrapper> GetTimeEntries(int skip, int limit) =>
-        throw new NotSupportedException();
-
-    public Task<TimeEntryResponseWrapper> GetTimeEntriesByProjectId(int projectId, int skip, int limit) =>
-        throw new NotSupportedException();
-
-    public Task<TimeEntryResponseWrapper> GetTimeEntriesByYear(int year, int skip, int limit) =>
-        throw new NotSupportedException();
-
-    public Task<TimeEntryResponseWrapper> GetTimeEntriesByMonth(int month, int year, int skip, int limit) =>
-        throw new NotSupportedException();
-
-    public Task<TimeEntryResponseWrapper> GetTimeEntriesByDay(int day, int month, int year, int skip, int limit) =>
-        throw new NotSupportedException();
-
     public Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId) =>
         http.GetFromJsonAsync<List<TimeEntryResponse>>($"api/timeentries/project/{projectId}/all")!;
 }

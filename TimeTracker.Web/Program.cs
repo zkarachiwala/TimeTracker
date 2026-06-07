@@ -105,6 +105,7 @@ builder.Services.AddScoped(sp =>
 
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
+builder.Services.AddScoped<ITimeEntryQueryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
