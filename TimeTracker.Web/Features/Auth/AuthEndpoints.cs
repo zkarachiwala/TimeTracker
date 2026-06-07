@@ -48,6 +48,15 @@ public static class AuthEndpoints
             return Results.Redirect("/login");
         });
 
+        app.MapGet("/api/auth/providers", async (IAuthenticationSchemeProvider schemeProvider) =>
+        {
+            var schemes = await schemeProvider.GetAllSchemesAsync();
+            var external = schemes
+                .Where(s => !string.IsNullOrEmpty(s.DisplayName))
+                .Select(s => new { s.Name, s.DisplayName });
+            return Results.Ok(external);
+        });
+
         app.MapGet("/api/auth/user", (HttpContext ctx) =>
         {
             if (ctx.User.Identity?.IsAuthenticated != true)

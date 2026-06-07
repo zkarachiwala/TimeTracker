@@ -1,6 +1,7 @@
 @page "/login"
 @layout LoginLayout
-@inject SignInManager<TimeTracker.Shared.Entities.User> SignInManager
+@inject HttpClient Http
+@inject NavigationManager Nav
 
 <PageTitle>Sign in — TimeTracker</PageTitle>
 
@@ -67,12 +68,22 @@
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
 
-    private IEnumerable<AuthenticationScheme> externalProviders = [];
+    private record ProviderInfo(string Name, string DisplayName);
+
+    private List<ProviderInfo> externalProviders = [];
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        externalProviders = await SignInManager.GetExternalAuthenticationSchemesAsync();
+        try
+        {
+            var providers = await Http.GetFromJsonAsync<List<ProviderInfo>>("/api/auth/providers");
+            externalProviders = providers ?? [];
+        }
+        catch
+        {
+            externalProviders = [];
+        }
 
         errorMessage = Error switch
         {
