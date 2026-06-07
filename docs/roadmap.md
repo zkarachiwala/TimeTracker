@@ -10,7 +10,7 @@ For architecture detail see [architecture.md](architecture.md).
 
 - Zero-cost hosting on Azure App Service F1 + Azure SQL free offer
 - Google OAuth via Gmail account
-- Blazor SSR with targeted WASM islands — removes SignalR, server becomes stateless between requests
+- Global InteractiveWebAssembly rendering — eliminates SignalR, server stateless between requests (see architecture.md for why islands was rejected)
 - Vertical Slice Architecture — feature-organised, no repository layer, interfaces throughout
 - Modern mobile-responsive UI (MudBlazor)
 - Playwright UX regression test suite
@@ -84,24 +84,25 @@ For architecture detail see [architecture.md](architecture.md).
 - EF Core migrations applied automatically at startup
 - See `docs/azure-deployment.md` for one-time Azure resource setup steps
 
+### Phase 9 — Playwright UX regression testing ✅
+- `TimeTracker.Playwright` NUnit project with `Microsoft.Playwright.NUnit`
+- Auth strategy: storage state replay — `playwright/.auth/user.json` encoded as `PLAYWRIGHT_AUTH_STATE_B64` GitHub secret
+- Test target: deployed App Service (`timetracker.dzk.com.au`) post-deploy
+- Coverage: unauthenticated redirects, login page, timer, time entries, projects, clients, reports, navigation
+- Playwright job in `deploy.yml` runs after `deploy` job succeeds on `main`
+
+### Phase 10 — Global InteractiveWebAssembly migration ✅
+Replaced Blazor Interactive Server (SignalR) with global InteractiveWebAssembly. Server is now stateless between requests.
+
+- `TimeTracker.Client` (Blazor WASM) — all routed pages, layouts, HTTP service implementations
+- `TimeTracker.Contracts` — shared DTOs and service interfaces (Web + Client + Tests)
+- `CookieAuthenticationStateProvider` — WASM auth state via `/api/auth/user`
+- `CookieCredentialHandler` — forwards auth cookie with every WASM HTTP request
+- WASM islands (per-component render mode) evaluated and rejected — MudBlazor `MudDrawer` incompatible with SSR layouts; see `architecture.md` for full decision record
+
 ---
 
 ## Upcoming
-
-### Phase 9 — Playwright UX regression testing
-Establish a UI regression baseline before the WASM refactor. Tests run on every PR.
-
-- Golden paths: login, start/stop timer, log fixed block, add/edit/delete entries, projects, clients, reports
-- Auth strategy TBD (to be discussed before implementation)
-- Playwright job added to GitHub Actions — runs after `deploy-live`
-
-### Phase 10 — WASM islands (remove SignalR)
-Replace Blazor Interactive Server with static SSR + targeted WASM islands. Server becomes stateless between requests.
-
-- Most pages: static SSR — no persistent connection
-- `TimerPage`, `EntrySheet`, `ProjectSheet`, `ClientSheet`: `@rendermode InteractiveWebAssembly`
-- HTTP service implementations for WASM context; EF Core implementations for server context
-- `TimeEntriesPage` tab/date navigation replaced with URL query params
 
 ### Phase 11 — GitHub Pages showcase ⚠️ Needs planning session
 Add `TimeTracker.Showcase` standalone WASM project. Shares components with the live app; runs in the browser with mock data. Deployed to GitHub Pages via a second job in the GitHub Actions workflow.
@@ -118,7 +119,7 @@ TimeTracker will eventually integrate with Zoho Books to partially automate invo
 ## Phase dependency order
 
 ```
-0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 → 10 → 11 → Zoho
+0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 ✅ → 10 ✅ → 11 → Zoho
 ```
 
 ## Infrastructure summary
