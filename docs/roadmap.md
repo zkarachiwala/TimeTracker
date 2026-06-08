@@ -104,8 +104,14 @@ Replaced Blazor Interactive Server (SignalR) with global InteractiveWebAssembly.
 
 ## Upcoming
 
-### Phase 11 — GitHub Pages showcase ⚠️ Needs planning session
+### Phase 11 — GitHub Pages showcase (planned)
 Add `TimeTracker.Showcase` standalone WASM project. Shares components with the live app; runs in the browser with mock data. Deployed to GitHub Pages via a second job in the GitHub Actions workflow.
+
+**Key decisions locked in (see `docs/architecture.md` Phase 11 section for full ADR):**
+- Zero changes to `TimeTracker.Client` — showcase adds a project reference and swaps DI registrations only
+- Persistence: in-memory only (resets on refresh) — acceptable for a portfolio demo
+- Demo watermark rendered in Showcase's own `App.razor` — no production regression risk
+- Deploys to `zkarachiwala.github.io/TimeTracker` via `gh-pages` branch; requires public repo (already public ✓)
 
 ---
 
