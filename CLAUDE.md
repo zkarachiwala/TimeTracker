@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Git discipline
 
+NEVER blow away uncommitted changes. Always commit or stash before switching branches, pulling, or doing any operation that might overwrite local changes. If you find yourself with a large pile of uncommitted changes, stop and deal with that first before writing new code.
+
+NEVER commit to the main branch, and NEVER commit broken code. Always create a new branch for each logical unit of work, and only merge to main when it's fully done and verified working.
+
 Commit after each verified working increment. Never accumulate more than one logical unit of change without committing. Before starting any work, run `git status` — if there is a large pile of uncommitted changes, stop and deal with that first before writing new code.
 
 "Done" means committed, not just working.
