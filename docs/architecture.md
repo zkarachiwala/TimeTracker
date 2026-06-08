@@ -152,21 +152,95 @@ private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
 
 This was an explicit, researched decision. Do not revisit without re-reading this section.
 
-The original Phase 10 plan targeted true WASM islands: SSR router, only interactive components in `TimeTracker.Client`. This was abandoned because **MudBlazor is architecturally incompatible with hybrid/islands rendering** in the following concrete ways:
+The original Phase 10 plan targeted true WASM islands: SSR router, only interactive components compiled into `TimeTracker.Client`. This was abandoned for two independent sets of reasons: fundamental .NET render-model constraints that apply regardless of UI library, and MudBlazor-specific incompatibilities. Both are documented below.
+
+##### A — Architectural reasons (independent of MudBlazor)
+
+These apply to any Blazor app using the hybrid/islands model and are documented in the [ASP.NET Core Blazor render modes (.NET 10)](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0) reference.
+
+1. **`RenderFragment` parameters cannot cross the SSR → WASM render boundary.** The docs state explicitly: *"Parameters passed to an interactive child component from a Static parent must be JSON serializable. This means that you can't pass render fragments or child content from a Static parent component to an interactive child component."* The runtime error is `System.InvalidOperationException: Cannot pass the parameter 'ChildContent'… because the parameter is of the delegate type… which is arbitrary code and cannot be serialized.` Nearly every composable Blazor component (layouts, cards, content wrappers) uses `ChildContent` — a `RenderFragment`. In an islands model, each such component either cannot cross the SSR→WASM boundary or must be wrapped in a parameter-free adapter component, adding structural indirection to every island.
+
+2. **State is not shared across render mode boundaries.** In global WASM, after prerender, all component state lives in one WASM process — components can share it freely. In a hybrid app, each WASM island is isolated: data fetched during SSR prerender must be serialized through `PersistentComponentState` and deserialized in every individual island. The docs note that without this, *"state used during prerendering is lost and must be recreated when the app is fully loaded,"* causing visible UI flicker per island. This serialization concern must be solved independently for every island, not once for the whole app.
+
+3. **Client-side routing exits on SSR page navigation, forcing a full-page reload.** The docs describe `[ExcludeFromInteractiveRouting]` (which applies to SSR pages): *"Inbound navigation is forced to perform a full-page reload instead of resolving the page via interactive routing."* In a hybrid app, navigating between WASM islands and SSR pages exits Blazor's SPA router every time, producing server round-trips on each page change. In global WASM, the WASM router handles all navigation entirely in the browser — no server round-trip after initial load.
+
+4. **WASM-only DI services fail at prerender time per island.** The docs note: *"Client-side services fail to resolve during prerendering. A component in the `.Client` project is prerendered on the server… it isn't possible to inject these services into a component without receiving an error."* In global WASM this is a single architectural problem solved once. In islands, every island must independently guard against or work around WASM-only service injection — a recurring per-island design tax.
+
+5. **Azure F1 CPU budget.** Global WASM offloads all UI compute to the client after the initial bundle download. The [Blazor hosting models doc](https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models?view=aspnetcore-10.0) explicitly states: *"When it's possible to offload most or all of an app's processing to clients and the app processes a significant amount of data, Blazor WebAssembly… is the best choice."* On a free F1 instance with limited CPU, this matters. In a hybrid SSR app, the server renders each SSR page on every navigation — continuous server CPU consumption. In global WASM, the server serves static files and API responses only.
+
+6. **Offline capability.** Once the WASM bundle is downloaded, the entire application logic runs in the browser — no server is required for any UI operation. This unlocks two things: (a) browser caching means repeat visits load instantly without any network, and (b) adding a service worker via the Blazor PWA template (`dotnet new blazor --pwa`) would let the app function fully offline by caching the bundle and optionally queuing API writes. A hybrid SSR app can never be offline — SSR pages require a live server to render. This is not currently implemented but global WASM is the prerequisite. Reference: [ASP.NET Core Blazor Progressive Web Application](https://learn.microsoft.com/en-us/aspnet/core/blazor/progressive-web-app?view=aspnetcore-10.0).
+
+##### B — MudBlazor-specific incompatibilities
+
+These apply because this app uses MudBlazor. Switching UI libraries would remove these constraints but at the cost documented in [Why MudBlazor](#why-mudblazor) below.
 
 1. **`MudDrawer` is broken in SSR layouts** — [MudBlazor #9743](https://github.com/MudBlazor/MudBlazor/issues/9743) documents that `MudDrawer` does not work on SSR pages in mobile layout. The drawer toggle state is managed through Blazor's component tree; when the layout is SSR, clicking the hamburger does nothing. Closed as **not planned** by MudBlazor maintainers.
 
 2. **`MudNavMenu` cannot be toggled on SSR pages** — [MudBlazor/Templates #478](https://github.com/MudBlazor/Templates/issues/478) confirms that on SSR-rendered pages the nav drawer is non-functional on mobile. This is a showstopper for a mobile-first app.
 
-3. **MudBlazor providers require an interactive render context** — `MudThemeProvider`, `MudDialogProvider`, `MudSnackbarProvider`, and `MudPopoverProvider` cannot function in static SSR. The `MainLayout` cannot be fully SSR-rendered. Confirmed in [MudBlazor Discussion #7430](https://github.com/MudBlazor/MudBlazor/discussions/7430).
+3. **MudBlazor providers require an interactive render context** — `MudThemeProvider`, `MudDialogProvider`, `MudSnackbarProvider`, and `MudPopoverProvider` cannot function in static SSR. Confirmed in [MudBlazor Discussion #7430](https://github.com/MudBlazor/MudBlazor/discussions/7430).
 
-4. **Theme flash** — In a hybrid model, `MudThemeProvider` applies theme colours at SSR render time, then reapplies when WASM boots, causing a visible colour flash. No MudBlazor fix exists; the workaround requires a custom JavaScript shim reading from `localStorage` before render. Documented in [MudBlazor #10946](https://github.com/MudBlazor/MudBlazor/issues/10946).
+4. **Theme flash** — In a hybrid model, `MudThemeProvider` applies theme colours at SSR render time, then reapplies when WASM boots, causing a visible colour flash. No MudBlazor fix exists. Documented in [MudBlazor #10946](https://github.com/MudBlazor/MudBlazor/issues/10946).
 
-5. **These are MudBlazor limitations, not .NET limitations** — .NET 10 supports hybrid rendering perfectly. The constraint is MudBlazor's architecture. Switching UI libraries would re-open the islands option, but that is a far larger refactor than the current approach.
+**Conclusion:** Global `InteractiveWebAssembly` is the correct and stable choice. Reason group A applies regardless of UI library. Reason group B applies specifically to MudBlazor. All routed pages and layouts must live in `TimeTracker.Client`. The server project (`TimeTracker.Web`) is a shell: API endpoints, EF Core, and the `App.razor` HTML wrapper only.
 
-**The workaround for islands** (putting MudBlazor providers on every individual page and using `@rendermode InteractiveAuto` on the drawer) was evaluated and rejected: it requires JavaScript interop hacks for drawer state, produces an inconsistent UX, and creates ongoing maintenance burden for every new page.
+---
 
-**Conclusion:** Global `InteractiveWebAssembly` is the correct and stable choice for a MudBlazor app. All routed pages and layouts must live in `TimeTracker.Client`. The server project (`TimeTracker.Web`) is a shell: API endpoints, EF Core, and the `App.razor` HTML wrapper only.
+#### Why MudBlazor
+
+MudBlazor was chosen over the two Microsoft-aligned alternatives (Fluent UI Blazor and the default Bootstrap scaffold) when the UI was overhauled in PR #38. This section documents the justification and the cost of switching.
+
+##### The alternatives
+
+| Library | Design system | SSR support | Architecture |
+|---------|--------------|-------------|--------------|
+| **MudBlazor** | Material Design (Google) | ❌ Not supported | Pure C# — no JS web component layer |
+| **Fluent UI Blazor** | Fluent Design (Microsoft) | ✅ Supported | Wraps FAST/TypeScript web components |
+| **Bootstrap scaffold** | Bootstrap | ✅ Supported | Minimal — ships only the default dotnet template components |
+
+##### Why MudBlazor over Fluent UI Blazor
+
+1. **Design system alignment.** This is a personal, mobile-first app. Material Design is the dominant design language on Android and in consumer web apps. Fluent Design is built for Microsoft 365 / Windows 11 productivity tooling — appropriate in a Microsoft-branded enterprise context, not a solo time-tracker used on a phone. MudBlazor README: *"Clean and aesthetic graphic design based on Material Design."* Fluent UI Blazor README: *"have the look and feel of modern Microsoft applications."*
+
+2. **Community size and release cadence.** Verified via GitHub API (2026-06-08):
+
+   | Metric | MudBlazor | Fluent UI Blazor |
+   |--------|-----------|-----------------|
+   | GitHub stars | **10,430** | 4,754 |
+   | Forks | **1,639** | 467 |
+   | Contributors | **445+** | ~30 |
+   | Latest stable | v9.5.0 (2026-05-26) | v4.14.2 (2026-05-16) |
+   | Total releases | **153** | 106 |
+   | Minor release cadence | Monthly | Quarterly |
+
+   A 2.2x star count and 14x contributor differential is a meaningful signal of ecosystem health and issue resolution rate.
+
+3. **Pure C# implementation.** MudBlazor README: *"No JavaScript dependency — 100% C# implementation… Our goal is to keep JavaScript to a minimum."* Fluent UI Blazor wraps Microsoft's FAST web components (TypeScript custom elements). This means Fluent UI component behaviour is ultimately debuggable in the browser's JS runtime, not in C#. For a .NET-first developer, MudBlazor's behaviour is inspectable and overridable in C# alone.
+
+4. **SSR non-support is resolved, not a concern.** The global WASM architecture documented above eliminates MudBlazor's SSR limitation. The trade-off is accepted and architecturally locked in.
+
+##### Why not the Bootstrap scaffold
+
+The default `dotnet new blazor` template ships minimal components (input, grid, validation summaries). Building a mobile-first app with drawers, date pickers, data grids, dialogs, and snackbars from Bootstrap primitives requires either a second component library or bespoke CSS/JS — equivalent work to adopting MudBlazor with none of the ecosystem support.
+
+##### What switching to Fluent UI Blazor would cost
+
+A migration is technically feasible — SSR support would re-open the islands option — but it is a substantial undertaking. The estimate below is for the current app (~10 routed pages, ~5 layout/shared components).
+
+| Work item | Effort |
+|-----------|--------|
+| Component rename + parameter remap (all pages) | 1–2 hrs/simple page × 8 pages = 1–2 days |
+| Complex pages (forms, data grids, dialogs) | 2–4 hrs/page × 2 pages = 0.5–1 day |
+| Theme rebuild (Material palette → Fluent design tokens — different system entirely) | 1–2 days |
+| Layout restructure (`MainLayout`, `NavMenu`, provider registration pattern) | 0.5 day |
+| Icon set change (Material icons → Fluent icons, different names and SVG format) | 0.5 day |
+| Design review (Material spacing, typography, elevation → Fluent equivalents) | 0.5–1 day |
+| Full regression test (all pages + Playwright suite) | 1 day |
+| **Total** | **~5–10 person-days** |
+
+This estimate assumes a developer familiar with both libraries. The migration delivers no functional change — the app would behave identically to users. The only gain would be re-enabling the islands option (which has its own architectural costs per the section above) and alignment with the Microsoft design language (which is a regression for this app's design intent).
+
+**Conclusion:** MudBlazor is the correct library for this app's design system, community support needs, and C#-first development model. The migration cost to Fluent UI Blazor is not justified by any functional or architectural benefit given the current global WASM architecture.
 
 #### Rate limiting — split policies for auth vs auth-status
 
