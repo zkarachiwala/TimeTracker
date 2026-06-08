@@ -357,9 +357,13 @@ erDiagram
 
 ---
 
+## Decision register
+
+See **[docs/decisions.md](decisions.md)** — 10 decisions (D001–D010) covering rendering architecture, component library, hosting, auth, data access, and CI.
+
 ## Technical debt register
 
-See **[docs/technical-debt.md](technical-debt.md)** — 21 entries across infrastructure, CI/CD, auth, observability, security, and networking, plus the Playwright CI auth ADR.
+See **[docs/technical-debt.md](technical-debt.md)** — 21 entries (TD1–TD21) across infrastructure, CI/CD, auth, observability, security, and networking. Each entry links to the relevant decision where applicable.
 
 ---
 
