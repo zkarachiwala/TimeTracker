@@ -46,6 +46,11 @@ jobs:
           --configuration Release
           --output ./publish
 
+      - name: Set startup command
+        run: |
+          RG=$(az webapp list --query "[?name=='${{ vars.AZURE_WEBAPP_NAME }}'].resourceGroup" -o tsv)
+          az webapp config set --name ${{ vars.AZURE_WEBAPP_NAME }} --resource-group "$RG" --startup-file "dotnet TimeTracker.Web.dll"
+
       - name: Deploy to Azure App Service
         id: deploy
         uses: azure/webapps-deploy@v3
