@@ -122,6 +122,32 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 - Never add `@rendermode` to individual pages — render mode is inherited globally
 - `IWebAssemblyHostEnvironment` (not `IWebHostEnvironment`) is used in Client for environment checks
 
+#### SSR prerender → WASM hydration patterns
+
+Global WASM apps serve an SSR-prerendered HTML page first, then WASM boots and hydrates. Two patterns are in use to handle the gap:
+
+**1. Disabling controls during prerender (`RendererInfo.IsInteractive`)**
+
+Controls in `MainLayout` (e.g. the hamburger button) appear in the SSR HTML before WASM has attached event handlers. Adding `Disabled="@(!RendererInfo.IsInteractive)"` disables them during prerender and enables them once WASM is interactive. `RendererInfo.IsInteractive` is a .NET 9+ `ComponentBase` property: `false` during SSR prerender, `true` after WASM hydration.
+
+Playwright's `ClickAsync` actionability check (waits for Enabled) automatically waits for WASM hydration — no custom wait logic needed. This is the Microsoft-documented approach; no test scaffolding in production code.
+
+Source: https://learn.microsoft.com/en-us/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0
+
+**2. Resetting layout state on navigation (`NavigationManager.LocationChanged`)**
+
+`MainLayout` is a persistent WASM component — it is NOT destroyed on client-side navigation. State fields like `drawerOpen` retain their values across route changes. `OnLocationChanged` is the correct place to reset transient UI state:
+
+```csharp
+private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+{
+    drawerOpen = false;
+    InvokeAsync(StateHasChanged);
+}
+```
+
+`LocationChanged` fires on every navigation: browser-intercepted link clicks and programmatic `NavigateTo` calls. Source: https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0
+
 #### Why global WASM — not SSR + WASM islands
 
 This was an explicit, researched decision. Do not revisit without re-reading this section.
@@ -141,6 +167,21 @@ The original Phase 10 plan targeted true WASM islands: SSR router, only interact
 **The workaround for islands** (putting MudBlazor providers on every individual page and using `@rendermode InteractiveAuto` on the drawer) was evaluated and rejected: it requires JavaScript interop hacks for drawer state, produces an inconsistent UX, and creates ongoing maintenance burden for every new page.
 
 **Conclusion:** Global `InteractiveWebAssembly` is the correct and stable choice for a MudBlazor app. All routed pages and layouts must live in `TimeTracker.Client`. The server project (`TimeTracker.Web`) is a shell: API endpoints, EF Core, and the `App.razor` HTML wrapper only.
+
+#### Rate limiting — split policies for auth vs auth-status
+
+Two named rate limit policies, both driven from `RateLimiting` config in `appsettings.json`:
+
+| Policy | Endpoints | Production limit | Dev override |
+|--------|-----------|-----------------|--------------|
+| `"auth"` | `/auth/challenge`, `/auth/callback` | 10 req/min | — (same) |
+| `"auth-status"` | `/api/auth/user` | 10 req/min | 200 req/min |
+
+**Why the split:** OWASP rate limiting guidance targets credential submission endpoints — login attempts and OAuth initiation — to prevent brute force. `/api/auth/user` is a read-only cookie validation (no credentials accepted); applying the same 10/min limit had no security benefit and caused the Playwright test suite to fail mid-run with 429s. Reference: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+
+**Why config-driven:** Microsoft docs recommend driving rate limit options from `Configuration` so limits can differ per environment without code changes. Code falls back to 10/min if the config key is absent — safe for existing deployments. Reference: https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit?view=aspnetcore-10.0
+
+**Dev override location:** `appsettings.Development.json` → `RateLimiting:AuthStatus:PermitLimit = 200`. Production `appsettings.json` keeps both at 10.
 
 ### Infrastructure
 

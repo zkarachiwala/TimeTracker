@@ -3,7 +3,7 @@
 
 <div class="tt-fab">
     <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-            OnClick="OpenNewSheet" />
+            OnClick="OpenNewSheet" Disabled="@(!RendererInfo.IsInteractive)" />
 </div>
 
 @if (sheetOpen)

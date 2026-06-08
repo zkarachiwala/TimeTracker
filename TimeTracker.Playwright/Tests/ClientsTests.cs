@@ -7,7 +7,7 @@ public class ClientsTests : AuthenticatedPageTest
     public async Task NavigateToClients()
     {
         await Page.GotoAsync("/clients");
-        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
     [Test]

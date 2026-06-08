@@ -68,6 +68,6 @@ public static class AuthEndpoints
                 .Select(c => c.Value)
                 .ToArray();
             return Results.Ok(new UserInfoResponse(true, email, roles));
-        }).RequireRateLimiting("auth");
+        }).RequireRateLimiting("auth-status");
     }
 }

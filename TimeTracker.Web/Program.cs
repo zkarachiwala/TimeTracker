@@ -81,8 +81,15 @@ builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("auth", policy =>
     {
-        policy.PermitLimit = 10;
-        policy.Window = TimeSpan.FromMinutes(1);
+        policy.PermitLimit = builder.Configuration.GetValue<int>("RateLimiting:Auth:PermitLimit", 10);
+        policy.Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int>("RateLimiting:Auth:WindowMinutes", 1));
+        policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        policy.QueueLimit = 0;
+    });
+    options.AddFixedWindowLimiter("auth-status", policy =>
+    {
+        policy.PermitLimit = builder.Configuration.GetValue<int>("RateLimiting:AuthStatus:PermitLimit", 10);
+        policy.Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int>("RateLimiting:AuthStatus:WindowMinutes", 1));
         policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         policy.QueueLimit = 0;
     });

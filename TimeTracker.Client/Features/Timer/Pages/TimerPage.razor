@@ -124,7 +124,7 @@ else if (_providersReady)
 @* ── FAB ── *@
 <div class="tt-fab">
     <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-            OnClick="OpenNewSheet" />
+            OnClick="OpenNewSheet" Disabled="@(!RendererInfo.IsInteractive)" />
 </div>
 
 @* ── Entry sheet ── *@

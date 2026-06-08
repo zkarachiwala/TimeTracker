@@ -100,7 +100,7 @@
 
     <div class="tt-fab">
         <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
-                OnClick="OpenProjectSheet" />
+                OnClick="OpenProjectSheet" Disabled="@(!RendererInfo.IsInteractive)" />
     </div>
 }
 

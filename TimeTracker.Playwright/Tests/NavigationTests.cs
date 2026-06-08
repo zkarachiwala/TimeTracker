@@ -7,7 +7,7 @@ public class NavigationTests : AuthenticatedPageTest
     public async Task StartOnTimer()
     {
         await Page.GotoAsync("/");
-        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
     [Test]
