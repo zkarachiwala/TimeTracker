@@ -12,7 +12,7 @@ gh issue view <number>   # full technical spec for the active issue
 `feature/wasm-islands`
 
 ## Active issue
-**None — all issues resolved. Ready to merge `feature/wasm-islands` → `main`.**
+**None — all issues resolved. PR #62 open, awaiting merge instruction.**
 
 ## Issue queue
 
@@ -23,6 +23,7 @@ gh issue view <number>   # full technical spec for the active issue
 | [#59](https://github.com/zkarachiwala/TimeTracker/issues/59) | ProjectEndpoints missing Admin role on mutations | Done `642575f` |
 | [#60](https://github.com/zkarachiwala/TimeTracker/issues/60) | ITimeEntryService NotSupportedException contract violation | Done `201413b` |
 | [#61](https://github.com/zkarachiwala/TimeTracker/issues/61) | Architectural test for duplicate @page routes | Done `f639788` |
+| [PR #62](https://github.com/zkarachiwala/TimeTracker/pull/62) | Phase 10: Global InteractiveWebAssembly migration | Open — awaiting merge |
 
 ## Rules
 - Every issue has a complete technical spec on GitHub. WORK.md is the index only.
