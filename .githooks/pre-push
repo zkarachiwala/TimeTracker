@@ -1,0 +1,67 @@
+#!/bin/bash
+# Runs unauthenticated Playwright tests before push when app code changed.
+# Skips gracefully if the app is not running locally.
+# Activate once: git config core.hooksPath .githooks
+
+APP_URL="https://localhost:7006"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Read pushed refs from stdin
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+    if [[ "$local_sha" == "0000000000000000000000000000000000000000" ]]; then
+        # Branch being deleted — nothing to check
+        exit 0
+    fi
+
+    if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+        # New branch — diff against the merge base with main
+        BASE=$(git merge-base "$local_sha" origin/main 2>/dev/null || echo "")
+        if [[ -z "$BASE" ]]; then
+            CHANGED_FILES=$(git diff --name-only HEAD)
+        else
+            CHANGED_FILES=$(git diff --name-only "$BASE" "$local_sha")
+        fi
+    else
+        CHANGED_FILES=$(git diff --name-only "$remote_sha" "$local_sha")
+    fi
+
+    # Treat changes to .cs, .razor, or .csproj files as app-impacting.
+    # Excludes docs/, *.md, and the Playwright project itself (test-only changes
+    # don't need a UI test run — unit tests in CI cover them).
+    APP_CHANGES=$(echo "$CHANGED_FILES" \
+        | grep -E "\.(cs|razor|csproj)$" \
+        | grep -v "^docs/" \
+        | grep -v "^TimeTracker\.Playwright/" \
+        || true)
+
+    if [[ -z "$APP_CHANGES" ]]; then
+        echo "pre-push: no app code changed — skipping Playwright tests"
+        exit 0
+    fi
+
+    echo "pre-push: app code changed — checking for running app at $APP_URL..."
+
+    HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" "$APP_URL" 2>/dev/null || echo "000")
+    if ! echo "$HTTP_CODE" | grep -qE "^[23]"; then
+        echo "pre-push: app not running (got HTTP $HTTP_CODE) — skipping Playwright tests"
+        echo "pre-push: to run manually:"
+        echo "  BROWSER= PLAYWRIGHT_BASE_URL=$APP_URL dotnet test TimeTracker.Playwright --filter \"TestCategory!=Authenticated\" --logger \"console;verbosity=normal\""
+        exit 0
+    fi
+
+    echo "pre-push: running unauthenticated Playwright tests against $APP_URL..."
+    BROWSER= PLAYWRIGHT_BASE_URL="$APP_URL" \
+        dotnet test "$REPO_ROOT/TimeTracker.Playwright" \
+        --filter "TestCategory!=Authenticated" \
+        --logger "console;verbosity=normal"
+
+    RESULT=$?
+    if [[ $RESULT -ne 0 ]]; then
+        echo "pre-push: Playwright tests failed — push blocked"
+        exit 1
+    fi
+
+    echo "pre-push: all tests passed"
+done
+
+exit 0

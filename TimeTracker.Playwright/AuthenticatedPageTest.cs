@@ -1,5 +1,6 @@
 namespace TimeTracker.Playwright;
 
+[Category("Authenticated")]
 public class AuthenticatedPageTest : PageTest
 {
     private readonly List<string> _consoleErrors = [];
@@ -12,6 +13,13 @@ public class AuthenticatedPageTest : PageTest
         IsMobile = true,
         IgnoreHTTPSErrors = true,
     };
+
+    [OneTimeSetUp]
+    public void RequireAuthState()
+    {
+        if (!File.Exists(TestConfig.AuthStatePath))
+            Assert.Ignore("Auth state not found — run CaptureAuthState locally first (see AuthSetup.cs)");
+    }
 
     [SetUp]
     public void MonitorConsoleErrors()
