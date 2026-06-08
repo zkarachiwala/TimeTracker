@@ -61,55 +61,50 @@ base64 -w 0 playwright/.auth/user.json | xclip -selection clipboard
 
 ## Phase 10 — WASM islands (remove SignalR)
 
-**Known issue to fix in this phase:** `<HeadOutlet />` in `App.razor` has no render mode, so `<PageTitle>` components never update `document.title` (browser tab always shows "TimeTracker"). This is not worth fixing now because the correct fix depends on the render model — once pages are static SSR, `<PageTitle>` will work correctly without any special render mode on `<HeadOutlet>`. Verify browser tab titles update correctly as part of Phase 10 validation.
+**Plan file:** `.claude/plans/serialized-napping-snowflake.md` (detailed step-by-step)
 
-**Goal:** Replace Blazor Interactive Server with static SSR + targeted WASM islands. Eliminates the persistent SignalR WebSocket connection. Server becomes stateless between requests.
+**Goal:** Replace Blazor Interactive Server with static SSR + true WebAssembly islands. Eliminates the persistent SignalR WebSocket entirely. Server becomes stateless between requests.
 
 **Branch:** `feature/wasm-islands`
 
-### Approach
+### New projects
 
-Most pages become plain static SSR (no render mode, no connection held). Only the components that genuinely need client-side interactivity use `@rendermode InteractiveWebAssembly`. The server still hosts everything — this is not a hosted WASM model, just selective WASM islands embedded in SSR pages.
+- **`TimeTracker.Contracts`** (plain class library) — DTOs + service interfaces, no server/WASM deps. Referenced by Web, Client, Tests.
+- **`TimeTracker.Client`** (Blazor WASM, `Microsoft.NET.Sdk.BlazorWebAssembly`) — HTTP service implementations + all interactive components.
 
-### Steps
+### Component placement
 
-1. **Configure WASM hosting in `TimeTracker.Web`**
-   - Add `Microsoft.AspNetCore.Components.WebAssembly.Server` package
-   - Register WASM services in `Program.cs`
+| Component | Render mode | Location |
+|-----------|-------------|----------|
+| `TimerPage` | `InteractiveWebAssembly` | `TimeTracker.Client` |
+| `TimeEntriesPage` | `InteractiveWebAssembly` | `TimeTracker.Client` |
+| `EntrySheet`, `EntryRow` | (child of WASM parent) | `TimeTracker.Client` |
+| `ProjectSheetIsland` | `InteractiveWebAssembly` | `TimeTracker.Client` (new self-contained island) |
+| `ClientSheetIsland` | `InteractiveWebAssembly` | `TimeTracker.Client` (new self-contained island) |
+| `ProjectSheet`, `ClientSheet` | (child of island) | `TimeTracker.Client` |
+| `ReportsPage`, `ProjectsPage`, `ClientsPage` | static SSR | `TimeTracker.Web` |
+| `LoginPage` | static SSR (form POST) | `TimeTracker.Web` |
 
-2. **Create HTTP service implementations**
-   - `HttpTimeEntryService : ITimeEntryService` — calls existing `/api/timeentries/*` endpoints
-   - `HttpProjectService : IProjectService` — calls existing `/api/projects/*` endpoints
-   - `HttpClientService : IClientService` — calls existing `/api/clients/*` endpoints
-   - Register HTTP versions for WASM context; EF Core versions for server context
+### Key implementation notes
 
-3. **Remove global render mode from `Routes.razor`**
-   - All pages default to static SSR
+- **MudBlazor providers**: Each WASM island root adds `<MudThemeProvider>`, `<MudSnackbarProvider>`, `<MudPopoverProvider>` at its top (WASM service scope is isolated from SSR MainLayout).
+- **3 missing API endpoints** to add: `GET /api/timeentries/active`, `/today`, `/year/{year}/all`
+- **SSR islands (ProjectSheetIsland, ClientSheetIsland)**: Self-contained FAB + sheet. After save calls `Nav.NavigateTo(Nav.Uri, forceLoad: true)` to refresh the SSR page. Edit via `?edit={id}` URL param.
+- **MainLayout/BottomNav** `InvokeAsync(StateHasChanged)` on `Nav.LocationChanged` — no changes needed; compatible with enhanced navigation.
+- **Antiforgery** — JSON API calls from WASM bypass antiforgery middleware automatically in .NET 10; no explicit `DisableAntiforgery()` needed.
 
-4. **Convert pages to static SSR**
-   - `ReportsPage` — no changes needed, just remove `@rendermode`
-   - `ProjectsPage`, `ProjectDetailPage` — remove `@rendermode`
-   - `ClientsPage`, `ClientDetailPage` — remove `@rendermode`
-   - `LoginPage` — convert to standard form POST
-   - `TimeEntriesPage` — replace tab/date/filter client state with URL query params
+### Validation checklist
 
-5. **Promote interactive components to WASM islands**
-   - `TimerPage` → `@rendermode InteractiveWebAssembly`
-   - `EntrySheet` → `@rendermode InteractiveWebAssembly`
-   - `ProjectSheet` → `@rendermode InteractiveWebAssembly`
-   - `ClientSheet` → `@rendermode InteractiveWebAssembly`
+1. No `/_blazor/negotiate` WebSocket on SSR pages (Reports, Projects, Clients)
+2. Timer clock ticks every second (WASM running)
+3. All sheets open, save, close correctly
+4. ProjectSheetIsland / ClientSheetIsland FAB and edit flow work
+5. Browser tab `<PageTitle>` updates correctly on each page
+6. Google OAuth unaffected
+7. `dotnet test` — all green
+8. Playwright tests — all 30 pass
 
-6. **Fix `MainLayout` / `BottomNav`**
-   - Remove `InvokeAsync(StateHasChanged)` calls; replace with CSS/JS where needed
-
-7. **Validate**
-   - All pages load as static SSR (verify no SignalR connection in browser devtools)
-   - Timer start/stop works; elapsed display ticks in browser
-   - Sheets open, save, and close correctly
-   - Google OAuth still works (same origin — no cookie issues)
-   - Run `dotnet test` — all green
-
-**Effort:** ~1 day
+**Effort:** ~2 days
 
 ---
 

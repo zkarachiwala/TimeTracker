@@ -1,0 +1,279 @@
+@page "/"
+@attribute [Authorize]
+@inject ITimeEntryService TimeEntryService
+@inject IProjectService ProjectService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+@using TimeTracker.Client.Features.TimeEntries.Components
+@using TimeTracker.Client.Shared
+
+<PageTitle>Timer — TimeTracker</PageTitle>
+
+@* ── Running timer card ── *@
+@if (activeEntry is not null)
+{
+    <MudCard Class="timer-card-running mb-4" Style="border-radius:16px">
+        <MudCardContent Style="padding:20px">
+            <div class="d-flex justify-space-between align-start mb-2">
+                <div class="d-flex align-center gap-2">
+                    <span class="project-dot"
+                          style="background:@ProjectColors.ForProject(activeEntry.Project.Id); box-shadow:0 0 0 3px rgba(255,255,255,.25)"></span>
+                    <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,.8)">Tracking now</MudText>
+                </div>
+                <div class="d-flex align-center gap-1">
+                    <span class="pulse-dot"></span>
+                    <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.8); font-size:.7rem">LIVE</MudText>
+                </div>
+            </div>
+
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500; margin:8px 0 2px">
+                @activeEntry.Project.Name
+            </MudText>
+            <MudText Class="tabnum" Style="font-size:3.2rem; font-weight:300; letter-spacing:1px; line-height:1.1">
+                @ElapsedDisplay
+            </MudText>
+            <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.7); margin-bottom:16px">
+                Started @activeEntry.Start.ToString("h:mm tt")
+            </MudText>
+
+            <MudButton FullWidth="true" Size="Size.Large" OnClick="StopTimer"
+                       Style="background:#fff; color:var(--mud-palette-secondary); box-shadow:var(--mud-elevation-4)"
+                       StartIcon="@Icons.Material.Filled.Stop">
+                Stop &amp; save
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+}
+else if (_providersReady)
+{
+    @* ── Idle: start timer card ── *@
+    <MudCard Class="mb-4" Style="border-radius:16px" Elevation="4">
+        <MudCardContent Style="padding:20px">
+            <MudText Typo="Typo.subtitle2" Style="text-transform:uppercase; letter-spacing:.08em; font-weight:600; color:var(--mud-palette-text-secondary)" Class="mb-3">Start a timer</MudText>
+
+            <MudSelect T="int" Label="Project" @bind-Value="selectedProjectId"
+                       Variant="Variant.Outlined" Class="mb-3"
+                       AnchorOrigin="Origin.BottomCenter">
+                @foreach (var p in projects.Where(p => !p.EndDate.HasValue))
+                {
+                    <MudSelectItem Value="p.Id">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary"
+                       Size="Size.Large" OnClick="StartTimer" Style="height:52px; margin-bottom:12px"
+                       StartIcon="@Icons.Material.Filled.PlayArrow">
+                Start timer
+            </MudButton>
+
+            <MudText Typo="Typo.caption" Class="d-flex justify-center mb-2"
+                     Style="color:var(--mud-palette-text-secondary)">
+                or log a fixed block
+            </MudText>
+            <div class="d-flex flex-wrap justify-center gap-2">
+                @foreach (var mins in new[] { 15, 30, 60, 90 })
+                {
+                    <MudChip T="string" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Bolt"
+                             OnClick="() => LogBlock(mins)">
+                        @(mins < 60 ? $"{mins}m" : $"{mins / 60}h")
+                    </MudChip>
+                }
+            </div>
+        </MudCardContent>
+    </MudCard>
+}
+
+@* ── Today's progress ── *@
+<div class="d-flex justify-space-between align-baseline mb-1">
+    <MudText Typo="Typo.h6">Today</MudText>
+    <MudText Typo="Typo.body2" Class="tabnum" Style="color:var(--mud-palette-text-secondary)">
+        @TodayDisplay / 8h
+    </MudText>
+</div>
+<MudProgressLinear Value="@TodayProgress" Color="Color.Primary" Class="mb-4 tt-progress" Rounded="true" />
+
+@* ── Today's entries ── *@
+<MudCard>
+    @if (todaysEntries.Count == 0)
+    {
+        <div class="d-flex flex-column align-center pa-8" style="color:var(--mud-palette-text-disabled)">
+            <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Large" />
+            <MudText Typo="Typo.body2" Class="mt-2">No time logged yet today</MudText>
+        </div>
+    }
+    else
+    {
+        <MudList T="string" Style="padding:4px 12px">
+            @for (int i = 0; i < todaysEntries.Count; i++)
+            {
+                var entry = todaysEntries[i];
+                <EntryRow Entry="entry" OnEdit="OpenEditSheet" />
+                @if (i < todaysEntries.Count - 1)
+                {
+                    <MudDivider />
+                }
+            }
+        </MudList>
+    }
+</MudCard>
+
+<div class="bottom-nav-spacer"></div>
+
+@* ── FAB ── *@
+<div class="tt-fab">
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+            OnClick="OpenNewSheet" Disabled="@(!RendererInfo.IsInteractive)" />
+</div>
+
+@* ── Entry sheet ── *@
+@if (sheetOpen) { <EntrySheet @bind-Open="sheetOpen" Entry="sheetEntry" OnSaved="Reload" /> }
+
+@code {
+    private List<ProjectResponse> projects = [];
+    private List<TimeEntryResponse> todaysEntries = [];
+    private TimeEntryResponse? activeEntry;
+    private int selectedProjectId;
+    private bool sheetOpen;
+    private TimeEntryResponse? sheetEntry;
+    private PeriodicTimer? ticker;
+    private Task? tickTask;
+    private bool _providersReady;
+
+    private double TodayMinutes => todaysEntries
+        .Where(e => e.End.HasValue)
+        .Sum(e => (e.End!.Value - e.Start).TotalMinutes);
+
+    private string TodayDisplay
+    {
+        get
+        {
+            var m = (int)TodayMinutes;
+            return $"{m / 60}h {m % 60}m";
+        }
+    }
+
+    private double TodayProgress => Math.Min(100, TodayMinutes / 480 * 100);
+
+    private string ElapsedDisplay
+    {
+        get
+        {
+            if (activeEntry is null) return "00:00:00";
+            var elapsed = DateTime.Now - activeEntry.Start;
+            return $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _providersReady = true;
+            StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            projects = await ProjectService.GetAllProjects();
+            activeEntry = await TimeEntryService.GetActiveTimeEntry();
+            todaysEntries = await TimeEntryService.GetTodaysTimeEntries();
+            selectedProjectId = projects.FirstOrDefault(p => !p.EndDate.HasValue)?.Id ?? 0;
+
+            if (activeEntry is not null) StartTicker();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private async Task Reload()
+    {
+        StopTicker();
+        await LoadData();
+    }
+
+    private void StartTicker()
+    {
+        StopTicker();
+        ticker = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        tickTask = Task.Run(async () =>
+        {
+            while (await ticker.WaitForNextTickAsync())
+                await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void StopTicker()
+    {
+        ticker?.Dispose();
+        ticker = null;
+    }
+
+    private async Task StartTimer()
+    {
+        if (selectedProjectId <= 0) return;
+        await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
+        {
+            ProjectId = selectedProjectId,
+            Start = DateTime.Now,
+            End = null
+        });
+        await Reload();
+    }
+
+    private async Task StopTimer()
+    {
+        if (activeEntry is null) return;
+        await TimeEntryService.UpdateTimeEntry(activeEntry.Id, new TimeEntryUpdateRequest
+        {
+            ProjectId = activeEntry.Project.Id,
+            Start = activeEntry.Start,
+            End = DateTime.Now,
+            Note = activeEntry.Note
+        });
+        Snackbar.Add("Timer saved", Severity.Success);
+        await Reload();
+    }
+
+    private async Task LogBlock(int minutes)
+    {
+        if (selectedProjectId <= 0) return;
+        var start = DateTime.Now.AddMinutes(-minutes);
+        await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
+        {
+            ProjectId = selectedProjectId,
+            Start = start,
+            End = DateTime.Now
+        });
+        Snackbar.Add($"{minutes}m logged", Severity.Success);
+        await Reload();
+    }
+
+    private void OpenNewSheet()
+    {
+        sheetEntry = null;
+        sheetOpen = true;
+    }
+
+    private void OpenEditSheet(TimeEntryResponse entry)
+    {
+        sheetEntry = entry;
+        sheetOpen = true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        StopTicker();
+        if (tickTask is not null)
+            await tickTask.ConfigureAwait(false);
+    }
+}

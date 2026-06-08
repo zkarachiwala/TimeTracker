@@ -1,7 +1,7 @@
 @page "/login"
 @layout LoginLayout
-@rendermode InteractiveServer
-@inject SignInManager<TimeTracker.Shared.Entities.User> SignInManager
+@inject HttpClient Http
+@inject NavigationManager Nav
 
 <PageTitle>Sign in — TimeTracker</PageTitle>
 
@@ -32,6 +32,7 @@
                 {
                     <MudButton FullWidth="true" Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large"
                                Href="@($"/auth/challenge?provider={Uri.EscapeDataString(provider.Name)}&returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}")"
+                               data-enhance-nav="false"
                                Style="text-transform:none; font-size:.95rem; justify-content:center; gap:12px; margin-bottom:8px;">
                         <svg width="20" height="20" viewBox="0 0 48 48" style="display:inline-block">
                             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -67,13 +68,13 @@
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
 
-    private IEnumerable<AuthenticationScheme> externalProviders = [];
+    private record ProviderInfo(string Name, string DisplayName);
+
+    private List<ProviderInfo> externalProviders = [];
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        externalProviders = await SignInManager.GetExternalAuthenticationSchemesAsync();
-
         errorMessage = Error switch
         {
             "external-login-failed" => "Sign-in failed. Please try again.",
@@ -82,5 +83,18 @@
             "link-provider-failed"  => "Could not link your account. Please contact the administrator.",
             _                       => null
         };
+
+        // HttpClient is only available in WASM (not during SSR prerender)
+        if (!OperatingSystem.IsBrowser()) return;
+
+        try
+        {
+            var providers = await Http.GetFromJsonAsync<List<ProviderInfo>>("/api/auth/providers");
+            externalProviders = providers ?? [];
+        }
+        catch
+        {
+            externalProviders = [];
+        }
     }
 }

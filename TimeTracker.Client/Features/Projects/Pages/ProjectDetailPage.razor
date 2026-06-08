@@ -1,0 +1,162 @@
+@page "/projects/{id:int}"
+@attribute [Authorize]
+@inject IProjectService ProjectService
+@inject ITimeEntryService TimeEntryService
+@inject NavigationManager Nav
+
+@using TimeTracker.Client.Features.TimeEntries.Components
+@using TimeTracker.Client.Features.Projects.Components
+@using TimeTracker.Client.Shared
+
+<PageTitle>Project — TimeTracker</PageTitle>
+
+@if (project is not null)
+{
+    <div class="pa-4">
+        @* ── Header ── *@
+        <div class="d-flex align-center gap-2 mb-4">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Nav.NavigateTo("/projects")' />
+            <MudAvatar Class="avatar-sq"
+                       Style="@($"background:{ProjectColors.ForProject(project.Id)}22; color:{ProjectColors.ForProject(project.Id)}; font-weight:700; width:44px; height:44px")">
+                @Initials
+            </MudAvatar>
+            <div class="flex-1" style="min-width:0">
+                <MudText Typo="Typo.h6" Style="line-height:1.2">@project.Name</MudText>
+                <MudText Typo="Typo.caption">@(project.ClientName ?? "No client")</MudText>
+            </div>
+        </div>
+
+        @* ── Stats card ── *@
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                @if (!string.IsNullOrEmpty(project.Description))
+                {
+                    <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)" Class="mb-3">
+                        @project.Description
+                    </MudText>
+                }
+                <div class="d-flex gap-4 flex-wrap">
+                    <div>
+                        <MudText Typo="Typo.overline">YTD hours</MudText>
+                        <MudText Typo="Typo.h6" Class="tabnum">@ytdHours h</MudText>
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.overline">Rate</MudText>
+                        <MudText Typo="Typo.h6" Class="tabnum">
+                            @(project.HourlyRate is > 0 ? $"${project.HourlyRate}/h" : "—")
+                        </MudText>
+                    </div>
+                    @if (project.HourlyRate is > 0 && ytdHours > 0)
+                    {
+                        <div>
+                            <MudText Typo="Typo.overline">Est. value</MudText>
+                            <MudText Typo="Typo.h6" Class="tabnum">
+                                $@((ytdHours * (double)project.HourlyRate!.Value).ToString("N0"))
+                            </MudText>
+                        </div>
+                    }
+                    <div>
+                        <MudText Typo="Typo.overline">Start date</MudText>
+                        <MudText Typo="Typo.h6" Class="tabnum">
+                            @(project.StartDate?.ToString("d MMM yyyy") ?? "—")
+                        </MudText>
+                    </div>
+                    @if (project.EndDate.HasValue)
+                    {
+                        <div>
+                            <MudText Typo="Typo.overline">End date</MudText>
+                            <MudText Typo="Typo.h6" Class="tabnum" Style="color:var(--mud-palette-warning-darken)">
+                                @project.EndDate.Value.ToString("d MMM yyyy")
+                            </MudText>
+                        </div>
+                    }
+                </div>
+            </MudCardContent>
+        </MudCard>
+
+        @* ── Recent entries ── *@
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500" Class="mb-2">Recent entries</MudText>
+        <MudCard>
+            @if (recentEntries.Count == 0)
+            {
+                <div class="d-flex justify-center pa-6">
+                    <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-disabled)">No entries yet</MudText>
+                </div>
+            }
+            else
+            {
+                <MudList T="string" Style="padding:4px 12px">
+                    @for (int i = 0; i < recentEntries.Count; i++)
+                    {
+                        var entry = recentEntries[i];
+                        <EntryRow Entry="entry" ShowProject="false" OnEdit="OpenEditSheet" />
+                        @if (i < recentEntries.Count - 1) { <MudDivider /> }
+                    }
+                </MudList>
+            }
+        </MudCard>
+    </div>
+    <div class="bottom-nav-spacer"></div>
+
+    <div class="tt-fab">
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
+                OnClick="OpenProjectSheet" Disabled="@(!RendererInfo.IsInteractive)" />
+    </div>
+}
+
+@if (projectSheetOpen && project is not null)
+{
+    <ProjectSheet @bind-Open="projectSheetOpen" Project="project" OnSaved="Reload" />
+}
+
+@if (entrySheetOpen)
+{
+    <EntrySheet @bind-Open="entrySheetOpen" Entry="sheetEntry" OnSaved="Reload" />
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ProjectResponse? project;
+    private List<TimeEntryResponse> recentEntries = [];
+    private double ytdHours;
+    private bool projectSheetOpen;
+    private bool entrySheetOpen;
+    private TimeEntryResponse? sheetEntry;
+
+    private string Initials => project is null ? "" :
+        (project.ClientName ?? project.Name).Length >= 2
+            ? (project.ClientName ?? project.Name)[..2].ToUpper()
+            : (project.ClientName ?? project.Name).ToUpper();
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        try
+        {
+            project = await ProjectService.GetProjectById(Id);
+            if (project is null) return;
+
+            var allEntries = await TimeEntryService.GetAllTimeEntriesByProject(Id);
+            recentEntries = allEntries.Take(8).ToList();
+
+            var year = DateTime.Today.Year;
+            ytdHours = Math.Round(allEntries
+                .Where(e => e.End.HasValue && e.Start.Year == year)
+                .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private void OpenProjectSheet() => projectSheetOpen = true;
+
+    private void OpenEditSheet(TimeEntryResponse entry)
+    {
+        sheetEntry = entry;
+        entrySheetOpen = true;
+    }
+}

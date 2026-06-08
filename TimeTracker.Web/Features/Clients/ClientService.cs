@@ -36,7 +36,7 @@ public class ClientService : IClientService
     public async Task CreateClient(ClientCreateRequest request)
     {
         await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var client = new Client
+        var client = new TimeTracker.Shared.Entities.Client
         {
             Name = request.Name,
             DefaultHourlyRate = request.DefaultHourlyRate,

@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TimeTracker.Web\TimeTracker.Web.csproj" />
+    <ProjectReference Include="..\TimeTracker.Client\TimeTracker.Client.csproj" />
+    <ProjectReference Include="..\TimeTracker.Contracts\TimeTracker.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

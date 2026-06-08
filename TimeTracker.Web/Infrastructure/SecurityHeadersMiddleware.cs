@@ -10,10 +10,10 @@ public class SecurityHeadersMiddleware(RequestDelegate next)
         context.Response.Headers["X-XSS-Protection"] = "0";
         context.Response.Headers["Content-Security-Policy"] =
             "default-src 'self'; " +
-            "script-src 'self'; " +
-            "style-src 'self' 'unsafe-inline'; " +
+            "script-src 'self' 'wasm-unsafe-eval'; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
             "img-src 'self' data: https:; " +
-            "font-src 'self' data:; " +
+            "font-src 'self' data: https://fonts.gstatic.com; " +
             "connect-src 'self'; " +
             "frame-ancestors 'none'; " +
             "base-uri 'self'; " +

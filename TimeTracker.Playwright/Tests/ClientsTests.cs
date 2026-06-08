@@ -7,19 +7,12 @@ public class ClientsTests : AuthenticatedPageTest
     public async Task NavigateToClients()
     {
         await Page.GotoAsync("/clients");
-        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync(new() { Timeout = 30_000 });
-    }
-
-    [Test]
-    public async Task ClientsPageLoads()
-    {
-        await Expect(Page).ToHaveURLAsync(new Regex("/clients"));
+        await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
     [Test]
     public async Task ClientsHeadingIsVisible()
     {
-        // Heading appears in both toolbar and page — take the first
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Clients" }).First).ToBeVisibleAsync();
     }
 
@@ -27,12 +20,6 @@ public class ClientsTests : AuthenticatedPageTest
     public async Task ActiveCountChipIsVisible()
     {
         await Expect(Page.GetByText(new Regex(@"\d+ active"))).ToBeVisibleAsync();
-    }
-
-    [Test]
-    public async Task FabButtonIsVisible()
-    {
-        await Expect(Page.Locator(".tt-fab button")).ToBeVisibleAsync();
     }
 
     [Test]

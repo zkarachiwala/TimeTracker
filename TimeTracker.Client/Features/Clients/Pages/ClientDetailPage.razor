@@ -1,0 +1,153 @@
+@page "/clients/{id:int}"
+@attribute [Authorize]
+@inject IClientService ClientService
+@inject IProjectService ProjectService
+@inject ITimeEntryService TimeEntryService
+@inject NavigationManager Nav
+
+@using TimeTracker.Client.Features.Clients.Components
+@using TimeTracker.Client.Features.Projects.Components
+@using TimeTracker.Client.Shared
+
+<PageTitle>Client — TimeTracker</PageTitle>
+
+@if (client is not null)
+{
+    <div class="pa-4">
+        @* ── Header ── *@
+        <div class="d-flex align-center gap-2 mb-4">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Nav.NavigateTo("/clients")' />
+            <MudAvatar Class="avatar-sq"
+                       Style="@($"background:{ProjectColors.ForClient(client.Id)}22; color:{ProjectColors.ForClient(client.Id)}; font-weight:700; width:44px; height:44px")">
+                @client.Name[..Math.Min(2, client.Name.Length)].ToUpper()
+            </MudAvatar>
+            <div class="flex-1" style="min-width:0">
+                <MudText Typo="Typo.h6" Style="line-height:1.2">@client.Name</MudText>
+                @if (client.IsArchived)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:20px; font-size:.7rem">archived</MudChip>
+                }
+            </div>
+        </div>
+
+        @* ── Stats card ── *@
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <div class="d-flex gap-4 flex-wrap mb-3">
+                    <div>
+                        <MudText Typo="Typo.overline">Default rate</MudText>
+                        <MudText Typo="Typo.h6" Class="tabnum">
+                            @(client.DefaultHourlyRate.HasValue ? $"${client.DefaultHourlyRate}/h" : "—")
+                        </MudText>
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.overline">YTD hours</MudText>
+                        <MudText Typo="Typo.h6" Class="tabnum">@ytdHours h</MudText>
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.overline">Projects</MudText>
+                        <MudText Typo="Typo.h6" Class="tabnum">@activeProjects.Count</MudText>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(client.ContactName) || !string.IsNullOrEmpty(client.ContactEmail) || !string.IsNullOrEmpty(client.ContactPhone))
+                {
+                    <MudDivider Class="mb-3" />
+                    <MudText Typo="Typo.overline" Class="mb-2 d-block">Primary contact</MudText>
+                    @if (!string.IsNullOrEmpty(client.ContactName))
+                    {
+                        <div class="d-flex align-center gap-2 mb-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="color:var(--mud-palette-text-secondary)" />
+                            <MudText Typo="Typo.body2">@client.ContactName</MudText>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(client.ContactEmail))
+                    {
+                        <div class="d-flex align-center gap-2 mb-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Style="color:var(--mud-palette-text-secondary)" />
+                            <MudText Typo="Typo.body2">@client.ContactEmail</MudText>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(client.ContactPhone))
+                    {
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Style="color:var(--mud-palette-text-secondary)" />
+                            <MudText Typo="Typo.body2">@client.ContactPhone</MudText>
+                        </div>
+                    }
+                }
+            </MudCardContent>
+        </MudCard>
+
+        @* ── Active projects ── *@
+        @if (activeProjects.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500" Class="mb-2">Active projects</MudText>
+            @foreach (var p in activeProjects)
+            {
+                <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
+                             OnOpen="@(id => Nav.NavigateTo($"/projects/{id}"))" />
+            }
+        }
+        else
+        {
+            <div class="d-flex justify-center pa-6">
+                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-disabled)">No active projects</MudText>
+            </div>
+        }
+    </div>
+
+    <div class="bottom-nav-spacer"></div>
+
+    <div class="tt-fab">
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
+                OnClick="() => sheetOpen = true" Disabled="@(!RendererInfo.IsInteractive)" />
+    </div>
+}
+
+@if (sheetOpen && client is not null)
+{
+    <ClientSheet @bind-Open="sheetOpen" Client="client" OnSaved="Reload" />
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ClientResponse? client;
+    private List<ProjectResponse> allProjects = [];
+    private List<ProjectResponse> activeProjects => allProjects.Where(p => !p.EndDate.HasValue).ToList();
+    private List<TimeEntryResponse> yearEntries = [];
+    private double ytdHours;
+    private bool sheetOpen;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        try
+        {
+            client = await ClientService.GetClientById(Id);
+            if (client is null) return;
+
+            allProjects = (await ProjectService.GetAllProjects())
+                .Where(p => p.ClientId == Id)
+                .ToList();
+
+            yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year);
+
+            var projectIds = allProjects.Select(p => p.Id).ToHashSet();
+            ytdHours = Math.Round(
+                yearEntries.Where(e => projectIds.Contains(e.Project.Id) && e.End.HasValue)
+                           .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private int GetYtdHours(int projectId) =>
+        (int)Math.Round(yearEntries
+            .Where(e => e.Project.Id == projectId && e.End.HasValue)
+            .Sum(e => (e.End!.Value - e.Start).TotalHours));
+}

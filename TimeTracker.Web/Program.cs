@@ -24,16 +24,10 @@ var builder = WebApplication.CreateBuilder(args);
 var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
 
-builder.Services.AddMudServices(config =>
-{
-    // MudPopoverProvider IS in MainLayout. The default check fires too early
-    // in Blazor 9 per-page InteractiveServer mode (race between provider
-    // registration and component initialization). Disable the eager check.
-    config.PopoverOptions.CheckForPopoverProvider = false;
-});
+builder.Services.AddMudServices();
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
@@ -57,6 +51,16 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.LoginPath = "/login";
     options.ExpireTimeSpan = TimeSpan.FromDays(1);
+    options.Events.OnRedirectToLogin = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddAuthentication()
@@ -77,8 +81,15 @@ builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("auth", policy =>
     {
-        policy.PermitLimit = 10;
-        policy.Window = TimeSpan.FromMinutes(1);
+        policy.PermitLimit = builder.Configuration.GetValue<int>("RateLimiting:Auth:PermitLimit", 10);
+        policy.Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int>("RateLimiting:Auth:WindowMinutes", 1));
+        policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        policy.QueueLimit = 0;
+    });
+    options.AddFixedWindowLimiter("auth-status", policy =>
+    {
+        policy.PermitLimit = builder.Configuration.GetValue<int>("RateLimiting:AuthStatus:PermitLimit", 10);
+        policy.Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int>("RateLimiting:AuthStatus:WindowMinutes", 1));
         policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         policy.QueueLimit = 0;
     });
@@ -87,8 +98,21 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddHttpContextAccessor();
 
+// Provide HttpClient for SSR prerender of WASM components that inject it.
+// The client is never called server-side — IsBrowser() guards in WASM components
+// prevent actual HTTP calls during prerender; this satisfies the DI requirement.
+builder.Services.AddScoped(sp =>
+{
+    var ctx = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+    var baseUri = ctx is not null
+        ? new Uri($"{ctx.Request.Scheme}://{ctx.Request.Host}/")
+        : new Uri("https://localhost:7006/");
+    return new HttpClient { BaseAddress = baseUri };
+});
+
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
+builder.Services.AddScoped<ITimeEntryQueryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
@@ -115,6 +139,20 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    // Signs in the first Admin user — dev/CI only, never deployed to production
+    app.MapGet("/api/dev/login", async (
+        UserManager<User> userManager,
+        SignInManager<User> signInManager) =>
+    {
+        var adminRole = "Admin";
+        var admins = await userManager.GetUsersInRoleAsync(adminRole);
+        var user = admins.FirstOrDefault();
+        if (user is null)
+            return Results.Problem("No admin user found. Run /api/dev/seed first.");
+        await signInManager.SignInAsync(user, isPersistent: true);
+        return Results.Content($"<html><body>Signed in as {user.Email}</body></html>", "text/html");
+    });
 
     var adminPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
@@ -152,8 +190,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+app.MapStaticAssets();
+
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(TimeTracker.Client.Features.Timer.Pages.TimerPage).Assembly);
 
 app.MapControllers();
 app.MapTimeEntryEndpoints();
