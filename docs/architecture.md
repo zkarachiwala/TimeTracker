@@ -359,13 +359,66 @@ erDiagram
 
 ## Planned phases
 
-#### Current — Global WASM migration (`feature/wasm-islands`)
+#### Next — GitHub Pages showcase (Phase 11)
 
-In progress. Migrating all remaining SSR pages to `TimeTracker.Client` so the WASM router can reach them. Full verification (build → unit tests → Playwright) required before merge.
+`TimeTracker.Showcase` — standalone WASM project for portfolio use. See [Phase 11 decisions](#phase-11--github-pages-showcase) below.
 
-#### Next — GitHub Pages showcase ⚠️ Needs planning session
+---
 
-Add a standalone WASM showcase project. Shares Razor components with the live app; runs in the browser with mock data. Deployed to GitHub Pages.
+## Phase 11 — GitHub Pages showcase
+
+### Goal
+
+Add `TimeTracker.Showcase` — a standalone Blazor WASM app that reuses all existing `TimeTracker.Client` components unchanged, substitutes in-memory mock services, and deploys to GitHub Pages as a public portfolio demo.
+
+### Decision record
+
+#### D1 — Zero changes to TimeTracker.Client
+
+**Decision:** `TimeTracker.Client` components are used as-is. No modifications to any page, layout, or component in that project.
+
+**Why:** The showcase must not become a maintenance liability. Any change to `Client` to accommodate the showcase would mean every future `Client` change must consider showcase compatibility — a permanent coupling. By treating `Client` as a read-only dependency, the showcase is isolated: it may break when `Client` changes, but `Client` never needs to know the showcase exists.
+
+**How it works:** `TimeTracker.Showcase` adds a project reference to `TimeTracker.Client`. Blazor components are just classes — the showcase's own `Program.cs` registers mock DI implementations instead of the HTTP ones. The pages inject the same interfaces (`ITimeEntryService`, `IProjectService`, `IClientService`) but receive in-memory fakes. A `MockAuthenticationStateProvider` returns a hardcoded "Demo User" so all `[Authorize]` attributes pass without a login flow.
+
+**Risk acknowledged:** `TimeTracker.Client` uses `Microsoft.NET.Sdk.BlazorWebAssembly` (a runnable WASM app SDK), not `Microsoft.NET.Sdk.Razor` (a class library SDK). Referencing one WASM app project from another is not the textbook shape, but is supported — the referenced project's `Program.cs` does not execute; only the entry project's startup runs. If the build tooling disagrees at implementation time, this will be raised before any workaround is attempted.
+
+#### D2 — Persistence: in-memory only
+
+**Decision:** Mock service state lives in WASM process memory. Data resets on browser refresh.
+
+**Why:** The showcase is a portfolio demo — visitors explore rather than manage real data. Refresh-reset behaviour is acceptable and expected for a demo context. The three persistence alternatives evaluated were:
+
+| Option | Complexity | Refresh persistence | Offline PWA foundation |
+|--------|-----------|--------------------|-----------------------|
+| **A — In-memory** | None | ❌ Resets | ❌ Would require rewrite |
+| B — localStorage | Low | ✅ Survives | Partial (size-limited, sync) |
+| C — IndexedDB/SQLite | Medium–high | ✅ Survives | ✅ Right foundation |
+
+Option A was chosen. The user confirmed refresh-reset is acceptable and that offline PWA is speculative, not committed. If offline PWA work begins in the main app later, the mock store design does not constrain that work — mock services are showcase-only code.
+
+#### D3 — Demo watermark
+
+**Decision:** A "Demo Mode" banner is rendered above the page outlet in `TimeTracker.Showcase`'s own `App.razor`. Nothing in `TimeTracker.Client` is modified.
+
+**Why:** Visitors need to know they are using mock data, not the live system. The banner lives entirely outside `Client` — zero regression risk to the production app.
+
+#### D4 — GitHub Pages deployment
+
+**Decision:** Deploy to `zkarachiwala.github.io/TimeTracker` via a `showcase` job added to the existing `deploy.yml` GitHub Actions workflow. Publishes to the `gh-pages` branch.
+
+**Constraints verified:**
+- GitHub Pages requires a **public repository** on a free personal account — `TimeTracker` is already public. ✓
+- GitHub Pages serves static files only — correct for standalone WASM. ✓
+- 1 GB size limit, 100 GB/month bandwidth — no risk for a portfolio app. ✓
+- The `showcase` CI job uses a custom GitHub Actions workflow, so it is **exempt** from the 10 builds/hour soft limit. ✓
+- Source: [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits), [Community discussion on free account requirements](https://github.com/orgs/community/discussions/167331)
+
+**Base href:** Blazor WASM requires a correct `<base href>` for sub-path deployments. The showcase `index.html` will use `<base href="/TimeTracker/" />` in the published output. The CI build will set `--base-path /TimeTracker` at publish time.
+
+**SPA routing workaround:** GitHub Pages returns a real 404 for any URL that is not a physical file — Blazor's client-side routes (e.g. `/projects`) would return 404 on direct navigation or refresh. The standard workaround: copy `index.html` to `404.html` in the published output. GitHub Pages serves `404.html` for missing paths; a redirect script in that file restores the path and loads the WASM app. This is handled entirely in the CI job and the showcase's `wwwroot` — no changes to `Client`.
+
+**Production app isolation:** The `gh-pages` branch is entirely separate from `main`. The `showcase` CI job only runs `dotnet publish TimeTracker.Showcase` and pushes the output to `gh-pages`. It has no access to Azure credentials and cannot affect the Azure App Service deployment.
 
 ---
 
