@@ -67,12 +67,9 @@ public class DesktopNavigationTests : AuthenticatedDesktopPageTest
         await OpenDrawer();
         await Page.GetByRole(AriaRole.Link, new() { Name = "Entries" }).ClickAsync();
         await Expect(Page).ToHaveURLAsync(new Regex("/entries"));
-        // Wait for the entries page to finish rendering before re-opening the drawer.
-        // ToHaveURLAsync passes as soon as the URL changes (before WASM re-hydration is complete),
-        // so clicking the hamburger too early risks a reconciliation render resetting drawerOpen.
         await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 15_000 });
 
-        await OpenDrawer();
+        // Drawer stays open after client-side navigation in WASM (MainLayout state persists).
         await Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First.ClickAsync();
         await Expect(Page).ToHaveURLAsync(new Regex("/$|/\\?"));
         await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
