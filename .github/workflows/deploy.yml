@@ -11,10 +11,33 @@ permissions:
   contents: read
 
 jobs:
+  check:
+    name: Check for code changes
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - name: Diff against parent commit
+        id: diff
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -qE '\.(cs|razor|csproj|sln|css)$'; then
+            echo "code=true" >> $GITHUB_OUTPUT
+          else
+            echo "code=false" >> $GITHUB_OUTPUT
+            echo "No app code changed — skipping deploy and Playwright tests."
+          fi
+
   deploy:
     name: Publish & Deploy
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: check
+    if: ${{ needs.check.outputs.code == 'true' }}
 
     environment:
       name: production
@@ -61,7 +84,8 @@ jobs:
   playwright:
     name: Playwright UX Tests
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: [check, deploy]
+    if: ${{ needs.check.outputs.code == 'true' }}
 
     steps:
       - uses: actions/checkout@v4
