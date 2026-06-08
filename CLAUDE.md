@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git hooks
+
+`.githooks/pre-push` runs the unauthenticated Playwright tests automatically before every push when app code has changed. Activate once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook skips gracefully if the app is not running. It never runs authenticated tests (those require locally captured auth state — see `AuthSetup.cs`).
+
 ## Git discipline
 
 NEVER blow away uncommitted changes. Always commit or stash before switching branches, pulling, or doing any operation that might overwrite local changes. If you find yourself with a large pile of uncommitted changes, stop and deal with that first before writing new code.

@@ -87,13 +87,6 @@ jobs:
       - name: Install Playwright browsers
         run: pwsh TimeTracker.Playwright/bin/Release/net10.0/playwright.ps1 install chromium --with-deps
 
-      - name: Write auth storage state
-        env:
-          PLAYWRIGHT_AUTH_STATE_B64: ${{ secrets.PLAYWRIGHT_AUTH_STATE_B64 }}
-        run: |
-          mkdir -p TimeTracker.Playwright/bin/Release/net10.0/playwright/.auth
-          echo "$PLAYWRIGHT_AUTH_STATE_B64" | base64 --decode > TimeTracker.Playwright/bin/Release/net10.0/playwright/.auth/user.json
-
       - name: Run Playwright tests
         env:
           PLAYWRIGHT_BASE_URL: https://timetracker-zak.azurewebsites.net
