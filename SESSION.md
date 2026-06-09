@@ -1,74 +1,54 @@
-# Session handoff — 2026-06-09
+# Session handoff — 2026-06-10
 
 ## Current branch
-`main` — clean and up to date
+`feat/phase-11-showcase` — PR #72 open, awaiting CI + merge
 
 ## Git state
-- All PRs from this session merged: #68, #69
-- No open PRs
+- Open PR: #72 — feat: Phase 11 — GitHub Pages showcase
 - No uncommitted changes
+- Branch is fully pushed
 
 ## What was done this session
 
-### Playwright CI auth — fixed (PR #68)
+### Phase 11 — GitHub Pages showcase (PR #72)
 
-Root cause of 29 authenticated test failures in CI was a cookie domain mismatch: auth state was captured locally (`domain: localhost`) but CI runs against `timetracker-zak.azurewebsites.net`. Three options were reviewed with a security audit; a production auth bypass endpoint was rejected.
+Full implementation of the GitHub Pages demo. Key architectural choices and what was fixed:
 
-**Decision (D010):** Authenticated Playwright tests excluded from CI. 9 unauthenticated tests run in CI; 29 authenticated tests skipped (not failed) via `Assert.Ignore()` when no auth state file present.
+**Approach:** `#if SHOWCASE` compile flag in `TimeTracker.Client/Program.cs` swaps HTTP services for mock implementations. No changes to any existing page, layout, or component.
 
-Changes merged:
-- `AuthenticatedPageTest` + `AuthenticatedDesktopPageTest`: `[Category("Authenticated")]` + `[OneTimeSetUp]` guard
-- `deploy.yml`: removed broken "Write auth storage state" step; added `check` preflight job to skip deploy + Playwright entirely on docs-only pushes
-- `.githooks/pre-push`: runs unauthenticated Playwright tests on push when `.cs`/`.razor`/`.csproj` files change; skips gracefully if app not running
-- `CLAUDE.md`: documents `git config core.hooksPath .githooks` activation
+**Mock layer added (`TimeTracker.Client/Mock/`):**
+- `MockDataStore` — singleton, seeded with 2 clients, 4 projects, ~50 time entries
+- `MockAuthenticationStateProvider` — returns `demo@example.com` with Admin role
+- `MockTimeEntryService`, `MockProjectService`, `MockClientService`
 
-Hook is already active (`git config core.hooksPath .githooks` was run).
+**Showcase hosting files isolated to `wwwroot-showcase/` (D015):**
+- `index.html`, `404.html`, `showcase-app.css` moved out of `wwwroot/`
+- `TimeTracker.Client.csproj` has conditional `ItemGroup` — files only mapped into publish output when `-p:Showcase=true`
+- Prevents asset fingerprint churn in local dev server from showcase file changes
+- CI command: `-p:Showcase=true -p:DefineConstants=SHOWCASE`
 
-### Documentation restructure (PR #69)
+**Root components fix:** Standalone WASM (GitHub Pages) requires explicit `builder.RootComponents.Add<>()` — hosted mode doesn't. Added inside `#if SHOWCASE` block.
 
-Three new documents, architecture.md slimmed down:
+**Playwright error monitoring fixed (all three base classes):**
+- Added `Page.RequestFailed` handler (filters `.pdb` URLs)
+- Console listener now filters: `"Failed to load resource"`, `"Failed to load module script"`, `.pdb`-related noise
+- All stale-asset false failures eliminated
 
-| Document | Purpose |
-|----------|---------|
-| `docs/decisions.md` | Decision register — D001–D014, permanent IDs |
-| `docs/technical-debt.md` | Tech debt register — TD1–TD21, Status column, permanent IDs |
-| `docs/architecture.md` | System reference — current state, data model, dev setup, Reference section |
+**Pre-push hook improved:**
+- Staleness detection: compares `blazor.boot.json` from local build vs running server
+- If stale: blocks with `"restart dotnet run, then re-push"` instead of cryptic test failures
 
-**Decision register (D001–D014):**
-- D001–D010: core architectural decisions (WASM, MudBlazor, hosting, auth, VSA, etc.)
-- D011–D014: Phase 11 showcase decisions (zero Client changes, in-memory persistence, demo watermark, GitHub Pages)
+**Decisions and tech debt recorded:**
+- D015: showcase static assets isolated to `wwwroot-showcase/`
+- TD22: pre-push hook relies on manually-maintained local dev server (no staging environment)
 
-**Tech debt register (TD1–TD21):** 21 entries across infrastructure, CI/CD, auth, observability, security, networking. Each has a Status column (blank = open; `✅ Resolved YYYY-MM — note` when closed). Numbering is permanent — never reuse IDs.
+## Before merging PR #72
 
-**architecture.md:** Rendering section trimmed from 130 lines to a pointer + prerender patterns. Deep-dive justification moved to new `## Reference` section at bottom. Phase 11 decision record removed (now D011–D014 in decisions.md).
-
-**Claude memory updated:** three-document pattern enforced — decisions → decisions.md, debt → technical-debt.md, reference → architecture.md.
-
-## Phase 11 — GitHub Pages showcase (planned, not started)
-
-Decisions locked in as D011–D014. Implementation plan (from previous session) still applies:
-
-1. Create `TimeTracker.Showcase` project — `Microsoft.NET.Sdk.BlazorWebAssembly`
-2. Add project references: `TimeTracker.Client`, `TimeTracker.Contracts`
-3. Add NuGet: `MudBlazor`, `Microsoft.AspNetCore.Components.Authorization`
-4. Write mock services in `TimeTracker.Showcase/Mock/`:
-   - `MockDataStore` (singleton, shared state)
-   - `MockTimeEntryService`, `MockTimeEntryQueryService`
-   - `MockProjectService`
-   - `MockClientService`
-5. Write `MockAuthenticationStateProvider`
-6. Write `Program.cs` — register mocks instead of HTTP services
-7. Write `App.razor` with demo banner above `<Routes />`
-8. Add `wwwroot/index.html` with `<base href="/TimeTracker/" />`
-9. Add `404.html` SPA routing redirect script
-10. Add showcase job to `deploy.yml`
-11. Add `TimeTracker.Showcase` to `TimeTracker.sln`
-12. Verify build, push branch, open PR
-
-**Risk to verify at step 1:** `TimeTracker.Client` uses `Microsoft.NET.Sdk.BlazorWebAssembly` (not a class library SDK). Referencing one WASM app from another is non-standard — confirm build tooling accepts this before proceeding. Raise before any workaround.
+**Required:** Enable GitHub Pages in repo settings:
+**Settings → Pages → Source: GitHub Actions**
 
 ## Node.js 20 deprecation warning
-GitHub Actions workflows use Node.js 20 actions. GitHub forcing Node.js 24 from 2026-06-16. Update checkout@v4, setup-dotnet@v4, cache@v4, upload-artifact@v4 before that date.
+GitHub Actions workflows use Node.js 20 actions. GitHub forcing Node.js 24 from 2026-06-16. Update checkout@v4, setup-dotnet@v4, cache@v4, upload-artifact@v4, upload-pages-artifact@v3, deploy-pages@v4 before that date.
 
 ## Open GitHub issues (legitimate backlog)
 - #36 — Invoice export for Zoho Books (future phase)
