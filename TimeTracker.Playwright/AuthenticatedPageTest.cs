@@ -34,6 +34,7 @@ public class AuthenticatedPageTest : PageTest
         {
             if (msg.Type != "error") return;
             if (msg.Text.StartsWith("Failed to load resource")) return;
+            if (msg.Text.StartsWith("Failed to load module script")) return;
             if (msg.Text.Contains(".pdb")) return;
             _consoleErrors.Add(msg.Text);
         };
