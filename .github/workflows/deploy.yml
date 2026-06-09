@@ -152,6 +152,7 @@ jobs:
         run: >
           dotnet publish TimeTracker.Client/TimeTracker.Client.csproj
           --configuration Release
+          -p:Showcase=true
           -p:DefineConstants=SHOWCASE
           --output ./showcase-output
 
