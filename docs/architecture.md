@@ -148,99 +148,7 @@ private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
 
 `LocationChanged` fires on every navigation: browser-intercepted link clicks and programmatic `NavigateTo` calls. Source: https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0
 
-#### Why global WASM — not SSR + WASM islands
-
-This was an explicit, researched decision. Do not revisit without re-reading this section.
-
-The original Phase 10 plan targeted true WASM islands: SSR router, only interactive components compiled into `TimeTracker.Client`. This was abandoned for two independent sets of reasons: fundamental .NET render-model constraints that apply regardless of UI library, and MudBlazor-specific incompatibilities. Both are documented below.
-
-##### A — Architectural reasons (independent of MudBlazor)
-
-These apply to any Blazor app using the hybrid/islands model and are documented in the [ASP.NET Core Blazor render modes (.NET 10)](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0) reference.
-
-1. **`RenderFragment` parameters cannot cross the SSR → WASM render boundary.** The docs state explicitly: *"Parameters passed to an interactive child component from a Static parent must be JSON serializable. This means that you can't pass render fragments or child content from a Static parent component to an interactive child component."* The runtime error is `System.InvalidOperationException: Cannot pass the parameter 'ChildContent'… because the parameter is of the delegate type… which is arbitrary code and cannot be serialized.` Nearly every composable Blazor component (layouts, cards, content wrappers) uses `ChildContent` — a `RenderFragment`. In an islands model, each such component either cannot cross the SSR→WASM boundary or must be wrapped in a parameter-free adapter component, adding structural indirection to every island.
-
-2. **State is not shared across render mode boundaries.** In global WASM, after prerender, all component state lives in one WASM process — components can share it freely. In a hybrid app, each WASM island is isolated: data fetched during SSR prerender must be serialized through `PersistentComponentState` and deserialized in every individual island. The docs note that without this, *"state used during prerendering is lost and must be recreated when the app is fully loaded,"* causing visible UI flicker per island. This serialization concern must be solved independently for every island, not once for the whole app.
-
-3. **Client-side routing exits on SSR page navigation, forcing a full-page reload.** The docs describe `[ExcludeFromInteractiveRouting]` (which applies to SSR pages): *"Inbound navigation is forced to perform a full-page reload instead of resolving the page via interactive routing."* In a hybrid app, navigating between WASM islands and SSR pages exits Blazor's SPA router every time, producing server round-trips on each page change. In global WASM, the WASM router handles all navigation entirely in the browser — no server round-trip after initial load.
-
-4. **WASM-only DI services fail at prerender time per island.** The docs note: *"Client-side services fail to resolve during prerendering. A component in the `.Client` project is prerendered on the server… it isn't possible to inject these services into a component without receiving an error."* In global WASM this is a single architectural problem solved once. In islands, every island must independently guard against or work around WASM-only service injection — a recurring per-island design tax.
-
-5. **Azure F1 CPU budget.** Global WASM offloads all UI compute to the client after the initial bundle download. The [Blazor hosting models doc](https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models?view=aspnetcore-10.0) explicitly states: *"When it's possible to offload most or all of an app's processing to clients and the app processes a significant amount of data, Blazor WebAssembly… is the best choice."* On a free F1 instance with limited CPU, this matters. In a hybrid SSR app, the server renders each SSR page on every navigation — continuous server CPU consumption. In global WASM, the server serves static files and API responses only.
-
-6. **Offline capability.** Once the WASM bundle is downloaded, the entire application logic runs in the browser — no server is required for any UI operation. This unlocks two things: (a) browser caching means repeat visits load instantly without any network, and (b) adding a service worker via the Blazor PWA template (`dotnet new blazor --pwa`) would let the app function fully offline by caching the bundle and optionally queuing API writes. A hybrid SSR app can never be offline — SSR pages require a live server to render. This is not currently implemented but global WASM is the prerequisite. Reference: [ASP.NET Core Blazor Progressive Web Application](https://learn.microsoft.com/en-us/aspnet/core/blazor/progressive-web-app?view=aspnetcore-10.0).
-
-##### B — MudBlazor-specific incompatibilities
-
-These apply because this app uses MudBlazor. Switching UI libraries would remove these constraints but at the cost documented in [Why MudBlazor](#why-mudblazor) below.
-
-1. **`MudDrawer` is broken in SSR layouts** — [MudBlazor #9743](https://github.com/MudBlazor/MudBlazor/issues/9743) documents that `MudDrawer` does not work on SSR pages in mobile layout. The drawer toggle state is managed through Blazor's component tree; when the layout is SSR, clicking the hamburger does nothing. Closed as **not planned** by MudBlazor maintainers.
-
-2. **`MudNavMenu` cannot be toggled on SSR pages** — [MudBlazor/Templates #478](https://github.com/MudBlazor/Templates/issues/478) confirms that on SSR-rendered pages the nav drawer is non-functional on mobile. This is a showstopper for a mobile-first app.
-
-3. **MudBlazor providers require an interactive render context** — `MudThemeProvider`, `MudDialogProvider`, `MudSnackbarProvider`, and `MudPopoverProvider` cannot function in static SSR. Confirmed in [MudBlazor Discussion #7430](https://github.com/MudBlazor/MudBlazor/discussions/7430).
-
-4. **Theme flash** — In a hybrid model, `MudThemeProvider` applies theme colours at SSR render time, then reapplies when WASM boots, causing a visible colour flash. No MudBlazor fix exists. Documented in [MudBlazor #10946](https://github.com/MudBlazor/MudBlazor/issues/10946).
-
-**Conclusion:** Global `InteractiveWebAssembly` is the correct and stable choice. Reason group A applies regardless of UI library. Reason group B applies specifically to MudBlazor. All routed pages and layouts must live in `TimeTracker.Client`. The server project (`TimeTracker.Web`) is a shell: API endpoints, EF Core, and the `App.razor` HTML wrapper only.
-
----
-
-#### Why MudBlazor
-
-MudBlazor was chosen over the two Microsoft-aligned alternatives (Fluent UI Blazor and the default Bootstrap scaffold) when the UI was overhauled in PR #38. This section documents the justification and the cost of switching.
-
-##### The alternatives
-
-| Library | Design system | SSR support | Architecture |
-|---------|--------------|-------------|--------------|
-| **MudBlazor** | Material Design (Google) | ❌ Not supported | Pure C# — no JS web component layer |
-| **Fluent UI Blazor** | Fluent Design (Microsoft) | ✅ Supported | Wraps FAST/TypeScript web components |
-| **Bootstrap scaffold** | Bootstrap | ✅ Supported | Minimal — ships only the default dotnet template components |
-
-##### Why MudBlazor over Fluent UI Blazor
-
-1. **Design system alignment.** This is a personal, mobile-first app. Material Design is the dominant design language on Android and in consumer web apps. Fluent Design is built for Microsoft 365 / Windows 11 productivity tooling — appropriate in a Microsoft-branded enterprise context, not a solo time-tracker used on a phone. MudBlazor README: *"Clean and aesthetic graphic design based on Material Design."* Fluent UI Blazor README: *"have the look and feel of modern Microsoft applications."*
-
-2. **Community size and release cadence.** Verified via GitHub API (2026-06-08):
-
-   | Metric | MudBlazor | Fluent UI Blazor |
-   |--------|-----------|-----------------|
-   | GitHub stars | **10,430** | 4,754 |
-   | Forks | **1,639** | 467 |
-   | Contributors | **445+** | ~30 |
-   | Latest stable | v9.5.0 (2026-05-26) | v4.14.2 (2026-05-16) |
-   | Total releases | **153** | 106 |
-   | Minor release cadence | Monthly | Quarterly |
-
-   A 2.2x star count and 14x contributor differential is a meaningful signal of ecosystem health and issue resolution rate.
-
-3. **Pure C# implementation.** MudBlazor README: *"No JavaScript dependency — 100% C# implementation… Our goal is to keep JavaScript to a minimum."* Fluent UI Blazor wraps Microsoft's FAST web components (TypeScript custom elements). This means Fluent UI component behaviour is ultimately debuggable in the browser's JS runtime, not in C#. For a .NET-first developer, MudBlazor's behaviour is inspectable and overridable in C# alone.
-
-4. **SSR non-support is resolved, not a concern.** The global WASM architecture documented above eliminates MudBlazor's SSR limitation. The trade-off is accepted and architecturally locked in.
-
-##### Why not the Bootstrap scaffold
-
-The default `dotnet new blazor` template ships minimal components (input, grid, validation summaries). Building a mobile-first app with drawers, date pickers, data grids, dialogs, and snackbars from Bootstrap primitives requires either a second component library or bespoke CSS/JS — equivalent work to adopting MudBlazor with none of the ecosystem support.
-
-##### What switching to Fluent UI Blazor would cost
-
-A migration is technically feasible — SSR support would re-open the islands option — but it is a substantial undertaking. The estimate below is for the current app (~10 routed pages, ~5 layout/shared components).
-
-| Work item | Effort |
-|-----------|--------|
-| Component rename + parameter remap (all pages) | 1–2 hrs/simple page × 8 pages = 1–2 days |
-| Complex pages (forms, data grids, dialogs) | 2–4 hrs/page × 2 pages = 0.5–1 day |
-| Theme rebuild (Material palette → Fluent design tokens — different system entirely) | 1–2 days |
-| Layout restructure (`MainLayout`, `NavMenu`, provider registration pattern) | 0.5 day |
-| Icon set change (Material icons → Fluent icons, different names and SVG format) | 0.5 day |
-| Design review (Material spacing, typography, elevation → Fluent equivalents) | 0.5–1 day |
-| Full regression test (all pages + Playwright suite) | 1 day |
-| **Total** | **~5–10 person-days** |
-
-This estimate assumes a developer familiar with both libraries. The migration delivers no functional change — the app would behave identically to users. The only gain would be re-enabling the islands option (which has its own architectural costs per the section above) and alignment with the Microsoft design language (which is a regression for this app's design intent).
-
-**Conclusion:** MudBlazor is the correct library for this app's design system, community support needs, and C#-first development model. The migration cost to Fluent UI Blazor is not justified by any functional or architectural benefit given the current global WASM architecture.
+Both decisions were explicit and researched — see [D001](decisions.md#d001-global-wasm-rendering-over-ssr--wasm-islands) (why not SSR + islands) and [D002](decisions.md#d002-mudblazor-over-fluent-ui-blazor-and-bootstrap) (why MudBlazor). Full justification including MudBlazor GitHub issues, the six render-mode constraints, and Fluent UI migration cost is in the [Reference section](#reference) below.
 
 #### Rate limiting — split policies for auth vs auth-status
 
@@ -357,83 +265,13 @@ erDiagram
 
 ---
 
+## Decision register
+
+See **[docs/decisions.md](decisions.md)** — 10 decisions (D001–D010) covering rendering architecture, component library, hosting, auth, data access, and CI.
+
 ## Technical debt register
 
-Every entry here records a decision that was forced by a constraint (cost, tier limitation, or missing infrastructure) rather than best practice. The register exists so future-you — or a future team — knows exactly what would need addressing to make this production-grade.
-
-### Infrastructure & compute
-
-| # | Decision | Constraint | Consequence | Proper solution |
-|---|----------|-----------|-------------|-----------------|
-| TD1 | Global WASM rendering — server CPU offloaded to browser | Azure F1: 60 CPU-min/day. SSR re-renders on every navigation; WASM serves static files + API only. Explicitly chosen to stay within F1 budget. | Cold start: browser downloads ~5 MB WASM bundle before first render. No server-side rendering for SEO (acceptable — app requires auth). MudBlazor SSR incompatibility also contributed (see architecture). | Upgrade to Standard tier. Revisit SSR+WASM islands or keep global WASM (it's also a valid architectural preference, not just a cost workaround). |
-| TD2 | Single instance, no autoscaling | F1 tier: no deployment slots, no scale sets, no multi-instance. | One bad deploy or one process crash = full outage. No horizontal scale-out. Rollback requires manual redeploy of previous commit. | Standard tier: deployment slots (blue/green), autoscaling rules, health check probes. |
-| TD3 | No blue/green deployment or smoke test gate | F1: no deployment slots. | Every deploy goes straight to production. No pre-promotion testing window. | Staging slot (Standard tier): deploy → staging, run smoke tests, swap slots. |
-| TD4 | Azure SQL free offer (serverless, auto-pause) | Zero-cost. SQL serverless auto-pauses after 1h idle; cold start adds ~5–10s latency on first query after pause. 7-day backup retention only. | First request after idle period is slow. If data were lost, recovery window is 7 days. No long-term retention. | Azure SQL Standard/Business Critical: guaranteed IOPS, always-on compute, 35-day backup retention, geo-replication. |
-| TD5 | No connection pool tuning | Free tier: low traffic, single instance, no need for pooling optimisation. | Default EF Core pooling in use. Under load, connection exhaustion is possible. | Explicit `Min Pool Size` / `Max Pool Size` in connection strings tuned to expected concurrency; connection resiliency with retry policy for transient failures. |
-
-### CI/CD & testing
-
-| # | Decision | Constraint | Consequence | Proper solution |
-|---|----------|-----------|-------------|-----------------|
-| TD6 | Authenticated E2E tests excluded from CI | No staging environment. Authenticated tests against production would require a privileged auth bypass endpoint — assessed as unacceptable for an app handling real billing data. | CI validates only 9 unauthenticated tests. Regressions in authenticated flows are caught by local Playwright runs only. Pre-push hook partially mitigates. | Staging environment (see TD3) with dedicated Google OAuth app registration. Authenticated tests run against staging in CI, gate production promote. |
-| TD7 | E2E tests run against production after every deploy | No staging (see TD6). | Playwright targets the live app. Write tests cannot be enabled in CI without risking real data mutation. | Staging environment. CI runs full suite against staging; production never touched by automated tests. |
-| TD8 | No SAST, dependency scanning, or secret scanning in CI | Not configured. | Vulnerable dependencies and accidental secret commits are not detected automatically. | Add `dotnet list package --vulnerable` to CI; add GitHub secret scanning (free for public repos); add OWASP dependency-check or Dependabot. |
-
-### Authentication & authorisation
-
-| # | Decision | Constraint | Consequence | Proper solution |
-|---|----------|-----------|-------------|-----------------|
-| TD9 | Access control via `AllowedEmails` config list, not RBAC | Personal app with one user. A database-backed role/permission system adds complexity with no benefit at this scale. | Adding a new user requires a config change and redeploy. No role granularity. | `UserRoles` / `Permissions` table. Admin UI for user management. Dynamic role assignment without deploys. |
-| TD10 | Google OAuth only — no email/password fallback, no MFA | Minimal auth stack. Google is free; no paid IdP needed. | If Google OAuth is unavailable, login is impossible. No way to authenticate without a Google account. No MFA. | Second auth provider (email/password with ASP.NET Identity) as fallback. TOTP or WebAuthn MFA. Consider Entra ID or Auth0 for enterprise SSO. |
-| TD11 | No session revocation / "logout everywhere" | Single-user; 1-day cookie expiry deemed sufficient. | A stolen cookie cannot be invalidated server-side until it expires. No audit log of auth events. | Server-side session store (Redis or DB); revocation endpoint; auth event audit log. |
-| TD12 | Google OAuth app registration tied to production domain only | One registration for simplicity. Separate staging would require a second OAuth app in Google Console. | Staging environment (if added) cannot use the same OAuth app. New registration needed per environment. | One OAuth app per environment: `timetracker-staging.azurewebsites.net` uses its own client ID and redirect URIs. |
-
-### Observability & operations
-
-| # | Decision | Constraint | Consequence | Proper solution |
-|---|----------|-----------|-------------|-----------------|
-| TD13 | No APM or structured logging — ASP.NET default console log only | Application Insights adds cost and dependency. Serilog adds complexity not justified for a personal app. | No request tracing, no correlation IDs, no performance baselines, no alerting on error spikes or latency. Silent failures. | Application Insights (or OpenTelemetry → Datadog/Grafana). Serilog with structured JSON output. Uptime monitor (UptimeRobot free tier covers this at zero cost). |
-| TD14 | No global exception handler — unhandled exceptions return default ASP.NET error page | Personal app, error surface is low. | Unhandled exceptions expose stack traces in development and return unhelpful responses in production. No RFC 7807 Problem Details format. | `app.UseExceptionHandler` + `IProblemDetailsService`. Structured error codes. Exception telemetry to APM. |
-| TD15 | No backup / DR runbook | Data loss on a personal app is an inconvenience, not a business event. | No documented RTO/RPO. No tested restore procedure. If Azure SQL free offer is deprecated or the subscription lapses, data recovery is uncertain. | Document RTO/RPO. Quarterly restore drill. Cross-region backup. Export automation (nightly JSON export to blob storage). |
-
-### Security
-
-| # | Decision | Constraint | Consequence | Proper solution |
-|---|----------|-----------|-------------|-----------------|
-| TD16 | Secrets in Azure App Service settings, not Key Vault | Key Vault adds cost and setup. App Service settings are encrypted at rest — sufficient for personal app. | Any user with Contributor RBAC on the resource group can read all secrets in the portal. No secret rotation. No audit log of secret access. | Azure Key Vault with Managed Identity authentication. Automatic rotation for DB credentials. Access policy scoped to app identity only. |
-| TD17 | `unsafe-inline` in CSP `style-src` | MudBlazor injects inline styles at runtime. Removing `unsafe-inline` would require migrating to a CSP-compatible component library (estimated 5–10 person-days). | Inline style injection attacks (e.g. CSS exfiltration via inline `style` attributes) are not blocked by CSP. | Migrate to Fluent UI Blazor (documented in architecture) or another CSP-compatible library. Remove `unsafe-inline`. Add `style-src-elem` nonce-based policy. |
-| TD18 | Rate limiting on auth endpoints only — no per-user or per-endpoint limits on CRUD APIs | Personal app: single user, low traffic, abuse risk is negligible. | A compromised session can make unlimited API calls. No per-user throttle to detect anomalous activity. | Rate limiting on all mutating endpoints. Per-user limits (not just global). Distributed rate limiting (Redis) when scaling beyond one instance. |
-| TD19 | Data isolation enforced at service layer only — no database-level row security | Personal app; only one real user. DB-level RLS adds schema and migration complexity with no practical benefit at current scale. | If `IUserContextService` is bypassed (e.g. a future API endpoint omitting the user filter), cross-user data access is possible. No defence in depth. | SQL Server Row-Level Security policies. Cross-tenant access integration tests. Audit trail (CreatedBy, UpdatedBy, DeletedBy) on all entities. |
-| TD20 | `AllowedHosts: "*"` in `appsettings.json` | Default; no explicit origin restriction configured. | Accepts HTTP Host headers from any origin — relevant only if the app were load-balanced behind a proxy that doesn't set the Host header correctly. Low practical risk with Cloudflare proxy. | Restrict `AllowedHosts` to `timetracker.dzk.com.au;timetracker-zak.azurewebsites.net`. |
-
-### CDN & networking
-
-| # | Decision | Constraint | Consequence | Proper solution |
-|---|----------|-----------|-------------|-----------------|
-| TD21 | Cloudflare free plan for CDN and DDoS protection | Zero-cost. Free plan provides basic DDoS mitigation, no WAF custom rules, limited analytics. | WAF is limited to Cloudflare-managed rules only (no custom rules, no rate-limit rules at CDN layer). No bot management. No advanced analytics. | Cloudflare Pro/Business (WAF custom rules, rate limiting, analytics) or Azure Front Door Premium (native Azure integration, managed WAF, analytics). |
-
----
-
-## Playwright CI auth — decision record
-
-**Decision (2026-06-09):** Authenticated Playwright tests are excluded from CI. CI runs unauthenticated tests only.
-
-**Why:** The app uses Google OAuth — the OAuth flow cannot be automated in CI. The alternative (a token-gated auth bypass endpoint in production) was reviewed and assessed as inappropriate for an app handling real client billing data. A proper solution requires a staging environment (see TD1).
-
-**What this means in practice:**
-- `AuthenticatedPageTest` and `AuthenticatedDesktopPageTest` carry `[Category("Authenticated")]` and a `[OneTimeSetUp]` guard that calls `Assert.Ignore()` when no auth state file is present.
-- CI never injects auth state, so all 29 authenticated tests are skipped (not failed).
-- The 9 unauthenticated tests in `AuthTests` run in CI on every deploy.
-- Authenticated tests run locally after `CaptureAuthState` is executed against `https://localhost:7006` (dev endpoint, never deployed).
-- The pre-push hook (`.githooks/pre-push`) runs unauthenticated tests automatically on push when app code changes, providing a partial CI-equivalent gate without needing auth state.
-
-**Options considered and rejected:**
-
-| Option | Why rejected |
-|--------|-------------|
-| Token-gated bypass endpoint in production (always-on, runtime-checked) | Introduces a privileged auth bypass in a production app handling real billing data. Assessed as failing a security audit. |
-| Toggle token via Azure app settings per CI run (set before tests, clear after) | Two app restarts per deploy pipeline. Adds operational complexity and still has the privileged endpoint concern. |
-| Commit auth state (base64) as a GitHub secret against localhost | Cookie `domain: localhost` — cookie is never sent to `timetracker-zak.azurewebsites.net`. Was the previous broken approach. |
+See **[docs/technical-debt.md](technical-debt.md)** — 21 entries (TD1–TD21) across infrastructure, CI/CD, auth, observability, security, and networking. Each entry links to the relevant decision where applicable.
 
 ---
 
@@ -451,54 +289,9 @@ Every entry here records a decision that was forced by a constraint (cost, tier 
 
 Add `TimeTracker.Showcase` — a standalone Blazor WASM app that reuses all existing `TimeTracker.Client` components unchanged, substitutes in-memory mock services, and deploys to GitHub Pages as a public portfolio demo.
 
-### Decision record
+### Decisions
 
-#### D1 — Zero changes to TimeTracker.Client
-
-**Decision:** `TimeTracker.Client` components are used as-is. No modifications to any page, layout, or component in that project.
-
-**Why:** The showcase must not become a maintenance liability. Any change to `Client` to accommodate the showcase would mean every future `Client` change must consider showcase compatibility — a permanent coupling. By treating `Client` as a read-only dependency, the showcase is isolated: it may break when `Client` changes, but `Client` never needs to know the showcase exists.
-
-**How it works:** `TimeTracker.Showcase` adds a project reference to `TimeTracker.Client`. Blazor components are just classes — the showcase's own `Program.cs` registers mock DI implementations instead of the HTTP ones. The pages inject the same interfaces (`ITimeEntryService`, `IProjectService`, `IClientService`) but receive in-memory fakes. A `MockAuthenticationStateProvider` returns a hardcoded "Demo User" so all `[Authorize]` attributes pass without a login flow.
-
-**Risk acknowledged:** `TimeTracker.Client` uses `Microsoft.NET.Sdk.BlazorWebAssembly` (a runnable WASM app SDK), not `Microsoft.NET.Sdk.Razor` (a class library SDK). Referencing one WASM app project from another is not the textbook shape, but is supported — the referenced project's `Program.cs` does not execute; only the entry project's startup runs. If the build tooling disagrees at implementation time, this will be raised before any workaround is attempted.
-
-#### D2 — Persistence: in-memory only
-
-**Decision:** Mock service state lives in WASM process memory. Data resets on browser refresh.
-
-**Why:** The showcase is a portfolio demo — visitors explore rather than manage real data. Refresh-reset behaviour is acceptable and expected for a demo context. The three persistence alternatives evaluated were:
-
-| Option | Complexity | Refresh persistence | Offline PWA foundation |
-|--------|-----------|--------------------|-----------------------|
-| **A — In-memory** | None | ❌ Resets | ❌ Would require rewrite |
-| B — localStorage | Low | ✅ Survives | Partial (size-limited, sync) |
-| C — IndexedDB/SQLite | Medium–high | ✅ Survives | ✅ Right foundation |
-
-Option A was chosen. The user confirmed refresh-reset is acceptable and that offline PWA is speculative, not committed. If offline PWA work begins in the main app later, the mock store design does not constrain that work — mock services are showcase-only code.
-
-#### D3 — Demo watermark
-
-**Decision:** A "Demo Mode" banner is rendered above the page outlet in `TimeTracker.Showcase`'s own `App.razor`. Nothing in `TimeTracker.Client` is modified.
-
-**Why:** Visitors need to know they are using mock data, not the live system. The banner lives entirely outside `Client` — zero regression risk to the production app.
-
-#### D4 — GitHub Pages deployment
-
-**Decision:** Deploy to `zkarachiwala.github.io/TimeTracker` via a `showcase` job added to the existing `deploy.yml` GitHub Actions workflow. Publishes to the `gh-pages` branch.
-
-**Constraints verified:**
-- GitHub Pages requires a **public repository** on a free personal account — `TimeTracker` is already public. ✓
-- GitHub Pages serves static files only — correct for standalone WASM. ✓
-- 1 GB size limit, 100 GB/month bandwidth — no risk for a portfolio app. ✓
-- The `showcase` CI job uses a custom GitHub Actions workflow, so it is **exempt** from the 10 builds/hour soft limit. ✓
-- Source: [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits), [Community discussion on free account requirements](https://github.com/orgs/community/discussions/167331)
-
-**Base href:** Blazor WASM requires a correct `<base href>` for sub-path deployments. The showcase `index.html` will use `<base href="/TimeTracker/" />` in the published output. The CI build will set `--base-path /TimeTracker` at publish time.
-
-**SPA routing workaround:** GitHub Pages returns a real 404 for any URL that is not a physical file — Blazor's client-side routes (e.g. `/projects`) would return 404 on direct navigation or refresh. The standard workaround: copy `index.html` to `404.html` in the published output. GitHub Pages serves `404.html` for missing paths; a redirect script in that file restores the path and loads the WASM app. This is handled entirely in the CI job and the showcase's `wwwroot` — no changes to `Client`.
-
-**Production app isolation:** The `gh-pages` branch is entirely separate from `main`. The `showcase` CI job only runs `dotnet publish TimeTracker.Showcase` and pushes the output to `gh-pages`. It has no access to Azure credentials and cannot affect the Azure App Service deployment.
+Recorded in [decisions.md](decisions.md): [D011](decisions.md#d011-showcase--zero-changes-to-trackerclient) (zero changes to Client), [D012](decisions.md#d012-showcase--in-memory-persistence) (in-memory persistence), [D013](decisions.md#d013-showcase--demo-watermark-in-apprazor) (demo watermark), [D014](decisions.md#d014-showcase--github-pages-deployment) (GitHub Pages deployment).
 
 ---
 
@@ -544,3 +337,82 @@ dotnet ef migrations add <Name> --context IdentityDataContext
 dotnet ef database update --context TimeTrackerDataContext
 dotnet ef database update --context IdentityDataContext
 ```
+
+---
+
+## Reference
+
+Deep-dive justifications for decisions that have permanent architectural impact. These sections are referenced from [decisions.md](decisions.md) — the decision summaries live there; the evidence lives here.
+
+### Why global WASM — not SSR + WASM islands
+
+This was an explicit, researched decision. Do not revisit without re-reading this section. See also [D001](decisions.md#d001-global-wasm-rendering-over-ssr--wasm-islands).
+
+The original Phase 10 plan targeted true WASM islands: SSR router, only interactive components compiled into `TimeTracker.Client`. This was abandoned for two independent sets of reasons: fundamental .NET render-model constraints that apply regardless of UI library, and MudBlazor-specific incompatibilities.
+
+#### A — Architectural reasons (independent of MudBlazor)
+
+These apply to any Blazor app using the hybrid/islands model and are documented in the [ASP.NET Core Blazor render modes (.NET 10)](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0) reference.
+
+1. **`RenderFragment` parameters cannot cross the SSR → WASM render boundary.** The docs state explicitly: *"Parameters passed to an interactive child component from a Static parent must be JSON serializable. This means that you can't pass render fragments or child content from a Static parent component to an interactive child component."* The runtime error is `System.InvalidOperationException: Cannot pass the parameter 'ChildContent'… because the parameter is of the delegate type… which is arbitrary code and cannot be serialized.` Nearly every composable Blazor component (layouts, cards, content wrappers) uses `ChildContent` — a `RenderFragment`. In an islands model, each such component either cannot cross the SSR→WASM boundary or must be wrapped in a parameter-free adapter component.
+
+2. **State is not shared across render mode boundaries.** In global WASM, after prerender, all component state lives in one WASM process. In a hybrid app, each WASM island is isolated: data fetched during SSR prerender must be serialised through `PersistentComponentState` and deserialised in every individual island. The docs note that without this, *"state used during prerendering is lost and must be recreated when the app is fully loaded,"* causing visible UI flicker per island.
+
+3. **Client-side routing exits on SSR page navigation, forcing a full-page reload.** The docs describe `[ExcludeFromInteractiveRouting]` (which applies to SSR pages): *"Inbound navigation is forced to perform a full-page reload instead of resolving the page via interactive routing."* In a hybrid app, navigating between WASM islands and SSR pages exits Blazor's SPA router on every navigation. In global WASM, the WASM router handles all navigation in the browser — no server round-trip after initial load.
+
+4. **WASM-only DI services fail at prerender time per island.** The docs note: *"Client-side services fail to resolve during prerendering."* In global WASM this is a single architectural problem solved once. In islands, every island must independently guard against WASM-only service injection.
+
+5. **Azure F1 CPU budget.** Global WASM offloads all UI compute to the client. The [Blazor hosting models doc](https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models?view=aspnetcore-10.0) explicitly states: *"When it's possible to offload most or all of an app's processing to clients… Blazor WebAssembly… is the best choice."* In a hybrid SSR app, the server renders each SSR page on every navigation. In global WASM, the server serves static files and API responses only.
+
+6. **Offline capability.** Global WASM is the prerequisite for PWA/offline support. A hybrid SSR app can never be offline. Not currently implemented but the architecture preserves the option. Reference: [ASP.NET Core Blazor Progressive Web Application](https://learn.microsoft.com/en-us/aspnet/core/blazor/progressive-web-app?view=aspnetcore-10.0).
+
+#### B — MudBlazor-specific incompatibilities
+
+1. **`MudDrawer` is broken in SSR layouts** — [MudBlazor #9743](https://github.com/MudBlazor/MudBlazor/issues/9743). Closed as **not planned** by MudBlazor maintainers.
+
+2. **`MudNavMenu` cannot be toggled on SSR pages** — [MudBlazor/Templates #478](https://github.com/MudBlazor/Templates/issues/478). Showstopper for a mobile-first app.
+
+3. **MudBlazor providers require an interactive render context** — `MudThemeProvider`, `MudDialogProvider`, `MudSnackbarProvider`, `MudPopoverProvider` cannot function in static SSR. Confirmed in [MudBlazor Discussion #7430](https://github.com/MudBlazor/MudBlazor/discussions/7430).
+
+4. **Theme flash** — `MudThemeProvider` applies colours at SSR render time then reapplies when WASM boots, causing a visible colour flash. No fix. [MudBlazor #10946](https://github.com/MudBlazor/MudBlazor/issues/10946).
+
+**Conclusion:** Global `InteractiveWebAssembly` is the correct and stable choice. Group A applies regardless of UI library. Group B applies specifically to MudBlazor. All routed pages and layouts must live in `TimeTracker.Client`. `TimeTracker.Web` is a shell: API endpoints, EF Core, and the `App.razor` HTML wrapper only.
+
+---
+
+### Why MudBlazor — not Fluent UI Blazor or Bootstrap
+
+See also [D002](decisions.md#d002-mudblazor-over-fluent-ui-blazor-and-bootstrap). MudBlazor was chosen over Microsoft-aligned alternatives when the UI was overhauled in PR #38.
+
+| Library | Design system | SSR support | Architecture |
+|---------|--------------|-------------|--------------|
+| **MudBlazor** | Material Design (Google) | ❌ Not supported | Pure C# — no JS web component layer |
+| **Fluent UI Blazor** | Fluent Design (Microsoft) | ✅ Supported | Wraps FAST/TypeScript web components |
+| **Bootstrap scaffold** | Bootstrap | ✅ Supported | Minimal dotnet template components only |
+
+**MudBlazor over Fluent UI Blazor:**
+
+1. **Design system.** Material Design is the dominant language on Android and consumer web. Fluent is built for Microsoft 365 / Windows 11 productivity tooling — wrong register for a personal mobile-first app.
+
+2. **Community size** (verified via GitHub API, 2026-06-08): MudBlazor 10,430 stars / 445+ contributors / monthly releases vs. Fluent UI Blazor 4,754 stars / ~30 contributors / quarterly releases. 2.2× star count, 14× contributor differential.
+
+3. **Pure C#.** MudBlazor has no JS dependency. Fluent UI Blazor wraps Microsoft's FAST TypeScript web components — behaviour ultimately debuggable only in the browser's JS runtime.
+
+4. **SSR non-support is resolved.** The global WASM architecture eliminates MudBlazor's SSR limitation. The trade-off is accepted and locked in.
+
+**Bootstrap scaffold:** ships only minimal template components. Building a mobile-first app with drawers, date pickers, data grids, dialogs, and snackbars from Bootstrap primitives requires a second library anyway.
+
+**Cost to switch to Fluent UI Blazor** (~10 routed pages, ~5 layout/shared components):
+
+| Work item | Effort |
+|-----------|--------|
+| Component rename + parameter remap (simple pages) | 1–2 days |
+| Complex pages (forms, data grids, dialogs) | 0.5–1 day |
+| Theme rebuild (Material → Fluent design tokens) | 1–2 days |
+| Layout restructure + provider registration | 0.5 day |
+| Icon set change (Material → Fluent icons) | 0.5 day |
+| Design review | 0.5–1 day |
+| Full regression test | 1 day |
+| **Total** | **~5–10 person-days** |
+
+No functional change for users. The only gain is re-enabling the islands option (which has its own costs) and Microsoft design language alignment (a regression for this app's intent). Not justified.
