@@ -9,6 +9,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  pages: write
 
 jobs:
   check:
@@ -127,3 +128,38 @@ jobs:
           name: playwright-results
           path: TimeTracker.Playwright/TestResults/
           retention-days: 14
+
+  showcase:
+    name: Deploy Showcase to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ needs.check.outputs.code == 'true' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish Showcase
+        run: >
+          dotnet publish TimeTracker.Client/TimeTracker.Client.csproj
+          --configuration Release
+          -p:DefineConstants=SHOWCASE
+          --output ./showcase-output
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./showcase-output/wwwroot
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
