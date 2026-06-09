@@ -16,6 +16,8 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
 
 #if SHOWCASE
+builder.RootComponents.Add<TimeTracker.Client.Routes>("#app");
+builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
 builder.Services.AddScoped<AuthenticationStateProvider, TimeTracker.Client.Mock.MockAuthenticationStateProvider>();
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddSingleton<TimeTracker.Client.Mock.MockDataStore>();
