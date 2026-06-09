@@ -18,6 +18,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D012](#d012-showcase--in-memory-persistence) | Showcase — in-memory persistence only | 2026-06 | Accepted |
 | [D013](#d013-showcase--demo-watermark-in-apprazor) | Showcase — demo watermark in App.razor | 2026-06 | Accepted |
 | [D014](#d014-showcase--github-pages-deployment) | Showcase — GitHub Pages deployment | 2026-06 | Accepted |
+| [D015](#d015-showcase-static-assets-isolated-to-wwwroot-showcase) | Showcase static assets isolated to `wwwroot-showcase/` | 2026-06 | Accepted |
 
 ---
 
@@ -256,6 +257,31 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 **Consequences:**
 - ✅ Banner is entirely outside `Client` — zero regression risk to the production app
 - ✅ Impossible to miss — renders on every page
+
+---
+
+## D015: Showcase static assets isolated to `wwwroot-showcase/`
+
+**Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 — **Tracks:** [TD22](technical-debt.md#cicd--testing)
+
+**Context:** The showcase SPA hosting files (`index.html`, `404.html`, `showcase-app.css`) were initially placed in `TimeTracker.Client/wwwroot/`. Because `TimeTracker.Web` references `TimeTracker.Client`, the Blazor static web asset pipeline merges all `wwwroot/` content from referenced projects into the host's serving root. Any change to these files updated asset fingerprints (`blazor.boot.json`), staling the running dev server and causing spurious pre-push Playwright failures.
+
+**Options considered:**
+
+| Option | Prevents dev-server fingerprint churn | Excluded from hosted-mode publish |
+|--------|--------------------------------------|----------------------------------|
+| `CopyToPublishDirectory="Never"` | ❌ Still fingerprinted at build time | ✅ Excluded from publish only |
+| `Content Remove` behind MSBuild condition | ✅ Files invisible to SDK in normal builds | ✅ |
+| Separate `wwwroot-showcase/` folder + conditional mapping | ✅ Default glob never captures them | ✅ |
+
+**Decision:** Move all showcase hosting files to `TimeTracker.Client/wwwroot-showcase/`. A conditional `ItemGroup` in the csproj maps them into the publish output only when `-p:Showcase=true` is passed. `#if SHOWCASE` (C# preprocessor) continues to gate the mock DI registrations — both flags are passed together in CI: `-p:Showcase=true -p:DefineConstants=SHOWCASE`.
+
+**Consequences:**
+- ✅ Showcase file changes never touch the `wwwroot/` asset pipeline — no fingerprint churn, no dev-server restarts
+- ✅ Intent is explicit: `wwwroot-showcase/` is visually distinct from the real app's `wwwroot/`
+- ✅ Default content glob never accidentally picks up showcase files
+- ❌ Two MSBuild flags required for showcase publish (`Showcase=true` + `DefineConstants=SHOWCASE`)
+- ❌ Requires researcher verification: `TargetPath` on `Content` items must correctly map into `wwwroot/` in the publish output — verified against SDK source (`DefineStaticWebAssets.cs`)
 
 ---
 

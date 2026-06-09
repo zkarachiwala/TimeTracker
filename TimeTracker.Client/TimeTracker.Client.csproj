@@ -13,4 +13,18 @@
   <ItemGroup>
     <ProjectReference Include="../TimeTracker.Contracts/TimeTracker.Contracts.csproj" />
   </ItemGroup>
+  <!-- Showcase hosting files: only included in the publish output when -p:Showcase=true.
+       Kept outside wwwroot/ so the default content glob never picks them up in normal
+       builds — prevents asset fingerprint churn that stales the dev server. -->
+  <ItemGroup Condition="'$(Showcase)' == 'true'">
+    <Content Include="wwwroot-showcase/index.html"
+             CopyToOutputDirectory="PreserveNewest"
+             TargetPath="wwwroot/index.html" />
+    <Content Include="wwwroot-showcase/404.html"
+             CopyToOutputDirectory="PreserveNewest"
+             TargetPath="wwwroot/404.html" />
+    <Content Include="wwwroot-showcase/css/showcase-app.css"
+             CopyToOutputDirectory="PreserveNewest"
+             TargetPath="wwwroot/css/showcase-app.css" />
+  </ItemGroup>
 </Project>
