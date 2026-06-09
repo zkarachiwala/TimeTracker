@@ -1,69 +1,53 @@
 # Session handoff — 2026-06-09
 
 ## Current branch
-`docs/phase-11-adr` (pushed, PR #67 open)
+`main` — clean and up to date
 
 ## Git state
-- `main` is clean and up to date
-- One open PR: #67 `docs/phase-11-adr` — Phase 11 ADR in architecture.md and roadmap.md
+- All PRs from this session merged: #68, #69
+- No open PRs
+- No uncommitted changes
 
 ## What was done this session
 
-### Production outage — fixed
-Phase 10 (global WASM migration) added `TimeTracker.Client` as a project reference to
-`TimeTracker.Web`. This caused two `.runtimeconfig.json` files in the publish output.
-Azure App Service couldn't identify which DLL to start and fell back to running
-`hostingstart.dll` (the platform placeholder). The app was never running.
+### Playwright CI auth — fixed (PR #68)
 
-Fix applied:
-- `az webapp config set --startup-file "dotnet TimeTracker.Web.dll"` applied directly
-- `deploy.yml` updated to set startup command before every deploy (PR #64, merged)
-- Root cause documented in commit message
+Root cause of 29 authenticated test failures in CI was a cookie domain mismatch: auth state was captured locally (`domain: localhost`) but CI runs against `timetracker-zak.azurewebsites.net`. Three options were reviewed with a security audit; a production auth bypass endpoint was rejected.
 
-### Playwright auth state — NOT fixed
-The authenticated Playwright tests (29 of 38) are still failing. Two separate issues:
+**Decision (D010):** Authenticated Playwright tests excluded from CI. 9 unauthenticated tests run in CI; 29 authenticated tests skipped (not failed) via `Assert.Ignore()` when no auth state file present.
 
-**Issue 1: `CaptureAuthState` will always fail in CI**
-The test navigates to `/api/dev/login` which only exists in Development mode.
-It can never pass in CI against production. It's a local-only tool masquerading as a test.
+Changes merged:
+- `AuthenticatedPageTest` + `AuthenticatedDesktopPageTest`: `[Category("Authenticated")]` + `[OneTimeSetUp]` guard
+- `deploy.yml`: removed broken "Write auth storage state" step; added `check` preflight job to skip deploy + Playwright entirely on docs-only pushes
+- `.githooks/pre-push`: runs unauthenticated Playwright tests on push when `.cs`/`.razor`/`.csproj` files change; skips gracefully if app not running
+- `CLAUDE.md`: documents `git config core.hooksPath .githooks` activation
 
-**Issue 2: Auth state captured against wrong domain**
-Auth state was captured locally against `https://localhost:7006`.
-The CI tests run against `https://timetracker.dzk.com.au`.
-ASP.NET Identity cookies have `domain: localhost` — they are never sent to the production domain.
-All 29 authenticated tests timeout on `.tt-fab button` (the WASM hydration signal).
+Hook is already active (`git config core.hooksPath .githooks` was run).
 
-**What is NOT broken:**
-- The 9 unauthenticated tests all pass
-- The production app is running correctly
-- WASM loads and hydrates on the live app
+### Documentation restructure (PR #69)
 
-**Agreed options (not yet decided):**
-1. Fix properly: production auth capture flow + extend cookie lifetime (30 days). ~1 hour.
-2. Exclude authenticated tests from CI: only unauthenticated tests in CI, authenticated local-only.
-3. Leave it: 9 unauthenticated tests pass in CI, move on to Phase 11.
+Three new documents, architecture.md slimmed down:
 
-User was frustrated with time spent on tests vs app. Decision deferred.
+| Document | Purpose |
+|----------|---------|
+| `docs/decisions.md` | Decision register — D001–D014, permanent IDs |
+| `docs/technical-debt.md` | Tech debt register — TD1–TD21, Status column, permanent IDs |
+| `docs/architecture.md` | System reference — current state, data model, dev setup, Reference section |
+
+**Decision register (D001–D014):**
+- D001–D010: core architectural decisions (WASM, MudBlazor, hosting, auth, VSA, etc.)
+- D011–D014: Phase 11 showcase decisions (zero Client changes, in-memory persistence, demo watermark, GitHub Pages)
+
+**Tech debt register (TD1–TD21):** 21 entries across infrastructure, CI/CD, auth, observability, security, networking. Each has a Status column (blank = open; `✅ Resolved YYYY-MM — note` when closed). Numbering is permanent — never reuse IDs.
+
+**architecture.md:** Rendering section trimmed from 130 lines to a pointer + prerender patterns. Deep-dive justification moved to new `## Reference` section at bottom. Phase 11 decision record removed (now D011–D014 in decisions.md).
+
+**Claude memory updated:** three-document pattern enforced — decisions → decisions.md, debt → technical-debt.md, reference → architecture.md.
 
 ## Phase 11 — GitHub Pages showcase (planned, not started)
-All decisions locked in. Full ADR in `docs/architecture.md` (Phase 11 section).
-PR #67 documents them. Once #67 is merged, Phase 11 implementation can begin.
 
-### Key decisions
-- `TimeTracker.Showcase` — new standalone Blazor WASM project
-- Zero changes to `TimeTracker.Client` — project reference + mock DI only
-- Mock services: `MockTimeEntryService`, `MockProjectService`, `MockClientService`
-  — all implement same interfaces, use shared in-memory singleton store
-- `MockAuthenticationStateProvider` returns hardcoded "Demo User"
-  — satisfies all `[Authorize]` attributes without a login flow
-- Persistence: **in-memory only** (Option A) — resets on browser refresh, acceptable for portfolio
-- Demo watermark: banner in `TimeTracker.Showcase`'s own `App.razor` — no Client changes
-- Deploy: `zkarachiwala.github.io/TimeTracker` via `gh-pages` branch
-  — second job in `deploy.yml`, no Azure credentials, fully isolated
-- SPA routing: copy `index.html` → `404.html` in CI publish step
-- Base href: `/TimeTracker/` set at publish time
+Decisions locked in as D011–D014. Implementation plan (from previous session) still applies:
 
-### Implementation plan (not started)
 1. Create `TimeTracker.Showcase` project — `Microsoft.NET.Sdk.BlazorWebAssembly`
 2. Add project references: `TimeTracker.Client`, `TimeTracker.Contracts`
 3. Add NuGet: `MudBlazor`, `Microsoft.AspNetCore.Components.Authorization`
@@ -81,10 +65,10 @@ PR #67 documents them. Once #67 is merged, Phase 11 implementation can begin.
 11. Add `TimeTracker.Showcase` to `TimeTracker.sln`
 12. Verify build, push branch, open PR
 
+**Risk to verify at step 1:** `TimeTracker.Client` uses `Microsoft.NET.Sdk.BlazorWebAssembly` (not a class library SDK). Referencing one WASM app from another is non-standard — confirm build tooling accepts this before proceeding. Raise before any workaround.
+
 ## Node.js 20 deprecation warning
-All GitHub Actions workflows use Node.js 20 actions (checkout@v4, setup-dotnet@v4, etc.).
-GitHub is forcing Node.js 24 from 2026-06-16. Actions will need updating soon.
-Not urgent until June 16 but worth noting.
+GitHub Actions workflows use Node.js 20 actions. GitHub forcing Node.js 24 from 2026-06-16. Update checkout@v4, setup-dotnet@v4, cache@v4, upload-artifact@v4 before that date.
 
 ## Open GitHub issues (legitimate backlog)
 - #36 — Invoice export for Zoho Books (future phase)
@@ -100,4 +84,4 @@ gh pr list
 ```
 
 ---
-*This file replaces WORK.md. Updated at the end of each session.*
+*Updated at end of session. Replaces previous SESSION.md.*
