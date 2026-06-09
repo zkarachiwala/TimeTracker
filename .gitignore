@@ -355,3 +355,6 @@ MigrationBackup/
 # .NET User Secrets (stored outside project dir by tooling, but explicit exclusion as safeguard)
 **/secrets.json
 **/secrets.*.json
+
+# Local showcase publish output
+.showcase-local/
