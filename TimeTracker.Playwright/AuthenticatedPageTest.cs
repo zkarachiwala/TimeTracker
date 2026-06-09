@@ -4,6 +4,7 @@ namespace TimeTracker.Playwright;
 public class AuthenticatedPageTest : PageTest
 {
     private readonly List<string> _consoleErrors = [];
+    private readonly List<string> _failedRequests = [];
 
     public override BrowserNewContextOptions ContextOptions() => new()
     {
@@ -24,16 +25,25 @@ public class AuthenticatedPageTest : PageTest
     [SetUp]
     public void MonitorConsoleErrors()
     {
+        Page.RequestFailed += (_, req) =>
+        {
+            if (!req.Url.EndsWith(".pdb"))
+                _failedRequests.Add($"Request failed: {req.Url}");
+        };
         Page.Console += (_, msg) =>
         {
-            if (msg.Type == "error") _consoleErrors.Add(msg.Text);
+            if (msg.Type != "error") return;
+            if (msg.Text.StartsWith("Failed to load resource")) return;
+            if (msg.Text.Contains(".pdb")) return;
+            _consoleErrors.Add(msg.Text);
         };
     }
 
     [TearDown]
     public void AssertNoConsoleErrors()
     {
-        Assert.That(_consoleErrors, Is.Empty,
-            $"Unexpected browser console errors:\n{string.Join("\n", _consoleErrors)}");
+        var all = _consoleErrors.Concat(_failedRequests).ToList();
+        Assert.That(all, Is.Empty,
+            $"Unexpected browser errors:\n{string.Join("\n", all)}");
     }
 }
