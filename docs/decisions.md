@@ -14,6 +14,10 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D008](#d008-two-ef-core-dbcontexts-app--identity) | Two EF Core DbContexts — app + identity | 2026-05 | Accepted |
 | [D009](#d009-mapster-over-automapper) | Mapster over AutoMapper | 2026-05 | Accepted |
 | [D010](#d010-playwright-ci-auth--unauthenticated-tests-only-in-ci) | Playwright CI auth — unauthenticated tests only in CI | 2026-06 | Accepted |
+| [D011](#d011-showcase--zero-changes-to-trackerclient) | Showcase — zero changes to TimeTracker.Client | 2026-06 | Accepted |
+| [D012](#d012-showcase--in-memory-persistence) | Showcase — in-memory persistence only | 2026-06 | Accepted |
+| [D013](#d013-showcase--demo-watermark-in-apprazor) | Showcase — demo watermark in App.razor | 2026-06 | Accepted |
+| [D014](#d014-showcase--github-pages-deployment) | Showcase — GitHub Pages deployment | 2026-06 | Accepted |
 
 ---
 
@@ -200,3 +204,76 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | Commit localhost auth state as a GitHub secret | Cookie `domain: localhost` is never sent to `timetracker-zak.azurewebsites.net` — was the previous broken approach |
 
 **Proper resolution:** Staging environment (D003 / TD3) with a dedicated Google OAuth app registration. Authenticated tests run against staging in CI.
+
+---
+
+## D011: Showcase — zero changes to TimeTracker.Client
+
+**Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
+
+**Context:** `TimeTracker.Showcase` needs to render all existing WASM pages as a portfolio demo. The question was whether to modify `TimeTracker.Client` to accommodate showcase-specific requirements.
+
+**Decision:** `TimeTracker.Client` is used as a read-only dependency. No modifications to any page, layout, or component in that project. The showcase's own `Program.cs` registers mock DI implementations instead of the HTTP services.
+
+**Consequences:**
+- ✅ `TimeTracker.Client` never needs to know the showcase exists — zero ongoing coupling
+- ✅ Showcase may break when Client changes, but Client is never constrained by showcase needs
+- ✅ `MockAuthenticationStateProvider` returns a hardcoded "Demo User" — satisfies all `[Authorize]` attributes without a login flow
+- ❌ `TimeTracker.Client` uses `Microsoft.NET.Sdk.BlazorWebAssembly` (a runnable app SDK, not a class library SDK) — referencing one WASM app from another is non-standard; if build tooling rejects it at implementation time this decision must be revisited
+
+---
+
+## D012: Showcase — in-memory persistence
+
+**Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
+
+**Context:** Mock services need some form of persistence. Three options were evaluated.
+
+| Option | Complexity | Refresh persistence | Offline PWA foundation |
+|--------|-----------|--------------------|-----------------------|
+| **A — In-memory** | None | ❌ Resets | ❌ Would require rewrite |
+| B — localStorage | Low | ✅ Survives | Partial (size-limited, sync) |
+| C — IndexedDB/SQLite | Medium–high | ✅ Survives | ✅ Right foundation |
+
+**Decision:** Option A — in-memory only. Data resets on browser refresh.
+
+**Consequences:**
+- ✅ Zero complexity — mock services are plain C# classes with no storage dependency
+- ✅ Acceptable for a portfolio demo — visitors explore, not manage real data
+- ❌ Refresh resets all demo data — acknowledged and accepted
+- ❌ Not a foundation for offline PWA — if that becomes a goal, the mock store requires a rewrite
+
+---
+
+## D013: Showcase — demo watermark in App.razor
+
+**Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
+
+**Context:** Showcase visitors need to know they are using mock data, not the live system.
+
+**Decision:** A "Demo Mode" banner is rendered above the `<Routes />` outlet in `TimeTracker.Showcase`'s own `App.razor`. Nothing in `TimeTracker.Client` is modified (see D011).
+
+**Consequences:**
+- ✅ Banner is entirely outside `Client` — zero regression risk to the production app
+- ✅ Impossible to miss — renders on every page
+
+---
+
+## D014: Showcase — GitHub Pages deployment
+
+**Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
+
+**Context:** The showcase is static WASM — it needs a static file host. GitHub Pages is free and the repository is already public.
+
+**Decision:** Deploy to `zkarachiwala.github.io/TimeTracker` via a `showcase` job in `deploy.yml`, publishing to the `gh-pages` branch. Base href `/TimeTracker/` set at publish time. `index.html` copied to `404.html` for SPA routing.
+
+**Constraints verified at decision time:**
+- GitHub Pages requires a public repository on a free personal account — `TimeTracker` is already public ✓
+- 1 GB size limit, 100 GB/month bandwidth — no risk for a portfolio app ✓
+- Source: [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+
+**Consequences:**
+- ✅ Zero cost, no additional infrastructure
+- ✅ `showcase` job is fully isolated — no Azure credentials, cannot affect the production deploy
+- ❌ GitHub Pages does not support custom headers or server-side redirects — SPA routing workaround (`404.html`) is required
+- ❌ Sub-path deployment (`/TimeTracker/`) requires correct `<base href>` — must be set at publish time, not hardcoded
