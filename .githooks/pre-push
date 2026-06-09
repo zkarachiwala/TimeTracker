@@ -49,6 +49,18 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
         exit 0
     fi
 
+    # Detect stale app: compare blazor.boot.json from local build vs running server.
+    # Any source change re-fingerprints assets; a stale server causes spurious test failures.
+    BOOT_FILE="$REPO_ROOT/TimeTracker.Client/bin/Debug/net10.0/wwwroot/_framework/blazor.boot.json"
+    if [[ -f "$BOOT_FILE" ]]; then
+        LOCAL_HASH=$(md5sum "$BOOT_FILE" | cut -d' ' -f1)
+        REMOTE_HASH=$(curl -sk "$APP_URL/_framework/blazor.boot.json" | md5sum | cut -d' ' -f1)
+        if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
+            echo "pre-push: app is stale (blazor.boot.json mismatch) — restart 'dotnet run' in TimeTracker.Web, then re-push"
+            exit 1
+        fi
+    fi
+
     echo "pre-push: running unauthenticated Playwright tests against $APP_URL..."
     BROWSER= PLAYWRIGHT_BASE_URL="$APP_URL" \
         dotnet test "$REPO_ROOT/TimeTracker.Playwright" \
