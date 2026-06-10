@@ -16,7 +16,7 @@
     <div class="pa-4">
         @* ── Header ── *@
         <div class="d-flex align-center gap-2 mb-4">
-            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Nav.NavigateTo("/clients")' />
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Nav.NavigateTo("clients")' />
             <MudAvatar Class="avatar-sq"
                        Style="@($"background:{ProjectColors.ForClient(client.Id)}22; color:{ProjectColors.ForClient(client.Id)}; font-weight:700; width:44px; height:44px")">
                 @client.Name[..Math.Min(2, client.Name.Length)].ToUpper()
@@ -86,7 +86,7 @@
             @foreach (var p in activeProjects)
             {
                 <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
-                             OnOpen="@(id => Nav.NavigateTo($"/projects/{id}"))" />
+                             OnOpen="@(id => Nav.NavigateTo($"projects/{id}"))" />
             }
         }
         else
@@ -142,7 +142,7 @@
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            Nav.NavigateTo("/login", forceLoad: true);
+            Nav.NavigateTo("login", forceLoad: true);
         }
     }
 

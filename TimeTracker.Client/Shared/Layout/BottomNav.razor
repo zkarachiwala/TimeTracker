@@ -4,24 +4,24 @@
 <AuthorizeView>
     <Authorized>
         <div class="bottom-nav">
-            <a class="bottom-nav-item @ActiveClass("/")" href="/">
+            <a class="bottom-nav-item @ActiveClass("")" href="">
                 <MudIcon Icon="@Icons.Material.Filled.Timer" />
                 <span class="nav-label">Timer</span>
             </a>
-            <a class="bottom-nav-item @ActiveClass("/entries")" href="/entries">
+            <a class="bottom-nav-item @ActiveClass("entries")" href="entries">
                 <MudIcon Icon="@Icons.Material.Filled.AccessTime" />
                 <span class="nav-label">Entries</span>
             </a>
-            <a class="bottom-nav-item @ActiveClass("/reports")" href="/reports">
+            <a class="bottom-nav-item @ActiveClass("reports")" href="reports">
                 <MudIcon Icon="@Icons.Material.Filled.BarChart" />
                 <span class="nav-label">Reports</span>
             </a>
             <AuthorizeView Roles="Admin" Context="adminContext">
-                <a class="bottom-nav-item @ActiveClass("/projects")" href="/projects">
+                <a class="bottom-nav-item @ActiveClass("projects")" href="projects">
                     <MudIcon Icon="@Icons.Material.Filled.FolderOpen" />
                     <span class="nav-label">Projects</span>
                 </a>
-                <a class="bottom-nav-item @ActiveClass("/clients")" href="/clients">
+                <a class="bottom-nav-item @ActiveClass("clients")" href="clients">
                     <MudIcon Icon="@Icons.Material.Filled.Business" />
                     <span class="nav-label">Clients</span>
                 </a>
@@ -31,24 +31,24 @@
 </AuthorizeView>
 
 @code {
-    private string currentPath = "/";
+    private string currentPath = "";
 
     protected override void OnInitialized()
     {
-        currentPath = new Uri(Nav.Uri).AbsolutePath;
+        currentPath = Nav.ToBaseRelativePath(Nav.Uri);
         Nav.LocationChanged += OnLocationChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        currentPath = new Uri(e.Location).AbsolutePath;
+        currentPath = Nav.ToBaseRelativePath(e.Location);
         InvokeAsync(StateHasChanged);
     }
 
     private string ActiveClass(string href)
     {
-        if (href == "/" && currentPath == "/") return "active";
-        if (href != "/" && currentPath.StartsWith(href, StringComparison.OrdinalIgnoreCase)) return "active";
+        if (href == "" && currentPath == "") return "active";
+        if (href != "" && currentPath.StartsWith(href, StringComparison.OrdinalIgnoreCase)) return "active";
         return string.Empty;
     }
 

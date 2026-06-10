@@ -98,9 +98,9 @@
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            Nav.NavigateTo("/login", forceLoad: true);
+            Nav.NavigateTo("login", forceLoad: true);
         }
     }
 
-    private void NavigateToClient(int id) => Nav.NavigateTo($"/clients/{id}");
+    private void NavigateToClient(int id) => Nav.NavigateTo($"clients/{id}");
 }
