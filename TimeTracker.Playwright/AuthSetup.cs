@@ -17,6 +17,13 @@ public class AuthSetup : PageTest
     [Test]
     public async Task CaptureAuthState()
     {
+        // In CI the auth state is pre-restored from PLAYWRIGHT_AUTH_STATE_B64 secret
+        if (File.Exists(TestConfig.AuthStatePath))
+        {
+            Assert.Ignore("Auth state already exists — skipping capture.");
+            return;
+        }
+
         // Use the DEV-only login endpoint — no headed browser or OAuth flow needed
         await Page.GotoAsync("/api/dev/login");
         await Expect(Page.GetByText("Signed in as")).ToBeVisibleAsync(new() { Timeout = 10_000 });
