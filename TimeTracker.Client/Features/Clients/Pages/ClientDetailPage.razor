@@ -86,7 +86,7 @@
             @foreach (var p in activeProjects)
             {
                 <ProjectCard Project="p" YtdHours="@GetYtdHours(p.Id)"
-                             OnOpen="@(id => Nav.NavigateTo($"/projects/{id}"))" />
+                             OnOpen="@(id => Nav.NavigateTo($"projects/{id}"))" />
             }
         }
         else
