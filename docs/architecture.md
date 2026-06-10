@@ -13,6 +13,7 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 | 2026-06 | **Global InteractiveWebAssembly** — abandoned SSR+WASM islands hybrid; MudBlazor #9743 prevents interactive layouts in SSR | `feature/wasm-islands` |
 | 2026-06 | Renamed `TimeTracker.Wasm` → `TimeTracker.Client` (Microsoft standard .Client naming) | `feature/wasm-islands` |
 | 2026-06 | Added `TimeTracker.Contracts` — shared DTOs; `CookieAuthenticationStateProvider`; `/api/auth/user` endpoint; `ReportsCalculations` static class; 92 unit tests | `feature/wasm-islands` |
+| 2026-06 | **GitHub Pages showcase** — `#if SHOWCASE` mock services; `wwwroot-showcase/` asset isolation; base-href-agnostic relative paths; SPA 404 routing; auto-deployed from `deploy.yml` | #72–78 |
 | 2026-06 | Added `TimeTracker.Playwright` — E2E tests; Cloudflare custom domain `timetracker.dzk.com.au` | #43–56 |
 | 2026-06 | Deployed to Azure App Service F1 + Azure SQL; GitHub Actions OIDC push-to-deploy | #43–45 |
 | 2026-06 | Security hardening: CSP, HSTS, rate limiting, 83 tests | #42 |
@@ -105,7 +106,7 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 - HTTP-only, Secure, SameSite=Strict cookies; 1-day expiration
 - `CookieCredentialHandler` in Client sends `BrowserRequestCredentials.Include` with every HTTP request so the auth cookie is forwarded
 - `CookieAuthenticationStateProvider` calls `/api/auth/user` on first load to hydrate WASM auth state; result cached per circuit
-- On 401 mid-session, pages call `Nav.NavigateTo("/login", forceLoad: true)` to force full reload and reset WASM state
+- On 401 mid-session, pages call `Nav.NavigateTo("login", forceLoad: true)` to force full reload and reset WASM state
 - Google OAuth via `Microsoft.AspNetCore.Authentication.Google`; provider-agnostic callback via `SignInManager`
 - OAuth challenge links use `data-enhance-nav="false"` to force full-page navigation (Blazor enhanced nav would turn it into a fetch, blocked by CSP)
 - Allowed emails gated via `Authentication:AllowedEmails` config list
@@ -169,11 +170,12 @@ Two named rate limit policies, both driven from `RateLimiting` config in `appset
 
 | Concern | Solution | Cost |
 |---------|----------|------|
-| Hosting | Azure App Service F1 | Free — hard limit, no overage possible |
+| Live app hosting | Azure App Service F1 | Free — hard limit, no overage possible |
+| Showcase hosting | GitHub Pages | Free |
 | Database | Azure SQL Database free offer | Free — 32 GB, 7-day automated backups, no expiry |
 | Auth | Google OAuth 2.0 via ASP.NET Identity | Free |
 | CI/CD | GitHub Actions — OIDC push-to-deploy | Free |
-| Tests | 83 service integration tests (EF InMemory) | — |
+| Tests | 105 service integration tests (EF InMemory) | — |
 
 ---
 
@@ -267,31 +269,29 @@ erDiagram
 
 ## Decision register
 
-See **[docs/decisions.md](decisions.md)** — 10 decisions (D001–D010) covering rendering architecture, component library, hosting, auth, data access, and CI.
+See **[docs/decisions.md](decisions.md)** — 15 decisions (D001–D015) covering rendering architecture, component library, hosting, auth, data access, CI, and showcase deployment.
 
 ## Technical debt register
 
-See **[docs/technical-debt.md](technical-debt.md)** — 21 entries (TD1–TD21) across infrastructure, CI/CD, auth, observability, security, and networking. Each entry links to the relevant decision where applicable.
+See **[docs/technical-debt.md](technical-debt.md)** — 22 entries (TD1–TD22) across infrastructure, CI/CD, auth, observability, security, and networking. Each entry links to the relevant decision where applicable.
 
 ---
 
-## Planned phases
+## Phase 11 — GitHub Pages showcase ✅
 
-#### Next — GitHub Pages showcase (Phase 11)
+Standalone Blazor WASM showcase deployed to [zkarachiwala.github.io/TimeTracker](https://zkarachiwala.github.io/TimeTracker/). Reuses all `TimeTracker.Client` components unchanged; swaps in-memory mock services at compile time via `#if SHOWCASE`.
 
-`TimeTracker.Showcase` — standalone WASM project for portfolio use. See [Phase 11 decisions](#phase-11--github-pages-showcase) below.
+### Key decisions
 
----
+- **[D011](decisions.md#d011-showcase--zero-changes-to-trackerclient)** — zero changes to `TimeTracker.Client`; mock services injected via `#if SHOWCASE` in `Program.cs`
+- **[D012](decisions.md#d012-showcase--in-memory-persistence)** — in-memory persistence only; resets on refresh; acceptable for a portfolio demo
+- **[D013](decisions.md#d013-showcase--demo-watermark-in-apprazor)** — demo watermark in `App.razor`; no production regression risk
+- **[D014](decisions.md#d014-showcase--github-pages-deployment)** — GitHub Pages deployment via `deploy.yml` showcase job; `gh-pages` branch; public repo
+- **[D015](decisions.md#d015-showcase-static-assets-isolated-to-wwwroot-showcase)** — showcase assets isolated to `wwwroot-showcase/`; MSBuild conditional `ItemGroup` makes them invisible to the normal SDK build, preventing asset fingerprint churn in dev
 
-## Phase 11 — GitHub Pages showcase
+### Routing under subpath hosting
 
-### Goal
-
-Add `TimeTracker.Showcase` — a standalone Blazor WASM app that reuses all existing `TimeTracker.Client` components unchanged, substitutes in-memory mock services, and deploys to GitHub Pages as a public portfolio demo.
-
-### Decisions
-
-Recorded in [decisions.md](decisions.md): [D011](decisions.md#d011-showcase--zero-changes-to-trackerclient) (zero changes to Client), [D012](decisions.md#d012-showcase--in-memory-persistence) (in-memory persistence), [D013](decisions.md#d013-showcase--demo-watermark-in-apprazor) (demo watermark), [D014](decisions.md#d014-showcase--github-pages-deployment) (GitHub Pages deployment).
+GitHub Pages serves the showcase at `/TimeTracker/` (not `/`). `<base href="/TimeTracker/" />` is required, which means all navigation must use **relative paths** — absolute hrefs (`/entries`) resolve outside the app base URI. All `Href=` attributes, `Nav.NavigateTo()` calls, and image `src=` references in `TimeTracker.Client` are base-href-agnostic (no leading `/`). `BottomNav.ActiveClass` uses `Nav.ToBaseRelativePath` rather than `AbsolutePath` to correctly detect the active route under any base.
 
 ---
 
