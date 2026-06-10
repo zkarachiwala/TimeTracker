@@ -3,29 +3,29 @@
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 
 <MudNavMenu>
-    <MudNavLink Href="/" Match="NavLinkMatch.All"
+    <MudNavLink Href="" Match="NavLinkMatch.All"
                 Icon="@Icons.Material.Filled.Timer">Timer</MudNavLink>
 
     <AuthorizeView>
         <Authorized>
-            <MudNavLink Href="/entries"
+            <MudNavLink Href="entries"
                         Icon="@Icons.Material.Filled.AccessTime">Entries</MudNavLink>
-            <MudNavLink Href="/reports"
+            <MudNavLink Href="reports"
                         Icon="@Icons.Material.Filled.BarChart">Reports</MudNavLink>
         </Authorized>
     </AuthorizeView>
 
     <AuthorizeView Roles="Admin">
-        <MudNavLink Href="/projects"
+        <MudNavLink Href="projects"
                     Icon="@Icons.Material.Filled.FolderOpen">Projects</MudNavLink>
-        <MudNavLink Href="/clients"
+        <MudNavLink Href="clients"
                     Icon="@Icons.Material.Filled.Business">Clients</MudNavLink>
     </AuthorizeView>
 
     @if (_isDevelopment)
     {
         <AuthorizeView Roles="Admin">
-            <MudNavLink Href="/dev"
+            <MudNavLink Href="dev"
                         Icon="@Icons.Material.Filled.DeveloperMode">Dev Tools</MudNavLink>
         </AuthorizeView>
     }

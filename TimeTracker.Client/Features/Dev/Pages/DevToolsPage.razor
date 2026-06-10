@@ -29,7 +29,7 @@
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            Nav.NavigateTo("/login", forceLoad: true);
+            Nav.NavigateTo("login", forceLoad: true);
         }
         finally { _busy = false; }
     }
@@ -47,7 +47,7 @@
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            Nav.NavigateTo("/login", forceLoad: true);
+            Nav.NavigateTo("login", forceLoad: true);
         }
         finally { _busy = false; }
     }

@@ -15,7 +15,7 @@
     <div class="pa-4">
         @* ── Header ── *@
         <div class="d-flex align-center gap-2 mb-4">
-            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Nav.NavigateTo("/projects")' />
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Nav.NavigateTo("projects")' />
             <MudAvatar Class="avatar-sq"
                        Style="@($"background:{ProjectColors.ForProject(project.Id)}22; color:{ProjectColors.ForProject(project.Id)}; font-weight:700; width:44px; height:44px")">
                 @Initials
@@ -148,7 +148,7 @@
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            Nav.NavigateTo("/login", forceLoad: true);
+            Nav.NavigateTo("login", forceLoad: true);
         }
     }
 
