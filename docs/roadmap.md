@@ -100,18 +100,14 @@ Replaced Blazor Interactive Server (SignalR) with global InteractiveWebAssembly.
 - `CookieCredentialHandler` — forwards auth cookie with every WASM HTTP request
 - WASM islands (per-component render mode) evaluated and rejected — MudBlazor `MudDrawer` incompatible with SSR layouts; see `architecture.md` for full decision record
 
----
+### Phase 11 — GitHub Pages showcase ✅
+Standalone WASM showcase with mock data hosted at [zkarachiwala.github.io/TimeTracker](https://zkarachiwala.github.io/TimeTracker/).
 
-## Upcoming
-
-### Phase 11 — GitHub Pages showcase (planned)
-Add `TimeTracker.Showcase` standalone WASM project. Shares components with the live app; runs in the browser with mock data. Deployed to GitHub Pages via a second job in the GitHub Actions workflow.
-
-**Key decisions locked in (see `docs/architecture.md` Phase 11 section for full ADR):**
-- Zero changes to `TimeTracker.Client` — showcase adds a project reference and swaps DI registrations only
-- Persistence: in-memory only (resets on refresh) — acceptable for a portfolio demo
-- Demo watermark rendered in Showcase's own `App.razor` — no production regression risk
-- Deploys to `zkarachiwala.github.io/TimeTracker` via `gh-pages` branch; requires public repo (already public ✓)
+- `#if SHOWCASE` compile flag swaps production services for in-memory mock implementations
+- Showcase assets isolated to `wwwroot-showcase/` — invisible to the normal SDK build, no fingerprint churn in dev
+- `<base href="/TimeTracker/" />` subpath hosting — all navigation paths converted to base-href-agnostic relative paths
+- SPA routing via `404.html` redirect script (`pathSegmentsToKeep=1`)
+- Deployed automatically by a second job in `deploy.yml` whenever app code changes land on `main`
 
 ---
 
@@ -125,7 +121,7 @@ TimeTracker will eventually integrate with Zoho Books to partially automate invo
 ## Phase dependency order
 
 ```
-0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 ✅ → 10 ✅ → 11 → Zoho
+0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 ✅ → 10 ✅ → 11 ✅ → Zoho
 ```
 
 ## Infrastructure summary
