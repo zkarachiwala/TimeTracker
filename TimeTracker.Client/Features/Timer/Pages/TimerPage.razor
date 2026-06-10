@@ -77,7 +77,7 @@ else if (_providersReady)
                 {
                     <MudChip T="string" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Bolt"
                              OnClick="() => LogBlock(mins)">
-                        @(mins < 60 ? $"{mins}m" : $"{mins / 60}h")
+                        @(mins % 60 == 0 ? $"{mins / 60}h" : $"{mins}m")
                     </MudChip>
                 }
             </div>

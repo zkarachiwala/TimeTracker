@@ -7,8 +7,14 @@ A personal timesheeting application for tracking time entries against projects, 
 - **[.NET 10](https://dotnet.microsoft.com/)** — ASP.NET Core + Blazor WebAssembly
 - **[Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/)** — SQL Server via EF Core
 - **[ASP.NET Core Identity](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity)** — user management
-- **[Radzen.Blazor](https://blazor.radzen.com/)** — year-view chart
-- **[MudBlazor](https://mudblazor.com/)** — UI component library *(coming soon)*
+- **[MudBlazor](https://mudblazor.com/)** — UI component library
+
+## Live showcase
+
+A read-only showcase with mock data is hosted on GitHub Pages:
+**[https://zkarachiwala.github.io/TimeTracker/](https://zkarachiwala.github.io/TimeTracker/)**
+
+[![TimeTracker showcase](media/showcase-preview.webp)](https://zkarachiwala.github.io/TimeTracker/)
 
 ## Running locally
 
