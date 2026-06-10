@@ -3,20 +3,8 @@ name: CI
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - '**/*.cs'
-      - '**/*.razor'
-      - '**/*.csproj'
-      - '**/*.sln'
-      - '**/*.css'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - '**/*.cs'
-      - '**/*.razor'
-      - '**/*.csproj'
-      - '**/*.sln'
-      - '**/*.css'
 
 permissions:
   contents: read

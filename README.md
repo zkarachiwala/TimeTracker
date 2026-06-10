@@ -72,9 +72,20 @@ API docs (dev only): `https://localhost:7006/scalar/v1`
 
 An interactive HTML mockup of the full app is in the [`mockup/`](mockup/) folder.  Open [`mockup/TimeTracker App.html`](mockup/TimeTracker%20App.html) in a browser to explore the intended UI — phone viewport shows the mobile layout, and the [Mockups wrapper](mockup/TimeTracker%20Mockups.html) shows both mobile and desktop side-by-side.
 
+## Deployment
+
+The app runs across two separate hosting targets:
+
+| Target | URL | Purpose |
+|--------|-----|---------|
+| **Azure App Service F1** | [timetracker.dzk.com.au](https://timetracker.dzk.com.au) | Live app — Google OAuth, SQL Server, full functionality |
+| **GitHub Pages** | [zkarachiwala.github.io/TimeTracker](https://zkarachiwala.github.io/TimeTracker/) | Read-only showcase — mock data, no login required |
+
+Both are deployed automatically by GitHub Actions on every merge to `main` that contains code changes. The live app uses OIDC to authenticate against Azure; the showcase publishes a standalone Blazor WASM bundle compiled with `#if SHOWCASE` mock services.
+
 ## Credits
 
-This project started as a hands-on exercise following the **[Web API, Blazor & Blazor WebAssembly Masterclass](https://dotnetwebacademy.com/courses/web-api-blazor-blazor-webassembly-masterclass)** course by .NET Web Academy. The architecture has since been significantly evolved — Blazor SSR, Vertical Slice Architecture, Google OAuth, and a number of feature additions (most of which I learned via this academy or via [Patrick God's YouTube channel](https://www.youtube.com/@PatrickGod) — but the original course provided the foundation.  I highly recommend the .NET Web Academy and Patrick's YouTube channel.
+This project started as a hands-on exercise following the **[Web API, Blazor & Blazor WebAssembly Masterclass](https://dotnetwebacademy.com/courses/web-api-blazor-blazor-webassembly-masterclass)** course by .NET Web Academy. The architecture has since been significantly evolved beyond the course material — Global InteractiveWebAssembly rendering, Vertical Slice Architecture, Google OAuth, MudBlazor UI, Azure deployment with Managed Identity, a full Playwright test suite, and a GitHub Pages showcase. Most of this was learned via the academy or [Patrick God's YouTube channel](https://www.youtube.com/@PatrickGod), which I highly recommend.
 
 ## Adding EF Core migrations
 
