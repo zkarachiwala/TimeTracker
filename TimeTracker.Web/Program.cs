@@ -48,7 +48,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SameSite = SameSiteMode.Lax;
     options.LoginPath = "/login";
     options.ExpireTimeSpan = TimeSpan.FromDays(1);
     options.Events.OnRedirectToLogin = context =>
