@@ -295,51 +295,6 @@ GitHub Pages serves the showcase at `/TimeTracker/` (not `/`). `<base href="/Tim
 
 ---
 
-## Development setup
-
-### Prerequisites
-- .NET 10 SDK
-- Docker Desktop (Windows) — for local SQL Server
-
-### SQL Server (Docker)
-```bash
-docker run \
-  -e "ACCEPT_EULA=Y" \
-  -e "MSSQL_SA_PASSWORD=YourStrong@Passw0rd" \
-  -p 1435:1433 \
-  --name timetracker-sql \
-  -d mcr.microsoft.com/mssql/server:2022-latest
-```
-
-> Port 1435 is used because 1433 and 1434 are reserved by the Windows SQL Server instance.
-> Connect via SSMS using `127.0.0.1,1435`, SQL auth (sa), with `Encrypt=false;TrustServerCertificate=true` in Additional Connection Parameters.
-
-### User secrets
-```bash
-cd TimeTracker.Web
-dotnet user-secrets set "DbUser" "sa"
-dotnet user-secrets set "DbPassword" "YourStrong@Passw0rd"
-```
-
-### Run
-```bash
-cd TimeTracker.Web
-dotnet run
-# App: https://localhost:7006
-# API docs (dev): https://localhost:7006/scalar/v1
-```
-
-### EF Core migrations
-```bash
-cd TimeTracker.Web
-dotnet ef migrations add <Name> --context TimeTrackerDataContext
-dotnet ef migrations add <Name> --context IdentityDataContext
-dotnet ef database update --context TimeTrackerDataContext
-dotnet ef database update --context IdentityDataContext
-```
-
----
-
 ## Reference
 
 Deep-dive justifications for decisions that have permanent architectural impact. These sections are referenced from [decisions.md](decisions.md) — the decision summaries live there; the evidence lives here.
