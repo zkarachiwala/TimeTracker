@@ -13,12 +13,13 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D007](#d007-keep-rest-api-layer-separate-from-blazor-pages) | Keep REST API layer separate from Blazor pages | 2026-05 | Accepted |
 | [D008](#d008-two-ef-core-dbcontexts-app--identity) | Two EF Core DbContexts — app + identity | 2026-05 | Accepted |
 | [D009](#d009-mapster-over-automapper) | Mapster over AutoMapper | 2026-05 | Accepted |
-| [D010](#d010-playwright-ci-auth--unauthenticated-tests-only-in-ci) | Playwright CI auth — unauthenticated tests only in CI | 2026-06 | Accepted |
+| [D010](#d010-playwright-ci-auth--unauthenticated-tests-only-in-ci) | Playwright CI auth — unauthenticated tests only in CI | 2026-06 | Superseded by D016 |
 | [D011](#d011-showcase--zero-changes-to-trackerclient) | Showcase — zero changes to TimeTracker.Client | 2026-06 | Accepted |
 | [D012](#d012-showcase--in-memory-persistence) | Showcase — in-memory persistence only | 2026-06 | Accepted |
 | [D013](#d013-showcase--demo-watermark-in-apprazor) | Showcase — demo watermark in App.razor | 2026-06 | Accepted |
 | [D014](#d014-showcase--github-pages-deployment) | Showcase — GitHub Pages deployment | 2026-06 | Accepted |
 | [D015](#d015-showcase-static-assets-isolated-to-wwwroot-showcase) | Showcase static assets isolated to `wwwroot-showcase/` | 2026-06 | Accepted |
+| [D016](#d016-playwright--full-suite-pre-push-ci-smoke-test-only) | Playwright — full suite pre-push, CI smoke test only | 2026-06 | Accepted |
 
 ---
 
@@ -185,7 +186,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ## D010: Playwright CI auth — unauthenticated tests only in CI
 
-**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD6](technical-debt.md#cicd--testing), [TD7](technical-debt.md#cicd--testing)
+**Date:** 2026-06 — **Status:** Superseded by [D016](#d016-playwright-full-suite-pre-push-ci-smoke-test-only) — **Tracks:** [TD6](technical-debt.md#cicd--testing), [TD7](technical-debt.md#cicd--testing)
 
 **Context:** The app uses Google OAuth. The OAuth flow cannot be automated in CI. Auth state captured locally against `localhost` uses domain-scoped cookies that are never sent to `timetracker-zak.azurewebsites.net`. All 29 authenticated Playwright tests were failing in CI.
 
@@ -303,3 +304,37 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 - ✅ `showcase` job is fully isolated — no Azure credentials, cannot affect the production deploy
 - ❌ GitHub Pages does not support custom headers or server-side redirects — SPA routing workaround (`404.html`) is required
 - ❌ Sub-path deployment (`/TimeTracker/`) requires correct `<base href>` — must be set at publish time, not hardcoded
+
+---
+
+## D016: Playwright — full suite pre-push, CI smoke test only
+
+**Date:** 2026-06 — **Status:** Accepted — **Supersedes:** [D010](#d010-playwright-ci-auth--unauthenticated-tests-only-in-ci) — **Tracks:** [TD6](technical-debt.md#cicd--testing)
+
+**Context:** D010's approach (unauthenticated tests only in CI, auth state captured manually) broke immediately — the 1-day cookie TTL meant the stored GitHub secret expired overnight, the `PLAYWRIGHT_AUTH_STATE_B64` secret had to be recaptured manually before every CI run, and all authenticated tests were silently skipped in CI regardless. There is no staging environment (D003); the only ASP.NET Core `Development` environment is `localhost`.
+
+**Decision:** Full authenticated Playwright suite runs locally via the pre-push hook. CI runs a smoke test only — curl the production login page and assert HTTP 200. This is the correct split given the infrastructure constraints.
+
+**How it works:**
+- `GlobalSetup.cs` (`[SetUpFixture]`) starts the app automatically if not running, then calls `/api/dev/login` (a Development-only endpoint) via Playwright's `APIRequestContext` to obtain a fresh auth cookie. `dotnet test` is the only command needed — no manual steps, no pre-generated tokens.
+- The pre-push hook runs the full suite when app code changes. Doc-only or test-only pushes skip it.
+- CI (`deploy.yml` `smoke` job) curls `https://timetracker-zak.azurewebsites.net/login` after deploy and fails the pipeline if it does not return HTTP 200.
+
+**Why not run authenticated tests in CI:**
+- `/api/dev/login` is only available when `ASPNETCORE_ENVIRONMENT=Development` — it is not present in production
+- Running a Development-mode app in CI just for Playwright would require a separate service container with a database, migrations, seeded admin user, and Google OAuth configuration — that is a staging environment
+- The smoke test is sufficient to confirm the deploy succeeded; functional regression is caught by the pre-push hook before the code ever reaches CI
+
+**If a staging environment is added (resolves TD3):**
+1. Deploy the staging app with `ASPNETCORE_ENVIRONMENT=Development` and a seeded admin user
+2. Point `PLAYWRIGHT_BASE_URL` at the staging URL in the CI workflow
+3. The `GlobalSetup` will call `/api/dev/login` on staging, capture auth, and run the full suite in CI
+4. The pre-push hook can be removed or kept as a fast local gate
+5. Remove the `smoke` job and replace with `dotnet test TimeTracker.Playwright` in the CI pipeline
+
+**Consequences:**
+- ✅ `dotnet test` is fully automated — no manual token capture, no expiring secrets
+- ✅ CI is reliable — smoke test cannot expire or fail due to auth state rot
+- ✅ `PLAYWRIGHT_AUTH_STATE_B64` GitHub secret can be deleted
+- ❌ Authenticated regression tests do not run in CI — a broken authenticated page can reach production if the developer skips the pre-push hook (e.g. `git push --no-verify`)
+- ❌ The pre-push hook adds ~90 seconds to every push that touches app code (app startup + test run)
