@@ -1,56 +1,58 @@
-# Session handoff — 2026-06-10
+# Session handoff — 2026-06-13
 
 ## Current branch
-`feat/phase-11-showcase` — PR #72 open, awaiting CI + merge
+`fix/playwright-warmup` — all phases complete, ready for PR + merge
 
 ## Git state
-- Open PR: #72 — feat: Phase 11 — GitHub Pages showcase
+- `fix/samesite-lax-oauth` — merged as PR #80 ✅
+- `fix/playwright-warmup` — open branch, two commits ahead of main, ready to PR
 - No uncommitted changes
-- Branch is fully pushed
+
+---
 
 ## What was done this session
 
-### Phase 11 — GitHub Pages showcase (PR #72)
+### Playwright test overhaul — COMPLETE ✅
 
-Full implementation of the GitHub Pages demo. Key architectural choices and what was fixed:
+All three phases done:
 
-**Approach:** `#if SHOWCASE` compile flag in `TimeTracker.Client/Program.cs` swaps HTTP services for mock implementations. No changes to any existing page, layout, or component.
+**Phase 1 — Test infrastructure**
+- `GlobalSetup.cs` — `[SetUpFixture]` starts the app automatically (Release build, https profile)
+  if not already running, then calls `/api/dev/login` via `APIRequestContext` to get a fresh auth
+  cookie. No manual steps. No pre-generated tokens. `dotnet test` is the only command needed.
+- `AuthSetup.cs` — deleted (fully replaced by `GlobalSetup.cs`)
+- `AuthenticatedPageTest.cs`, `AuthenticatedDesktopPageTest.cs`, `AuthTests.cs` — cascade bug
+  fixed (clear `_failedRequests` / `_consoleErrors` in `[SetUp]`), `IgnoreHTTPSErrors = true`
+  restored on all contexts
+- `NavigationTests.cs` — fixed all href selectors (Blazor renders `href="clients"` not
+  `href="/clients"`), added auth-state wait in `[SetUp]` for admin-role links
+- `TestConfig.cs` — default URL is `https://localhost:7006`
+- `playwright.runsettings` — added with `StopOnError=true`
+- **Full suite: 35 passed, 2 skipped (write tests) ✅**
 
-**Mock layer added (`TimeTracker.Client/Mock/`):**
-- `MockDataStore` — singleton, seeded with 2 clients, 4 projects, ~50 time entries
-- `MockAuthenticationStateProvider` — returns `demo@example.com` with Admin role
-- `MockTimeEntryService`, `MockProjectService`, `MockClientService`
+**Phase 2 — Pre-push hook**
+- Simplified: removed app-running check, removed `--filter "TestCategory!=Authenticated"`
+- `GlobalSetup` handles startup automatically
+- App-code change detection still present (skips for docs/test-only pushes)
 
-**Showcase hosting files isolated to `wwwroot-showcase/` (D015):**
-- `index.html`, `404.html`, `showcase-app.css` moved out of `wwwroot/`
-- `TimeTracker.Client.csproj` has conditional `ItemGroup` — files only mapped into publish output when `-p:Showcase=true`
-- Prevents asset fingerprint churn in local dev server from showcase file changes
-- CI command: `-p:Showcase=true -p:DefineConstants=SHOWCASE`
+**Phase 3 — CI**
+- Replaced full Playwright job with a `smoke` job: curl production login page, assert HTTP 200
+- Removed auth state restore step entirely
+- `PLAYWRIGHT_AUTH_STATE_B64` GitHub secret should now be deleted from GitHub
 
-**Root components fix:** Standalone WASM (GitHub Pages) requires explicit `builder.RootComponents.Add<>()` — hosted mode doesn't. Added inside `#if SHOWCASE` block.
+---
 
-**Playwright error monitoring fixed (all three base classes):**
-- Added `Page.RequestFailed` handler (filters `.pdb` URLs)
-- Console listener now filters: `"Failed to load resource"`, `"Failed to load module script"`, `.pdb`-related noise
-- All stale-asset false failures eliminated
+## Next actions
+1. Create PR from `fix/playwright-warmup` → `main`
+2. After merge, delete `PLAYWRIGHT_AUTH_STATE_B64` secret from GitHub repository settings
+3. Address Node.js 20 deprecation (GitHub forcing Node.js 24 from 2026-06-16 — see below)
 
-**Pre-push hook improved:**
-- Staleness detection: compares `blazor.boot.json` from local build vs running server
-- If stale: blocks with `"restart dotnet run, then re-push"` instead of cryptic test failures
+## Node.js 20 deprecation — URGENT
+GitHub Actions workflows use Node.js 20 actions. GitHub forcing Node.js 24 from 2026-06-16.
+Must update before that date: `checkout@v4`, `setup-dotnet@v4`, `cache@v4`, `upload-artifact@v4`,
+`upload-pages-artifact@v3`, `deploy-pages@v4`.
 
-**Decisions and tech debt recorded:**
-- D015: showcase static assets isolated to `wwwroot-showcase/`
-- TD22: pre-push hook relies on manually-maintained local dev server (no staging environment)
-
-## Before merging PR #72
-
-**Required:** Enable GitHub Pages in repo settings:
-**Settings → Pages → Source: GitHub Actions**
-
-## Node.js 20 deprecation warning
-GitHub Actions workflows use Node.js 20 actions. GitHub forcing Node.js 24 from 2026-06-16. Update checkout@v4, setup-dotnet@v4, cache@v4, upload-artifact@v4, upload-pages-artifact@v3, deploy-pages@v4 before that date.
-
-## Open GitHub issues (legitimate backlog)
+## Open GitHub issues (backlog)
 - #36 — Invoice export for Zoho Books (future phase)
 - #34 — App bar user avatar
 - #32 — UX to recover soft-deleted records
@@ -64,4 +66,4 @@ gh pr list
 ```
 
 ---
-*Updated at end of session. Replaces previous SESSION.md.*
+*Updated 2026-06-13. Replaces previous SESSION.md.*
