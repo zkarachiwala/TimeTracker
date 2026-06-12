@@ -53,7 +53,15 @@ dotnet ef database update --context TimeTrackerDataContext
 dotnet ef database update --context IdentityDataContext
 ```
 
-### 4. Run
+### 4. Activate git hooks (once per clone)
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This enables the pre-push hook, which runs the full Playwright test suite automatically before every push when app code has changed. The hook exists because there is no staging environment — authenticated E2E tests cannot run in CI against production, so the pre-push hook is the gate. See [D016](docs/decisions.md#d016-playwright--full-suite-pre-push-ci-smoke-test-only) for the full decision including how this changes if a staging environment is added.
+
+### 5. Run
 
 ```bash
 cd TimeTracker.Web
@@ -62,6 +70,22 @@ dotnet run
 
 App: `https://localhost:7006`
 API docs (dev only): `https://localhost:7006/scalar/v1`
+
+## Testing
+
+### Unit tests
+
+```bash
+dotnet test TimeTracker.Tests
+```
+
+### Playwright E2E tests
+
+```bash
+dotnet test TimeTracker.Playwright
+```
+
+The app starts automatically if it isn't already running. All tests run headlessly; no manual setup required.
 
 ## Documentation
 

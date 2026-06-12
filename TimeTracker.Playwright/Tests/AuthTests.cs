@@ -17,17 +17,14 @@ public class AuthTests : PageTest
     [SetUp]
     public void MonitorConsoleErrors()
     {
-        Page.RequestFailed += (_, req) =>
-        {
-            if (!req.Url.EndsWith(".pdb"))
-                _failedRequests.Add($"Request failed: {req.Url}");
-        };
+        _consoleErrors.Clear();
+        _failedRequests.Clear();
+        Page.RequestFailed += (_, req) => _failedRequests.Add($"Request failed: {req.Url}");
         Page.Console += (_, msg) =>
         {
             if (msg.Type != "error") return;
             if (msg.Text.StartsWith("Failed to load resource")) return;
             if (msg.Text.StartsWith("Failed to load module script")) return;
-            if (msg.Text.Contains(".pdb")) return;
             _consoleErrors.Add(msg.Text);
         };
     }

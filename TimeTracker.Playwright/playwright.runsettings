@@ -1,0 +1,5 @@
+<RunSettings>
+  <NUnit>
+    <StopOnError>true</StopOnError>
+  </NUnit>
+</RunSettings>
