@@ -24,18 +24,18 @@ public static class ProjectEndpoints
         {
             await svc.CreateProject(request);
             return Results.Created();
-        });
+        }).RequireRateLimiting("write");
 
         adminGroup.MapPut("/{id:int}", async (int id, ProjectUpdateRequest request, IProjectService svc) =>
         {
             try { await svc.UpdateProject(id, request); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
-        });
+        }).RequireRateLimiting("write");
 
         adminGroup.MapDelete("/{id:int}", async (int id, IProjectService svc) =>
         {
             try { await svc.DeleteProject(id); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
-        });
+        }).RequireRateLimiting("write");
     }
 }

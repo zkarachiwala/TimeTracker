@@ -97,17 +97,20 @@ jobs:
     if: ${{ needs.check.outputs.code == 'true' }}
 
     steps:
-      - name: Wait for app to warm up
-        run: sleep 20
-
       - name: Assert login page is up
         run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://timetracker-zak.azurewebsites.net/login)
-          echo "Login page returned HTTP $HTTP_CODE"
-          if [[ "$HTTP_CODE" != "200" ]]; then
-            echo "Smoke test failed — expected 200, got $HTTP_CODE"
-            exit 1
-          fi
+          for i in {1..5}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://timetracker-zak.azurewebsites.net/login)
+            echo "Attempt $i: login page returned HTTP $HTTP_CODE"
+            if [[ "$HTTP_CODE" == "200" ]]; then
+              echo "Smoke test passed"
+              exit 0
+            fi
+            echo "Waiting 15s before retry..."
+            sleep 15
+          done
+          echo "Smoke test failed after 5 attempts — last status $HTTP_CODE"
+          exit 1
 
   showcase:
     name: Deploy Showcase to GitHub Pages
