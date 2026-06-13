@@ -96,6 +96,8 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
+builder.Services.AddProblemDetails();
+
 builder.Services.AddHttpContextAccessor();
 
 // Provide HttpClient for SSR prerender of WASM components that inject it.
@@ -180,6 +182,7 @@ if (app.Environment.IsDevelopment())
     }).RequireAuthorization(adminPolicy);
 }
 
+app.UseExceptionHandler();
 app.UseHsts();
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
