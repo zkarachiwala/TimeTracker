@@ -8,57 +8,57 @@ public static class TimeEntryEndpoints
     {
         var group = app.MapGroup("/api/timeentries").RequireAuthorization();
 
-        group.MapGet("/active", async (ITimeEntryService svc) =>
+        group.MapGet("/active", async (ITimeEntryService svc, CancellationToken ct) =>
         {
-            var entry = await svc.GetActiveTimeEntry();
+            var entry = await svc.GetActiveTimeEntry(ct);
             return entry is null ? Results.NoContent() : Results.Ok(entry);
         });
 
-        group.MapGet("/today", async (ITimeEntryService svc) =>
-            Results.Ok(await svc.GetTodaysTimeEntries()));
+        group.MapGet("/today", async (ITimeEntryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetTodaysTimeEntries(ct)));
 
-        group.MapGet("/year/{year:int}/all", async (int year, ITimeEntryService svc) =>
-            Results.Ok(await svc.GetAllTimeEntriesByYear(year))).RequireRateLimiting("all-entries");
+        group.MapGet("/year/{year:int}/all", async (int year, ITimeEntryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetAllTimeEntriesByYear(year, ct))).RequireRateLimiting("all-entries");
 
-        group.MapGet("/{skip:int}/{limit:int}", async (int skip, int limit, ITimeEntryQueryService svc) =>
-            Results.Ok(await svc.GetTimeEntries(skip, limit)));
+        group.MapGet("/{skip:int}/{limit:int}", async (int skip, int limit, ITimeEntryQueryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetTimeEntries(skip, limit, ct)));
 
-        group.MapGet("/{id:int}", async (int id, ITimeEntryService svc) =>
+        group.MapGet("/{id:int}", async (int id, ITimeEntryService svc, CancellationToken ct) =>
         {
-            var result = await svc.GetTimeEntryById(id);
+            var result = await svc.GetTimeEntryById(id, ct);
             return result is null ? Results.NotFound() : Results.Ok(result);
         });
 
-        group.MapGet("/project/{projectId:int}/all", async (int projectId, ITimeEntryService svc) =>
-            Results.Ok(await svc.GetAllTimeEntriesByProject(projectId))).RequireRateLimiting("all-entries");
+        group.MapGet("/project/{projectId:int}/all", async (int projectId, ITimeEntryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetAllTimeEntriesByProject(projectId, ct))).RequireRateLimiting("all-entries");
 
-        group.MapGet("/project/{projectId:int}/{skip:int}/{limit:int}", async (int projectId, int skip, int limit, ITimeEntryQueryService svc) =>
-            Results.Ok(await svc.GetTimeEntriesByProjectId(projectId, skip, limit)));
+        group.MapGet("/project/{projectId:int}/{skip:int}/{limit:int}", async (int projectId, int skip, int limit, ITimeEntryQueryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetTimeEntriesByProjectId(projectId, skip, limit, ct)));
 
-        group.MapGet("/year/{year:int}/{skip:int}/{limit:int}", async (int year, int skip, int limit, ITimeEntryQueryService svc) =>
-            Results.Ok(await svc.GetTimeEntriesByYear(year, skip, limit)));
+        group.MapGet("/year/{year:int}/{skip:int}/{limit:int}", async (int year, int skip, int limit, ITimeEntryQueryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetTimeEntriesByYear(year, skip, limit, ct)));
 
-        group.MapGet("/month/{month:int}/year/{year:int}/{skip:int}/{limit:int}", async (int month, int year, int skip, int limit, ITimeEntryQueryService svc) =>
-            Results.Ok(await svc.GetTimeEntriesByMonth(month, year, skip, limit)));
+        group.MapGet("/month/{month:int}/year/{year:int}/{skip:int}/{limit:int}", async (int month, int year, int skip, int limit, ITimeEntryQueryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetTimeEntriesByMonth(month, year, skip, limit, ct)));
 
-        group.MapGet("/day/{day:int}/month/{month:int}/year/{year:int}/{skip:int}/{limit:int}", async (int day, int month, int year, int skip, int limit, ITimeEntryQueryService svc) =>
-            Results.Ok(await svc.GetTimeEntriesByDay(day, month, year, skip, limit)));
+        group.MapGet("/day/{day:int}/month/{month:int}/year/{year:int}/{skip:int}/{limit:int}", async (int day, int month, int year, int skip, int limit, ITimeEntryQueryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetTimeEntriesByDay(day, month, year, skip, limit, ct)));
 
-        group.MapPost("/", async (TimeEntryCreateRequest request, ITimeEntryService svc) =>
+        group.MapPost("/", async (TimeEntryCreateRequest request, ITimeEntryService svc, CancellationToken ct) =>
         {
-            await svc.CreateTimeEntry(request);
+            await svc.CreateTimeEntry(request, ct);
             return Results.Created();
         }).RequireRateLimiting("write");
 
-        group.MapPut("/{id:int}", async (int id, TimeEntryUpdateRequest request, ITimeEntryService svc) =>
+        group.MapPut("/{id:int}", async (int id, TimeEntryUpdateRequest request, ITimeEntryService svc, CancellationToken ct) =>
         {
-            try { await svc.UpdateTimeEntry(id, request); return Results.NoContent(); }
+            try { await svc.UpdateTimeEntry(id, request, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
 
-        group.MapDelete("/{id:int}", async (int id, ITimeEntryService svc) =>
+        group.MapDelete("/{id:int}", async (int id, ITimeEntryService svc, CancellationToken ct) =>
         {
-            try { await svc.DeleteTimeEntry(id); return Results.NoContent(); }
+            try { await svc.DeleteTimeEntry(id, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
     }

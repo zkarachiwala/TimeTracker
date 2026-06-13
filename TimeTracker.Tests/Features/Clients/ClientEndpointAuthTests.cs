@@ -67,12 +67,12 @@ public class ClientEndpointAuthTests
 
     private sealed class StubClientService : IClientService
     {
-        public Task<List<ClientResponse>> GetAllClients(bool includeArchived = false) => Task.FromResult(new List<ClientResponse>());
-        public Task<ClientResponse?> GetClientById(int id) => Task.FromResult<ClientResponse?>(null);
-        public Task CreateClient(ClientCreateRequest request) => Task.CompletedTask;
-        public Task UpdateClient(int id, ClientUpdateRequest request) => Task.CompletedTask;
-        public Task ArchiveClient(int id) => Task.CompletedTask;
-        public Task UnarchiveClient(int id) => Task.CompletedTask;
-        public Task DeleteClient(int id) => Task.CompletedTask;
+        public Task<List<ClientResponse>> GetAllClients(bool includeArchived = false, CancellationToken ct = default) => Task.FromResult(new List<ClientResponse>());
+        public Task<ClientResponse?> GetClientById(int id, CancellationToken ct = default) => Task.FromResult<ClientResponse?>(null);
+        public Task CreateClient(ClientCreateRequest request, CancellationToken ct = default) => Task.CompletedTask;
+        public Task UpdateClient(int id, ClientUpdateRequest request, CancellationToken ct = default) => Task.CompletedTask;
+        public Task ArchiveClient(int id, CancellationToken ct = default) => Task.CompletedTask;
+        public Task UnarchiveClient(int id, CancellationToken ct = default) => Task.CompletedTask;
+        public Task DeleteClient(int id, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

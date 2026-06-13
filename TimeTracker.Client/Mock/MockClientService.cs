@@ -4,15 +4,15 @@ namespace TimeTracker.Client.Mock;
 
 public class MockClientService(MockDataStore store) : IClientService
 {
-    public Task<List<ClientResponse>> GetAllClients(bool includeArchived = false) =>
+    public Task<List<ClientResponse>> GetAllClients(bool includeArchived = false, CancellationToken ct = default) =>
         Task.FromResult(store.Clients
             .Where(c => includeArchived || !c.IsArchived)
             .ToList());
 
-    public Task<ClientResponse?> GetClientById(int id) =>
+    public Task<ClientResponse?> GetClientById(int id, CancellationToken ct = default) =>
         Task.FromResult(store.Clients.FirstOrDefault(c => c.Id == id));
 
-    public Task CreateClient(ClientCreateRequest request)
+    public Task CreateClient(ClientCreateRequest request, CancellationToken ct = default)
     {
         store.Clients.Add(new ClientResponse(
             store.NextClientId(),
@@ -25,7 +25,7 @@ public class MockClientService(MockDataStore store) : IClientService
         return Task.CompletedTask;
     }
 
-    public Task UpdateClient(int id, ClientUpdateRequest request)
+    public Task UpdateClient(int id, ClientUpdateRequest request, CancellationToken ct = default)
     {
         var i = store.Clients.FindIndex(c => c.Id == id);
         if (i < 0) return Task.CompletedTask;
@@ -42,21 +42,21 @@ public class MockClientService(MockDataStore store) : IClientService
         return Task.CompletedTask;
     }
 
-    public Task ArchiveClient(int id)
+    public Task ArchiveClient(int id, CancellationToken ct = default)
     {
         var i = store.Clients.FindIndex(c => c.Id == id);
         if (i >= 0) store.Clients[i] = store.Clients[i] with { IsArchived = true };
         return Task.CompletedTask;
     }
 
-    public Task UnarchiveClient(int id)
+    public Task UnarchiveClient(int id, CancellationToken ct = default)
     {
         var i = store.Clients.FindIndex(c => c.Id == id);
         if (i >= 0) store.Clients[i] = store.Clients[i] with { IsArchived = false };
         return Task.CompletedTask;
     }
 
-    public Task DeleteClient(int id)
+    public Task DeleteClient(int id, CancellationToken ct = default)
     {
         store.Clients.RemoveAll(c => c.Id == id);
         return Task.CompletedTask;

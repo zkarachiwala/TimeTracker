@@ -2,11 +2,11 @@ namespace TimeTracker.Contracts.Features.Clients;
 
 public interface IClientService
 {
-    Task<List<ClientResponse>> GetAllClients(bool includeArchived = false);
-    Task<ClientResponse?> GetClientById(int id);
-    Task CreateClient(ClientCreateRequest request);
-    Task UpdateClient(int id, ClientUpdateRequest request);
-    Task ArchiveClient(int id);
-    Task UnarchiveClient(int id);
-    Task DeleteClient(int id);
+    Task<List<ClientResponse>> GetAllClients(bool includeArchived = false, CancellationToken ct = default);
+    Task<ClientResponse?> GetClientById(int id, CancellationToken ct = default);
+    Task CreateClient(ClientCreateRequest request, CancellationToken ct = default);
+    Task UpdateClient(int id, ClientUpdateRequest request, CancellationToken ct = default);
+    Task ArchiveClient(int id, CancellationToken ct = default);
+    Task UnarchiveClient(int id, CancellationToken ct = default);
+    Task DeleteClient(int id, CancellationToken ct = default);
 }

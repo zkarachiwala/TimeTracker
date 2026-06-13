@@ -25,26 +25,26 @@ public class ProjectService : IProjectService
         ctx.Projects
             .Where(p => !p.IsDeleted && p.ProjectUsers.Any(pu => pu.UserId == userId));
 
-    public async Task<List<ProjectResponse>> GetAllProjects()
+    public async Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var projects = await UserProjects(ctx, userId).ToListAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var projects = await UserProjects(ctx, userId).ToListAsync(ct);
         return projects.Adapt<List<ProjectResponse>>();
     }
 
-    public async Task<ProjectResponse?> GetProjectById(int id)
+    public async Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id);
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id, ct);
         return project?.Adapt<ProjectResponse>();
     }
 
-    public async Task CreateProject(ProjectCreateRequest request)
+    public async Task CreateProject(ProjectCreateRequest request, CancellationToken ct = default)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var project = new Project
         {
             Name = request.Name,
@@ -57,14 +57,14 @@ public class ProjectService : IProjectService
             ProjectUsers = new List<ProjectUser> { new() { UserId = userId } }
         };
         ctx.Projects.Add(project);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateProject(int id, ProjectUpdateRequest request)
+    public async Task UpdateProject(int id, ProjectUpdateRequest request, CancellationToken ct = default)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id)
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new EntityNotFoundException($"Project {id} not found.");
 
         project.Name = request.Name;
@@ -75,18 +75,18 @@ public class ProjectService : IProjectService
         project.EndDate = request.EndDate;
         project.DateUpdated = DateTime.Now;
 
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task DeleteProject(int id)
+    public async Task DeleteProject(int id, CancellationToken ct = default)
     {
         var userId = await GetUserIdAsync();
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id)
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new EntityNotFoundException($"Project {id} not found.");
 
         project.IsDeleted = true;
         project.DateDeleted = DateTime.Now;
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 }
