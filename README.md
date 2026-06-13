@@ -1,3 +1,5 @@
+<img src="media/ClockLogo.png" alt="TimeTracker" width="80" />
+
 # TimeTracker
 
 A personal timesheeting application for tracking time entries against projects, with year-view reporting and planned Zoho Books integration for invoice generation.

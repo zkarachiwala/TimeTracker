@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project purpose
+
+This project has two equally important goals:
+
+1. **Practical app** — a real replacement timetracking app with free hosting as a hard constraint. Cost decisions are real and binding.
+2. **Learning exercise** — the developer is actively building their skills and learning best practice through this project.
+
+When reviewing tech debt, making recommendations, or proposing solutions: consider educational value alongside practical necessity. Something that isn't strictly required for a personal app may still be worth doing if it teaches a valuable, transferable skill. Always verify whether recommended tools have a genuine free tier before suggesting them.
+
+## GitHub issues
+
+Every GitHub issue created for this repository must be:
+1. Added to the **Timetracker** project board (project #1, owner `zkarachiwala`)
+2. Given a **Priority** label (🔴 High / 🟡 Medium / 🟢 Low) via the project Priority field
+3. Given appropriate **labels** from: `security`, `infrastructure`, `observability`, `enhancement`, `bug`, `documentation`
+
+```bash
+# Add issue to project
+gh project item-add 1 --owner zkarachiwala --url https://github.com/zkarachiwala/TimeTracker/issues/<number>
+```
+
 ## Git hooks
 
 `.githooks/pre-push` runs the unauthenticated Playwright tests automatically before every push when app code has changed. Activate once per clone:
