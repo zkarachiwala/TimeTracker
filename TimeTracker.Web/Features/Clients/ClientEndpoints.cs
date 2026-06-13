@@ -24,31 +24,31 @@ public static class ClientEndpoints
         {
             await service.CreateClient(request);
             return Results.Created();
-        });
+        }).RequireRateLimiting("write");
 
         adminGroup.MapPut("/{id:int}", async (int id, ClientUpdateRequest request, IClientService service) =>
         {
             try { await service.UpdateClient(id, request); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
-        });
+        }).RequireRateLimiting("write");
 
         adminGroup.MapPost("/{id:int}/archive", async (int id, IClientService service) =>
         {
             try { await service.ArchiveClient(id); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
-        });
+        }).RequireRateLimiting("write");
 
         adminGroup.MapPost("/{id:int}/unarchive", async (int id, IClientService service) =>
         {
             try { await service.UnarchiveClient(id); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
-        });
+        }).RequireRateLimiting("write");
 
         adminGroup.MapDelete("/{id:int}", async (int id, IClientService service) =>
         {
             try { await service.DeleteClient(id); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
             catch (InvalidOperationException ex) { return Results.Conflict(ex.Message); }
-        });
+        }).RequireRateLimiting("write");
     }
 }

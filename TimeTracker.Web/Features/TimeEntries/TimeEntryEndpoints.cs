@@ -18,7 +18,7 @@ public static class TimeEntryEndpoints
             Results.Ok(await svc.GetTodaysTimeEntries()));
 
         group.MapGet("/year/{year:int}/all", async (int year, ITimeEntryService svc) =>
-            Results.Ok(await svc.GetAllTimeEntriesByYear(year)));
+            Results.Ok(await svc.GetAllTimeEntriesByYear(year))).RequireRateLimiting("all-entries");
 
         group.MapGet("/{skip:int}/{limit:int}", async (int skip, int limit, ITimeEntryQueryService svc) =>
             Results.Ok(await svc.GetTimeEntries(skip, limit)));
@@ -30,7 +30,7 @@ public static class TimeEntryEndpoints
         });
 
         group.MapGet("/project/{projectId:int}/all", async (int projectId, ITimeEntryService svc) =>
-            Results.Ok(await svc.GetAllTimeEntriesByProject(projectId)));
+            Results.Ok(await svc.GetAllTimeEntriesByProject(projectId))).RequireRateLimiting("all-entries");
 
         group.MapGet("/project/{projectId:int}/{skip:int}/{limit:int}", async (int projectId, int skip, int limit, ITimeEntryQueryService svc) =>
             Results.Ok(await svc.GetTimeEntriesByProjectId(projectId, skip, limit)));
@@ -48,18 +48,18 @@ public static class TimeEntryEndpoints
         {
             await svc.CreateTimeEntry(request);
             return Results.Created();
-        });
+        }).RequireRateLimiting("write");
 
         group.MapPut("/{id:int}", async (int id, TimeEntryUpdateRequest request, ITimeEntryService svc) =>
         {
             try { await svc.UpdateTimeEntry(id, request); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
-        });
+        }).RequireRateLimiting("write");
 
         group.MapDelete("/{id:int}", async (int id, ITimeEntryService svc) =>
         {
             try { await svc.DeleteTimeEntry(id); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
-        });
+        }).RequireRateLimiting("write");
     }
 }
