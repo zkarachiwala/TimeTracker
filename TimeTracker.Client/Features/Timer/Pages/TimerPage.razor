@@ -205,9 +205,10 @@ else if (_providersReady)
     {
         StopTicker();
         ticker = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        var capturedTicker = ticker;
         tickTask = Task.Run(async () =>
         {
-            while (await ticker.WaitForNextTickAsync())
+            while (await capturedTicker.WaitForNextTickAsync())
                 await InvokeAsync(StateHasChanged);
         });
     }

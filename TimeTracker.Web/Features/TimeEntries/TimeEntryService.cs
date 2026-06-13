@@ -169,7 +169,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         await using var countCtx = await _contextFactory.CreateDbContextAsync();
         await using var durationCtx = await _contextFactory.CreateDbContextAsync();
 
-        var dataTask = queryBuilder(dataCtx, userId).Skip(skip).Take(limit).ToListAsync();
+        var dataTask = queryBuilder(dataCtx, userId).Skip(skip).Take(Math.Min(limit, 200)).ToListAsync();
         var countTask = queryBuilder(countCtx, userId).CountAsync();
         var durationTask = queryBuilder(durationCtx, userId)
             .Where(te => te.End.HasValue)

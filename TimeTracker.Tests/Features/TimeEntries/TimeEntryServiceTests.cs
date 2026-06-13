@@ -531,4 +531,20 @@ public class TimeEntryServiceTests
         Assert.Equal(3, result.Count);
         Assert.Equal(TimeSpan.FromHours(4.5), result.TotalDuration);
     }
+
+    [Fact]
+    public async Task GetTimeEntries_LimitIsCappedAt200()
+    {
+        var options = CreateOptions();
+        await using var seed = new TimeTrackerDataContext(options);
+        var project = new Project { Name = "P", ProjectUsers = [new ProjectUser { UserId = UserId }] };
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        for (var i = 0; i < 205; i++)
+            seed.TimeEntries.Add(new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Now.AddMinutes(-i), End = DateTime.Now.AddMinutes(-i + 1) });
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetTimeEntries(skip: 0, limit: 999);
+        Assert.Equal(200, result.TimeEntries.Count);
+    }
 }

@@ -151,18 +151,29 @@ private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
 
 Both decisions were explicit and researched — see [D001](decisions.md#d001-global-wasm-rendering-over-ssr--wasm-islands) (why not SSR + islands) and [D002](decisions.md#d002-mudblazor-over-fluent-ui-blazor-and-bootstrap) (why MudBlazor). Full justification including MudBlazor GitHub issues, the six render-mode constraints, and Fluent UI migration cost is in the [Reference section](#reference) below.
 
-#### Rate limiting — split policies for auth vs auth-status
+#### API query abuse protection — defence in depth (see [D018](decisions.md#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens))
 
-Two named rate limit policies, both driven from `RateLimiting` config in `appsettings.json`:
+Three independent layers work together to prevent expensive or abusive API requests from exhausting the Azure SQL free-tier connection pool:
+
+1. **Server-side pagination cap** — `Math.Min(limit, 200)` in `TimeEntryService.ToWrapper` caps the cost of any single paginated request. The two unbounded `/all` endpoints (used by reports) cannot be capped and are instead covered by a tighter rate limit policy.
+2. **Global rate limiting** — a global default policy covers all endpoints automatically; named policies override the default where tighter limits are needed.
+3. **Cancellation tokens** — `CancellationToken` threaded through all service methods and EF Core calls ensures abandoned requests release SQL connections immediately rather than running to completion.
+
+#### Rate limiting — policies
+
+All policies are driven from `RateLimiting` config in `appsettings.json` so limits can differ per environment without code changes. Code falls back to defaults if config keys are absent. Reference: https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit?view=aspnetcore-10.0
 
 | Policy | Endpoints | Production limit | Dev override |
 |--------|-----------|-----------------|--------------|
+| Global default | All endpoints not otherwise decorated | 120 req/min | — |
+| `"write"` | Mutating endpoints (POST/PUT/DELETE on data) | 60 req/min | — |
+| `"all-entries"` | `/year/{year}/all`, `/project/{id}/all` | 10 req/min | — |
 | `"auth"` | `/auth/challenge`, `/auth/callback` | 10 req/min | — (same) |
 | `"auth-status"` | `/api/auth/user` | 10 req/min | 200 req/min |
 
-**Why the split:** OWASP rate limiting guidance targets credential submission endpoints — login attempts and OAuth initiation — to prevent brute force. `/api/auth/user` is a read-only cookie validation (no credentials accepted); applying the same 10/min limit had no security benefit and caused the Playwright test suite to fail mid-run with 429s. Reference: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+**Why global default over per-endpoint decoration:** New endpoints are covered automatically; named policies override where tighter limits are needed. Per-endpoint decoration risks missing a new endpoint.
 
-**Why config-driven:** Microsoft docs recommend driving rate limit options from `Configuration` so limits can differ per environment without code changes. Code falls back to 10/min if the config key is absent — safe for existing deployments. Reference: https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit?view=aspnetcore-10.0
+**Why the auth split:** OWASP rate limiting guidance targets credential submission endpoints to prevent brute force. `/api/auth/user` is a read-only cookie validation; applying the same 10/min limit caused the Playwright test suite to fail mid-run with 429s. Reference: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
 
 **Dev override location:** `appsettings.Development.json` → `RateLimiting:AuthStatus:PermitLimit = 200`. Production `appsettings.json` keeps both at 10.
 
