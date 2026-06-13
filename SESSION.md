@@ -1,39 +1,36 @@
-# Session handoff — 2026-06-13
+# Session handoff — 2026-06-14
 
 ## Current state
-- Branch: `main`, clean
+- Branch: `main`, clean (PR #113 open — SESSION.md chore, merge when ready)
+- All high priority issues complete (PRs #109, #110, #112, issue #105 closed)
 - All CI green
 
-## Plan — high priority issues (work next)
+## Plan — medium priority (work next)
 
-Work these in order, one branch per item (except step 1 which bundles two quick wins):
+Work in order, one branch per item:
 
-### Step 1 — Quick wins (single PR)
-- **#99** Restrict `AllowedHosts` to `timetracker.dzk.com.au;timetracker-zak.azurewebsites.net` in `appsettings.json`
-- **#98** Add global exception handler: `app.UseExceptionHandler` + `IProblemDetailsService` (RFC 7807 Problem Details)
+### Step 1 — Program.cs refactor
+- **#111** 🟡 Extract service registrations and dev endpoints into extension methods
+  - `AddApplicationAuth()` — auth/cookie/Google registration
+  - `AddApplicationRateLimiting()` — rate limiter registration
+  - `MapDevEndpoints()` — `/api/dev/login`, `/api/dev/seed`, `/api/dev/clear`
+  - Move `GetConnectionString` into `Infrastructure/` class
+  - Target: Program.cs ~50 lines
 
-### Step 2 — CI hardening
-- **#94** Add SAST/dependency scanning: `dotnet list package --vulnerable` step in CI, enable GitHub secret scanning and Dependabot
+### Step 2 — Rate limiting
+- **#100** 🟡 Add rate limiting to all mutating API endpoints (ASP.NET Core built-in RateLimiter)
 
-### Step 3 — Connection pool
-- **#93** Set explicit `Min Pool Size` / `Max Pool Size` in connection strings (Azure SQL free tier: max 75 concurrent logins)
-
-### Step 4 — Managed Identity (most complex, do last)
-- **#105** Replace `DbUser`/`DbPassword` App Service settings with Managed Identity authentication
-  - Enable system-assigned Managed Identity on App Service
-  - Set Entra ID admin on Azure SQL logical server
-  - Run T-SQL: `CREATE USER [<app-name>] FROM EXTERNAL PROVIDER` + grant roles
-  - Add NuGet: `Microsoft.Data.SqlClient.Extensions.Azure` 7.0.0+
-  - Update production connection strings to `Authentication=Active Directory Default`
-  - Remove `DbUser` and `DbPassword` from App Service settings
-  - Local dev (user secrets) unchanged
-
-## Backlog (medium/low priority — do after above)
-- **#97** 🟡 Structured logging (Serilog), APM (Application Insights), uptime monitoring (UptimeRobot), `/health` endpoint
-- **#100** 🟡 Rate limiting on all mutating endpoints (ASP.NET Core built-in RateLimiter)
-- **#101** 🟡 SQL Server Row-Level Security
+### Step 3 — Session revocation
 - **#103** 🟡 Session revocation via SecurityStamp
+
+### Step 4 — Structured logging & monitoring
+- **#97** 🟡 Structured logging (Serilog), APM (Application Insights), uptime monitoring (UptimeRobot), `/health` endpoint
+
+### Step 5 — Security hardening
+- **#101** 🟡 SQL Server Row-Level Security
 - **#104** 🟡 Automated database backup export
+
+## Backlog (low priority)
 - **#95** 🟢 Database-backed user management
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
@@ -56,4 +53,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-13. Next: Step 1 — issues #99 + #98.*
+*Updated 2026-06-14. Next: Step 1 — #111 Program.cs refactor.*
