@@ -20,6 +20,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D014](#d014-showcase--github-pages-deployment) | Showcase — GitHub Pages deployment | 2026-06 | Accepted |
 | [D015](#d015-showcase-static-assets-isolated-to-wwwroot-showcase) | Showcase static assets isolated to `wwwroot-showcase/` | 2026-06 | Accepted |
 | [D016](#d016-playwright--full-suite-pre-push-ci-smoke-test-only) | Playwright — full suite pre-push, CI smoke test only | 2026-06 | Accepted |
+| [D017](#d017-cloudflare-free-plan-over-paid-cdnwaf) | Cloudflare free plan over paid CDN/WAF | 2026-06 | Accepted |
 
 ---
 
@@ -57,7 +58,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 - ✅ Pure C# — no JS runtime to debug
 - ✅ Largest Blazor community component library by stars and contributors
 - ❌ No SSR support (MudBlazor #9743) — locks in D001 as a permanent constraint
-- ❌ Inline style injection requires `unsafe-inline` in CSP (TD17)
+- ❌ Inline style injection requires `unsafe-inline` in CSP `style-src` — this is a real security gap. Without it MudBlazor's runtime styling breaks; with it, CSS injection attacks (e.g. attribute-selector exfiltration of sensitive values via `input[value^="a"] { background: url(...) }`) cannot be blocked by CSP. See [TD17](technical-debt.md#security).
 - ❌ Migration to Fluent UI Blazor estimated at 5–10 person-days if SSR ever becomes required
 
 **Full justification:** [architecture.md — Why MudBlazor](architecture.md#why-mudblazor)
@@ -338,3 +339,32 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 - ✅ `PLAYWRIGHT_AUTH_STATE_B64` GitHub secret can be deleted
 - ❌ Authenticated regression tests do not run in CI — a broken authenticated page can reach production if the developer skips the pre-push hook (e.g. `git push --no-verify`)
 - ❌ The pre-push hook adds ~90 seconds to every push that touches app code (app startup + test run)
+
+---
+
+## D017: Cloudflare free plan over paid CDN/WAF
+
+**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD21](technical-debt.md#cdn--networking)
+
+**Context:** The app is served at `timetracker.dzk.com.au` via a custom domain. A CDN and DDoS protection layer is desirable for performance and basic security hardening. Several options were evaluated.
+
+**Decision:** Cloudflare free plan. DNS is managed through Cloudflare, providing CDN caching, basic DDoS mitigation, and SSL termination at zero cost.
+
+**Options considered:**
+
+| Option | Cost | WAF custom rules | Analytics |
+|--------|------|-----------------|-----------|
+| **Cloudflare Free** | $0 | ❌ Managed rules only | Limited |
+| Cloudflare Pro | ~$20/month | ✅ Custom rules, rate limiting | Full |
+| Azure Front Door Standard | ~$35/month | ✅ Managed WAF | Full |
+| Azure Front Door Premium | ~$330/month | ✅ Custom WAF, bot protection | Full |
+
+**Consequences:**
+- ✅ Zero cost — consistent with D003 zero-cost hosting constraint
+- ✅ Automatic SSL, CDN caching, and basic DDoS mitigation with no configuration overhead
+- ✅ Cloudflare-managed WAF rules cover known CVEs and common attack patterns without custom rules
+- ❌ No custom WAF rules — cannot block specific patterns or rate-limit at the CDN layer
+- ❌ No bot management
+- ❌ Limited analytics
+
+**Upgrade path:** Cloudflare Pro (~$20/month) adds custom WAF rules and rate limiting at the CDN layer. Azure Front Door is an alternative if deeper Azure-native integration is needed.
