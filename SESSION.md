@@ -4,29 +4,21 @@
 - Branch: `main`, clean
 - All CI green
 
-## Plan — high priority issues (work next)
+## Plan — high priority issues (all complete ✅)
 
-Work these in order, one branch per item (except step 1 which bundles two quick wins):
+### Step 1 — Quick wins ✅ PR #109
+- **#99** Restrict `AllowedHosts` to `timetracker.dzk.com.au;timetracker-zak.azurewebsites.net`
+- **#98** Add global exception handler: `app.UseExceptionHandler` + `IProblemDetailsService`
+- Fixed Playwright tests to start isolated app instance on port 7007
 
-### Step 1 — Quick wins (single PR)
-- **#99** Restrict `AllowedHosts` to `timetracker.dzk.com.au;timetracker-zak.azurewebsites.net` in `appsettings.json`
-- **#98** Add global exception handler: `app.UseExceptionHandler` + `IProblemDetailsService` (RFC 7807 Problem Details)
+### Step 2 — CI hardening ✅ PR #110
+- **#94** `dotnet list package --vulnerable` in CI, GitHub secret scanning + push protection enabled
 
-### Step 2 — CI hardening
-- **#94** Add SAST/dependency scanning: `dotnet list package --vulnerable` step in CI, enable GitHub secret scanning and Dependabot
+### Step 3 — Connection pool ✅ PR #112
+- **#93** `Max Pool Size=30` per pool (60 total), `Min Pool Size=0` for auto-pause
 
-### Step 3 — Connection pool
-- **#93** Set explicit `Min Pool Size` / `Max Pool Size` in connection strings (Azure SQL free tier: max 75 concurrent logins)
-
-### Step 4 — Managed Identity (most complex, do last)
-- **#105** Replace `DbUser`/`DbPassword` App Service settings with Managed Identity authentication
-  - Enable system-assigned Managed Identity on App Service
-  - Set Entra ID admin on Azure SQL logical server
-  - Run T-SQL: `CREATE USER [<app-name>] FROM EXTERNAL PROVIDER` + grant roles
-  - Add NuGet: `Microsoft.Data.SqlClient.Extensions.Azure` 7.0.0+
-  - Update production connection strings to `Authentication=Active Directory Default`
-  - Remove `DbUser` and `DbPassword` from App Service settings
-  - Local dev (user secrets) unchanged
+### Step 4 — Managed Identity ✅ issue #105 closed
+- **#105** Was already fully configured in Azure (MI enabled, Entra admin set, T-SQL done, connection strings updated, credentials removed)
 
 ## Backlog (medium/low priority — do after above)
 - **#97** 🟡 Structured logging (Serilog), APM (Application Insights), uptime monitoring (UptimeRobot), `/health` endpoint
@@ -56,4 +48,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-13. Next: Step 1 — issues #99 + #98.*
+*Updated 2026-06-14. All high priority issues complete. Next: backlog items or #111 (Program.cs refactor).*
