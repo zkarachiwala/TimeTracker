@@ -1,16 +1,10 @@
 using System.Reflection;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.RateLimiting;
 using MudBlazor.Services;
 using TimeTracker.Web;
 using Mapster;
-using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Data.SqlClient;
 using Scalar.AspNetCore;
 using TimeTracker.Web.Data;
-using TimeTracker.Web.Dev;
 using TimeTracker.Web.Features.Auth;
 using TimeTracker.Web.Features.Clients;
 using TimeTracker.Web.Features.Projects;
@@ -21,88 +15,24 @@ using TimeTracker.Shared.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var timeTrackerConnection = GetConnectionString(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
-var identityConnection = GetConnectionString(builder, "IdentityConnection", "DbUser", "DbPassword");
+var timeTrackerConnection = ConnectionStringBuilder.Build(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
+var identityConnection = ConnectionStringBuilder.Build(builder, "IdentityConnection", "DbUser", "DbPassword");
 
 builder.Services.AddMudServices();
-
-builder.Services.AddRazorComponents()
-    .AddInteractiveWebAssemblyComponents();
-
+builder.Services.AddRazorComponents().AddInteractiveWebAssemblyComponents();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
 builder.Services.AddDbContextFactory<TimeTrackerDataContext>(o => o.UseSqlServer(timeTrackerConnection));
 builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityConnection));
 
-builder.Services.AddIdentity<User, IdentityRole>(options =>
-    {
-        options.User.RequireUniqueEmail = true;
-        options.SignIn.RequireConfirmedEmail = false;
-    })
-    .AddEntityFrameworkStores<IdentityDataContext>()
-    .AddDefaultTokenProviders()
-    .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>();
-
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Lax;
-    options.LoginPath = "/login";
-    options.ExpireTimeSpan = TimeSpan.FromDays(1);
-    options.Events.OnRedirectToLogin = context =>
-    {
-        if (context.Request.Path.StartsWithSegments("/api"))
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
-        }
-        context.Response.Redirect(context.RedirectUri);
-        return Task.CompletedTask;
-    };
-});
-
-builder.Services.AddAuthentication()
-    .AddGoogle(options =>
-    {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
-        options.SignInScheme = IdentityConstants.ExternalScheme;
-    });
-
-builder.Services.AddHsts(options =>
-{
-    options.MaxAge = TimeSpan.FromDays(365);
-    options.IncludeSubDomains = true;
-});
-
-builder.Services.AddRateLimiter(options =>
-{
-    options.AddFixedWindowLimiter("auth", policy =>
-    {
-        policy.PermitLimit = builder.Configuration.GetValue<int>("RateLimiting:Auth:PermitLimit", 10);
-        policy.Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int>("RateLimiting:Auth:WindowMinutes", 1));
-        policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        policy.QueueLimit = 0;
-    });
-    options.AddFixedWindowLimiter("auth-status", policy =>
-    {
-        policy.PermitLimit = builder.Configuration.GetValue<int>("RateLimiting:AuthStatus:PermitLimit", 10);
-        policy.Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int>("RateLimiting:AuthStatus:WindowMinutes", 1));
-        policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        policy.QueueLimit = 0;
-    });
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-});
+builder.Services.AddApplicationAuth(builder.Configuration);
+builder.Services.AddApplicationRateLimiting(builder.Configuration);
 
 builder.Services.AddProblemDetails();
-
 builder.Services.AddHttpContextAccessor();
 
-// Provide HttpClient for SSR prerender of WASM components that inject it.
-// The client is never called server-side — IsBrowser() guards in WASM components
-// prevent actual HTTP calls during prerender; this satisfies the DI requirement.
+// Satisfies DI for SSR prerender — WASM components guard actual calls with IsBrowser()
 builder.Services.AddScoped(sp =>
 {
     var ctx = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
@@ -141,45 +71,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-
-    // Signs in the first Admin user — dev/CI only, never deployed to production
-    app.MapGet("/api/dev/login", async (
-        UserManager<User> userManager,
-        SignInManager<User> signInManager) =>
-    {
-        var adminRole = "Admin";
-        var admins = await userManager.GetUsersInRoleAsync(adminRole);
-        var user = admins.FirstOrDefault();
-        if (user is null)
-            return Results.Problem("No admin user found. Run /api/dev/seed first.");
-        await signInManager.SignInAsync(user, isPersistent: true);
-        return Results.Content($"<html><body>Signed in as {user.Email}</body></html>", "text/html");
-    });
-
-    var adminPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .RequireRole("Admin")
-        .Build();
-
-    app.MapPost("/api/dev/seed", async (
-        IDbContextFactory<TimeTrackerDataContext> ctxFactory,
-        UserManager<User> userManager) =>
-    {
-        var result = await DevDataSeeder.SeedAsync(ctxFactory, userManager);
-        return Results.Ok(result);
-    }).RequireAuthorization(adminPolicy);
-
-    app.MapPost("/api/dev/clear", async (
-        IDbContextFactory<TimeTrackerDataContext> ctxFactory) =>
-    {
-        await using var ctx = await ctxFactory.CreateDbContextAsync();
-        ctx.TimeEntries.RemoveRange(ctx.TimeEntries);
-        ctx.ProjectUsers.RemoveRange(ctx.ProjectUsers);
-        ctx.Projects.RemoveRange(ctx.Projects);
-        ctx.Clients.RemoveRange(ctx.Clients);
-        await ctx.SaveChangesAsync();
-        return Results.Ok("Cleared all time entries, projects and clients.");
-    }).RequireAuthorization(adminPolicy);
+    app.MapDevEndpoints();
 }
 
 app.UseExceptionHandler();
@@ -210,23 +102,3 @@ if (allowedEmails is null || allowedEmails.Length == 0)
     throw new InvalidOperationException("Authentication:AllowedEmails must be configured with at least one entry.");
 
 app.Run();
-
-static string? GetConnectionString(WebApplicationBuilder builder, string connectionCfgName,
-    string userCfgName, string passwordCfgName)
-{
-    var connectionString = builder.Configuration.GetConnectionString(connectionCfgName);
-    var conStrBuilder = new SqlConnectionStringBuilder(connectionString)
-    {
-        // Azure SQL free tier allows 75 concurrent logins across the logical server.
-        // Two pools × 30 = 60 max connections, leaving headroom for migrations and admin.
-        // MinPoolSize=0 lets connections drain when idle, enabling database auto-pause.
-        MinPoolSize = 0,
-        MaxPoolSize = 30,
-    };
-    if (builder.Environment.IsDevelopment())
-    {
-        conStrBuilder.UserID = builder.Configuration[userCfgName];
-        conStrBuilder.Password = builder.Configuration[passwordCfgName];
-    }
-    return conStrBuilder.ConnectionString;
-}
