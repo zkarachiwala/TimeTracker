@@ -11,30 +11,30 @@ public static class ProjectEndpoints
         var adminGroup = app.MapGroup("/api/projects").RequireAuthorization(
             new AuthorizationPolicyBuilder().RequireAuthenticatedUser().RequireRole("Admin").Build());
 
-        group.MapGet("/", async (IProjectService svc) =>
-            Results.Ok(await svc.GetAllProjects()));
+        group.MapGet("/", async (IProjectService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetAllProjects(ct)));
 
-        group.MapGet("/{id:int}", async (int id, IProjectService svc) =>
+        group.MapGet("/{id:int}", async (int id, IProjectService svc, CancellationToken ct) =>
         {
-            var result = await svc.GetProjectById(id);
+            var result = await svc.GetProjectById(id, ct);
             return result is null ? Results.NotFound() : Results.Ok(result);
         });
 
-        adminGroup.MapPost("/", async (ProjectCreateRequest request, IProjectService svc) =>
+        adminGroup.MapPost("/", async (ProjectCreateRequest request, IProjectService svc, CancellationToken ct) =>
         {
-            await svc.CreateProject(request);
+            await svc.CreateProject(request, ct);
             return Results.Created();
         }).RequireRateLimiting("write");
 
-        adminGroup.MapPut("/{id:int}", async (int id, ProjectUpdateRequest request, IProjectService svc) =>
+        adminGroup.MapPut("/{id:int}", async (int id, ProjectUpdateRequest request, IProjectService svc, CancellationToken ct) =>
         {
-            try { await svc.UpdateProject(id, request); return Results.NoContent(); }
+            try { await svc.UpdateProject(id, request, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
 
-        adminGroup.MapDelete("/{id:int}", async (int id, IProjectService svc) =>
+        adminGroup.MapDelete("/{id:int}", async (int id, IProjectService svc, CancellationToken ct) =>
         {
-            try { await svc.DeleteProject(id); return Results.NoContent(); }
+            try { await svc.DeleteProject(id, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
     }

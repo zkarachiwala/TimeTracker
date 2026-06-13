@@ -1,24 +1,23 @@
 # Session handoff — 2026-06-14
 
 ## Current state
-- Branch: `main`, clean (PR #113 open — SESSION.md chore, merge when ready)
-- All high priority issues complete (PRs #109, #110, #112, issue #105 closed)
-- All CI green
+- Branch: `main`, clean
+- PRs #114 (#111), #117 (#116), #118 (#100) all merged this session
+- New issues created: #115 (cancellation tokens), #116 (pagination cap)
 
-## Plan — medium priority (work next)
+## Completed this session
+- ✅ #111 Program.cs refactor (PR #114)
+- ✅ #116 Server-side pagination cap + timer dispose fix (PR #117)
+- ✅ #100 Global rate limiting covering all endpoints (PR #118)
+- ✅ D018 added to decisions.md, architecture.md updated
 
-Work in order, one branch per item:
+## Plan — remaining medium priority (work in order)
 
-### Step 1 — Program.cs refactor
-- **#111** 🟡 Extract service registrations and dev endpoints into extension methods
-  - `AddApplicationAuth()` — auth/cookie/Google registration
-  - `AddApplicationRateLimiting()` — rate limiter registration
-  - `MapDevEndpoints()` — `/api/dev/login`, `/api/dev/seed`, `/api/dev/clear`
-  - Move `GetConnectionString` into `Infrastructure/` class
-  - Target: Program.cs ~50 lines
-
-### Step 2 — Rate limiting
-- **#100** 🟡 Add rate limiting to all mutating API endpoints (ASP.NET Core built-in RateLimiter)
+### Next up — Step C (before moving on)
+- **#115** 🟢 Cancellation tokens — thread `CancellationToken` through all service methods and EF Core calls
+  - All service interfaces + implementations (TimeEntries, Projects, Clients, Auth)
+  - All EF Core async calls (`ToListAsync`, `FirstOrDefaultAsync`, `SaveChangesAsync`, etc.)
+  - Largest refactor of the defence-in-depth batch; do before Step 3
 
 ### Step 3 — Session revocation
 - **#103** 🟡 Session revocation via SecurityStamp
@@ -34,6 +33,7 @@ Work in order, one branch per item:
 - **#95** 🟢 Database-backed user management
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
+- **#115** 🟢 Cancellation tokens (defence-in-depth, Step C)
 
 ## Active tech debt (genuine constraints, no action until paid tier)
 | # | Item | ADR |
@@ -53,4 +53,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-14. Next: Step 1 — #111 Program.cs refactor.*
+*Updated 2026-06-14. Next: #115 cancellation tokens (Step C), then Step 3 session revocation.*

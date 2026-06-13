@@ -4,13 +4,13 @@ namespace TimeTracker.Client.Mock;
 
 public class MockProjectService(MockDataStore store) : IProjectService
 {
-    public Task<List<ProjectResponse>> GetAllProjects() =>
+    public Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default) =>
         Task.FromResult(store.Projects.ToList());
 
-    public Task<ProjectResponse?> GetProjectById(int id) =>
+    public Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default) =>
         Task.FromResult(store.Projects.FirstOrDefault(p => p.Id == id));
 
-    public Task CreateProject(ProjectCreateRequest request)
+    public Task CreateProject(ProjectCreateRequest request, CancellationToken ct = default)
     {
         var client = request.ClientId.HasValue
             ? store.Clients.FirstOrDefault(c => c.Id == request.ClientId.Value)
@@ -27,7 +27,7 @@ public class MockProjectService(MockDataStore store) : IProjectService
         return Task.CompletedTask;
     }
 
-    public Task UpdateProject(int id, ProjectUpdateRequest request)
+    public Task UpdateProject(int id, ProjectUpdateRequest request, CancellationToken ct = default)
     {
         var i = store.Projects.FindIndex(p => p.Id == id);
         if (i < 0) return Task.CompletedTask;
@@ -48,7 +48,7 @@ public class MockProjectService(MockDataStore store) : IProjectService
         return Task.CompletedTask;
     }
 
-    public Task DeleteProject(int id)
+    public Task DeleteProject(int id, CancellationToken ct = default)
     {
         store.Projects.RemoveAll(p => p.Id == id);
         return Task.CompletedTask;

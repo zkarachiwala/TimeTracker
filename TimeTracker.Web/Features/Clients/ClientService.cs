@@ -15,27 +15,27 @@ public class ClientService : IClientService
         _contextFactory = contextFactory;
     }
 
-    public async Task<List<ClientResponse>> GetAllClients(bool includeArchived = false)
+    public async Task<List<ClientResponse>> GetAllClients(bool includeArchived = false, CancellationToken ct = default)
     {
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var query = ctx.Clients
             .Where(c => !c.IsDeleted)
             .Where(c => includeArchived || !c.IsArchived)
             .OrderBy(c => c.IsArchived)
             .ThenBy(c => c.Name);
-        return (await query.ToListAsync()).Adapt<List<ClientResponse>>();
+        return (await query.ToListAsync(ct)).Adapt<List<ClientResponse>>();
     }
 
-    public async Task<ClientResponse?> GetClientById(int id)
+    public async Task<ClientResponse?> GetClientById(int id, CancellationToken ct = default)
     {
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, ct);
         return client?.Adapt<ClientResponse>();
     }
 
-    public async Task CreateClient(ClientCreateRequest request)
+    public async Task CreateClient(ClientCreateRequest request, CancellationToken ct = default)
     {
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var client = new TimeTracker.Shared.Entities.Client
         {
             Name = request.Name,
@@ -45,13 +45,13 @@ public class ClientService : IClientService
             ContactPhone = request.ContactPhone
         };
         ctx.Clients.Add(client);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateClient(int id, ClientUpdateRequest request)
+    public async Task UpdateClient(int id, ClientUpdateRequest request, CancellationToken ct = default)
     {
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var client = await ctx.Clients.FindAsync(id)
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var client = await ctx.Clients.FindAsync([id], ct)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
         client.Name = request.Name;
@@ -60,43 +60,43 @@ public class ClientService : IClientService
         client.ContactEmail = request.ContactEmail;
         client.ContactPhone = request.ContactPhone;
         client.DateUpdated = DateTime.Now;
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task ArchiveClient(int id)
+    public async Task ArchiveClient(int id, CancellationToken ct = default)
     {
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
         client.IsArchived = true;
         client.DateUpdated = DateTime.Now;
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UnarchiveClient(int id)
+    public async Task UnarchiveClient(int id, CancellationToken ct = default)
     {
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
         client.IsArchived = false;
         client.DateUpdated = DateTime.Now;
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task DeleteClient(int id)
+    public async Task DeleteClient(int id, CancellationToken ct = default)
     {
-        await using var ctx = await _contextFactory.CreateDbContextAsync();
-        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted)
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
-        var hasProjects = await ctx.Projects.AnyAsync(p => p.ClientId == id && !p.IsDeleted);
+        var hasProjects = await ctx.Projects.AnyAsync(p => p.ClientId == id && !p.IsDeleted, ct);
         if (hasProjects)
             throw new InvalidOperationException("Cannot delete a client that has active projects.");
 
         client.IsDeleted = true;
         client.DateDeleted = DateTime.Now;
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(ct);
     }
 }

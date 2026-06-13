@@ -5,39 +5,39 @@ namespace TimeTracker.Client.Features.Clients;
 
 public class HttpClientService(HttpClient http) : IClientService
 {
-    public Task<List<ClientResponse>> GetAllClients(bool includeArchived = false) =>
-        http.GetFromJsonAsync<List<ClientResponse>>($"api/clients/?includeArchived={includeArchived}")!;
+    public Task<List<ClientResponse>> GetAllClients(bool includeArchived = false, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<ClientResponse>>($"api/clients/?includeArchived={includeArchived}", ct)!;
 
-    public Task<ClientResponse?> GetClientById(int id) =>
-        http.GetFromJsonAsync<ClientResponse>($"api/clients/{id}");
+    public Task<ClientResponse?> GetClientById(int id, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<ClientResponse>($"api/clients/{id}", ct);
 
-    public async Task CreateClient(ClientCreateRequest request)
+    public async Task CreateClient(ClientCreateRequest request, CancellationToken ct = default)
     {
-        var response = await http.PostAsJsonAsync("api/clients/", request);
+        var response = await http.PostAsJsonAsync("api/clients/", request, ct);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task UpdateClient(int id, ClientUpdateRequest request)
+    public async Task UpdateClient(int id, ClientUpdateRequest request, CancellationToken ct = default)
     {
-        var response = await http.PutAsJsonAsync($"api/clients/{id}", request);
+        var response = await http.PutAsJsonAsync($"api/clients/{id}", request, ct);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task ArchiveClient(int id)
+    public async Task ArchiveClient(int id, CancellationToken ct = default)
     {
-        var response = await http.PostAsync($"api/clients/{id}/archive", null);
+        var response = await http.PostAsync($"api/clients/{id}/archive", null, ct);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task UnarchiveClient(int id)
+    public async Task UnarchiveClient(int id, CancellationToken ct = default)
     {
-        var response = await http.PostAsync($"api/clients/{id}/unarchive", null);
+        var response = await http.PostAsync($"api/clients/{id}/unarchive", null, ct);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task DeleteClient(int id)
+    public async Task DeleteClient(int id, CancellationToken ct = default)
     {
-        var response = await http.DeleteAsync($"api/clients/{id}");
+        var response = await http.DeleteAsync($"api/clients/{id}", ct);
         response.EnsureSuccessStatusCode();
     }
 }

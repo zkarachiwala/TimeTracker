@@ -5,31 +5,31 @@ namespace TimeTracker.Client.Mock;
 
 public class MockTimeEntryService(MockDataStore store) : ITimeEntryService
 {
-    public Task<TimeEntryResponse?> GetActiveTimeEntry() =>
+    public Task<TimeEntryResponse?> GetActiveTimeEntry(CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries.FirstOrDefault(e => !e.End.HasValue));
 
-    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries() =>
+    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries(CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries
             .Where(e => e.Start.Date == DateTime.Today)
             .OrderByDescending(e => e.Start)
             .ToList());
 
-    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year) =>
+    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries
             .Where(e => e.Start.Year == year)
             .OrderByDescending(e => e.Start)
             .ToList());
 
-    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId) =>
+    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId, CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries
             .Where(e => e.Project.Id == projectId)
             .OrderByDescending(e => e.Start)
             .ToList());
 
-    public Task<TimeEntryResponse?> GetTimeEntryById(int id) =>
+    public Task<TimeEntryResponse?> GetTimeEntryById(int id, CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries.FirstOrDefault(e => e.Id == id));
 
-    public Task CreateTimeEntry(TimeEntryCreateRequest request)
+    public Task CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
     {
         var project = store.Projects.First(p => p.Id == request.ProjectId);
         store.TimeEntries.Add(new TimeEntryResponse(
@@ -43,7 +43,7 @@ public class MockTimeEntryService(MockDataStore store) : ITimeEntryService
         return Task.CompletedTask;
     }
 
-    public Task UpdateTimeEntry(int id, TimeEntryUpdateRequest request)
+    public Task UpdateTimeEntry(int id, TimeEntryUpdateRequest request, CancellationToken ct = default)
     {
         var i = store.TimeEntries.FindIndex(e => e.Id == id);
         if (i < 0) return Task.CompletedTask;
@@ -64,7 +64,7 @@ public class MockTimeEntryService(MockDataStore store) : ITimeEntryService
         return Task.CompletedTask;
     }
 
-    public Task DeleteTimeEntry(int id)
+    public Task DeleteTimeEntry(int id, CancellationToken ct = default)
     {
         store.TimeEntries.RemoveAll(e => e.Id == id);
         return Task.CompletedTask;
