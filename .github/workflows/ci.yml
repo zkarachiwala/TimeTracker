@@ -51,3 +51,7 @@ jobs:
       - name: Test
         if: steps.changes.outputs.code == 'true'
         run: dotnet test TimeTracker.Tests/TimeTracker.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+
+      - name: Check for vulnerable packages
+        if: steps.changes.outputs.code == 'true'
+        run: dotnet list package --vulnerable --include-transitive
