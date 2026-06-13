@@ -1,31 +1,36 @@
-# Session handoff — 2026-06-13
+# Session handoff — 2026-06-14
 
 ## Current state
-- Branch: `main`, clean
+- Branch: `main`, clean (PR #113 open — SESSION.md chore, merge when ready)
+- All high priority issues complete (PRs #109, #110, #112, issue #105 closed)
 - All CI green
 
-## Plan — high priority issues (all complete ✅)
+## Plan — medium priority (work next)
 
-### Step 1 — Quick wins ✅ PR #109
-- **#99** Restrict `AllowedHosts` to `timetracker.dzk.com.au;timetracker-zak.azurewebsites.net`
-- **#98** Add global exception handler: `app.UseExceptionHandler` + `IProblemDetailsService`
-- Fixed Playwright tests to start isolated app instance on port 7007
+Work in order, one branch per item:
 
-### Step 2 — CI hardening ✅ PR #110
-- **#94** `dotnet list package --vulnerable` in CI, GitHub secret scanning + push protection enabled
+### Step 1 — Program.cs refactor
+- **#111** 🟡 Extract service registrations and dev endpoints into extension methods
+  - `AddApplicationAuth()` — auth/cookie/Google registration
+  - `AddApplicationRateLimiting()` — rate limiter registration
+  - `MapDevEndpoints()` — `/api/dev/login`, `/api/dev/seed`, `/api/dev/clear`
+  - Move `GetConnectionString` into `Infrastructure/` class
+  - Target: Program.cs ~50 lines
 
-### Step 3 — Connection pool ✅ PR #112
-- **#93** `Max Pool Size=30` per pool (60 total), `Min Pool Size=0` for auto-pause
+### Step 2 — Rate limiting
+- **#100** 🟡 Add rate limiting to all mutating API endpoints (ASP.NET Core built-in RateLimiter)
 
-### Step 4 — Managed Identity ✅ issue #105 closed
-- **#105** Was already fully configured in Azure (MI enabled, Entra admin set, T-SQL done, connection strings updated, credentials removed)
-
-## Backlog (medium/low priority — do after above)
-- **#97** 🟡 Structured logging (Serilog), APM (Application Insights), uptime monitoring (UptimeRobot), `/health` endpoint
-- **#100** 🟡 Rate limiting on all mutating endpoints (ASP.NET Core built-in RateLimiter)
-- **#101** 🟡 SQL Server Row-Level Security
+### Step 3 — Session revocation
 - **#103** 🟡 Session revocation via SecurityStamp
+
+### Step 4 — Structured logging & monitoring
+- **#97** 🟡 Structured logging (Serilog), APM (Application Insights), uptime monitoring (UptimeRobot), `/health` endpoint
+
+### Step 5 — Security hardening
+- **#101** 🟡 SQL Server Row-Level Security
 - **#104** 🟡 Automated database backup export
+
+## Backlog (low priority)
 - **#95** 🟢 Database-backed user management
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
@@ -48,4 +53,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-14. All high priority issues complete. Next: backlog items or #111 (Program.cs refactor).*
+*Updated 2026-06-14. Next: Step 1 — #111 Program.cs refactor.*
