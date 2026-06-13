@@ -342,6 +342,44 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
+## D018: Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens
+
+**Date:** 2026-06 — **Status:** Accepted
+
+**Context:** Three compounding vulnerabilities were identified in the API layer:
+
+1. The `limit` parameter on paginated endpoints is caller-controlled with no server-side maximum — a caller can request an arbitrarily large result set in a single request.
+2. Two unbounded `/all` endpoints (`/year/{year}/all`, `/project/{projectId}/all`) exist to serve the reports page and have no row limit at all.
+3. No cancellation tokens are used — if a client disconnects mid-request, the server continues executing EF Core queries and holding SQL connections to completion.
+4. Rate limiting was applied to auth endpoints only; all data endpoints were unprotected.
+
+A stolen cookie combined with rapid-fire requests to the unbounded endpoints would exhaust the Azure SQL free-tier connection pool (75-connection limit) with no circuit breaker.
+
+**Decision:** Three independent layers, implemented in order:
+
+| Layer | What it does | Issue |
+|-------|-------------|-------|
+| Server-side pagination cap | `Math.Min(limit, 200)` in `ToWrapper` — caps cost of any single paginated request | #116 |
+| Global rate limiting | Default policy (120 req/min) covers all endpoints; tighter explicit policy (10 req/min) on `/all` endpoints | #100 |
+| Cancellation tokens | `CancellationToken` threaded through all service methods and EF Core calls — aborted requests release SQL connections immediately | #115 |
+
+Each layer is independently valuable but they work together: the cap limits per-request cost, rate limiting limits request frequency, and cancellation tokens ensure abandoned requests don't linger.
+
+**Why not just rate limiting:** Rate limiting controls frequency but not the cost of a single request that gets through. A 120/min limit still allows 120 expensive unbounded queries per minute.
+
+**Why not just cancellation tokens:** Cancellation tokens release resources on disconnect but don't prevent an attacker who stays connected from hammering the endpoint.
+
+**Why global default over per-endpoint decoration for rate limiting:** The endpoint count may grow; a global default ensures new endpoints are covered automatically. Named policies on the `/all` endpoints and auth endpoints override the default where a tighter limit is needed.
+
+**Consequences:**
+- ✅ Layered protection — no single missing piece leaves the app fully exposed
+- ✅ Each layer is independently useful and teaches a transferable pattern
+- ✅ Global rate limiting default prevents accidentally unprotected new endpoints
+- ❌ `Math.Min(limit, 200)` silently truncates large requests — callers receive fewer records than requested with no error. Acceptable for a personal app; a public API would return 400 Bad Request instead.
+- ❌ Cancellation tokens require threading through all service method signatures — largest refactor of the three
+
+---
+
 ## D017: Cloudflare free plan over paid CDN/WAF
 
 **Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD21](technical-debt.md#cdn--networking)
