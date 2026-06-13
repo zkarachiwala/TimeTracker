@@ -19,6 +19,12 @@ public static class AuthServiceExtensions
             .AddDefaultTokenProviders()
             .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>();
 
+        services.Configure<SecurityStampValidatorOptions>(options =>
+        {
+            options.ValidationInterval = TimeSpan.FromMinutes(
+                configuration.GetValue<int>("Authentication:SecurityStampValidationIntervalMinutes", 30));
+        });
+
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.HttpOnly = true;
