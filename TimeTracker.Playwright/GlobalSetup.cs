@@ -3,13 +3,13 @@ using System.Diagnostics;
 namespace TimeTracker.Playwright;
 
 /// <summary>
-/// Runs once before all tests. Starts the app in Release mode (no PDB noise) with
-/// ASPNETCORE_ENVIRONMENT=Development (so /api/dev/login is available), then obtains
-/// a fresh auth session automatically. No manual steps required.
+/// Runs once before all tests. Always starts a fresh app instance on the dedicated
+/// test port (7007) so tests never run against a stale or wrong-version dev instance.
 /// </summary>
 [SetUpFixture]
 public class GlobalSetup
 {
+    private const string TestBaseUrl = "https://localhost:7007";
     private Process? _appProcess;
 
     [OneTimeSetUp]
@@ -17,7 +17,8 @@ public class GlobalSetup
     {
         // WSL sets BROWSER=wslview which Playwright rejects — clear it so Playwright uses chromium
         Environment.SetEnvironmentVariable("BROWSER", null);
-        _appProcess = await StartAppIfNeededAsync();
+        Environment.SetEnvironmentVariable("PLAYWRIGHT_BASE_URL", TestBaseUrl);
+        _appProcess = await StartAppAsync();
         await AuthenticateAsync();
     }
 
@@ -28,17 +29,14 @@ public class GlobalSetup
         _appProcess?.Dispose();
     }
 
-    private static async Task<Process?> StartAppIfNeededAsync()
+    private static async Task<Process> StartAppAsync()
     {
-        if (await IsAppRespondingAsync())
-            return null;
-
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = "dotnet",
-                Arguments = "run --configuration Release --launch-profile https",
+                Arguments = $"run --configuration Release --launch-profile https --urls \"{TestBaseUrl}\"",
                 WorkingDirectory = Path.Combine(FindRepoRoot(), "TimeTracker.Web"),
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -55,7 +53,7 @@ public class GlobalSetup
         using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
         await using var request = await playwright.APIRequest.NewContextAsync(new()
         {
-            BaseURL = TestConfig.BaseUrl,
+            BaseURL = TestBaseUrl,
             IgnoreHTTPSErrors = true,
         });
 
@@ -68,40 +66,27 @@ public class GlobalSetup
         await request.StorageStateAsync(new() { Path = TestConfig.AuthStatePath });
     }
 
-    private static async Task<bool> IsAppRespondingAsync()
-    {
-        try
-        {
-            using var http = CreateHttpClient(timeout: 3);
-            var r = await http.GetAsync($"{TestConfig.BaseUrl}/login");
-            return r.IsSuccessStatusCode;
-        }
-        catch { return false; }
-    }
-
     private static async Task WaitForAppAsync(int timeoutSeconds)
     {
-        using var http = CreateHttpClient(timeout: 5);
+        using var http = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+        })
+        { Timeout = TimeSpan.FromSeconds(5) };
+
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
         while (DateTime.UtcNow < deadline)
         {
             try
             {
-                var r = await http.GetAsync($"{TestConfig.BaseUrl}/login");
+                var r = await http.GetAsync($"{TestBaseUrl}/login");
                 if (r.IsSuccessStatusCode) return;
             }
             catch { }
             await Task.Delay(1000);
         }
-        throw new TimeoutException($"App did not start within {timeoutSeconds}s at {TestConfig.BaseUrl}");
+        throw new TimeoutException($"App did not start within {timeoutSeconds}s at {TestBaseUrl}");
     }
-
-    private static HttpClient CreateHttpClient(int timeout) =>
-        new(new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-        })
-        { Timeout = TimeSpan.FromSeconds(timeout) };
 
     private static string FindRepoRoot()
     {
