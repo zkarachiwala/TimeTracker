@@ -215,14 +215,18 @@ static string? GetConnectionString(WebApplicationBuilder builder, string connect
     string userCfgName, string passwordCfgName)
 {
     var connectionString = builder.Configuration.GetConnectionString(connectionCfgName);
+    var conStrBuilder = new SqlConnectionStringBuilder(connectionString)
+    {
+        // Azure SQL free tier allows 75 concurrent logins across the logical server.
+        // Two pools × 30 = 60 max connections, leaving headroom for migrations and admin.
+        // MinPoolSize=0 lets connections drain when idle, enabling database auto-pause.
+        MinPoolSize = 0,
+        MaxPoolSize = 30,
+    };
     if (builder.Environment.IsDevelopment())
     {
-        var conStrBuilder = new SqlConnectionStringBuilder(connectionString)
-        {
-            UserID = builder.Configuration[userCfgName],
-            Password = builder.Configuration[passwordCfgName]
-        };
-        connectionString = conStrBuilder.ConnectionString;
+        conStrBuilder.UserID = builder.Configuration[userCfgName];
+        conStrBuilder.Password = builder.Configuration[passwordCfgName];
     }
-    return connectionString;
+    return conStrBuilder.ConnectionString;
 }
