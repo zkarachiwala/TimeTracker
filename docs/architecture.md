@@ -185,14 +185,16 @@ Request logging is handled by `app.UseSerilogRequestLogging()`, placed after `Us
 
 ### Health checks
 
-`GET /health` is publicly accessible (no auth required) and backed by two EF Core DbContext checks:
+Two endpoints, separated by intent:
 
-| Check name | DbContext | What it verifies |
-|------------|-----------|-----------------|
-| `app-db` | `TimeTrackerDataContext` | App schema DB connectivity (time entries, projects, clients) |
-| `identity-db` | `IdentityDataContext` | Identity schema DB connectivity (ASP.NET Identity users) |
+| Endpoint | Auth | DB ping | Purpose |
+|----------|------|---------|---------|
+| `GET /health` | Anonymous | ❌ | Liveness — process is running. Safe for UptimeRobot every 5 min. |
+| `GET /health/detail` | Required | ✅ | Readiness — EF Core connectivity check on both DbContexts. Manual use only. |
 
-The endpoint returns JSON with per-check status and an aggregate HTTP status code (200 Healthy / 503 Unhealthy). UptimeRobot monitors this endpoint every 5 minutes — see [`docs/uptimerobot-setup.md`](uptimerobot-setup.md).
+`/health` deliberately omits the DB ping. The Azure SQL free tier allows 100,000 vCore seconds/month (~55 hours at minimum 0.5 vCores). An external monitor pinging the DB every 5 minutes would prevent auto-pause and exhaust the free allowance in ~2 days.
+
+UptimeRobot monitors `/health` every 5 minutes — see [`docs/uptimerobot-setup.md`](uptimerobot-setup.md).
 
 Application Insights is not included (pay-as-you-go, no free monthly allowance on current workspace-based model). Future APM path is OpenTelemetry → Grafana Cloud ([#121](https://github.com/zkarachiwala/TimeTracker/issues/121)). See [D019](decisions.md#d019-serilog--health-endpoint--uptimerobot-over-application-insights) and [TD23](technical-debt.md#observability).
 
