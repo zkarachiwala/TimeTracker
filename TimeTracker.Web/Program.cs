@@ -4,6 +4,7 @@ using TimeTracker.Web;
 using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Scalar.AspNetCore;
+using Serilog;
 using TimeTracker.Web.Data;
 using TimeTracker.Web.Features.Auth;
 using TimeTracker.Web.Features.Clients;
@@ -14,6 +15,12 @@ using TimeTracker.Web.Shared;
 using TimeTracker.Shared.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, config) =>
+    config
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext());
 
 var timeTrackerConnection = ConnectionStringBuilder.Build(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
 var identityConnection = ConnectionStringBuilder.Build(builder, "IdentityConnection", "DbUser", "DbPassword");
@@ -28,6 +35,7 @@ builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityC
 
 builder.Services.AddApplicationAuth(builder.Configuration);
 builder.Services.AddApplicationRateLimiting(builder.Configuration);
+builder.Services.AddApplicationHealthChecks();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
@@ -79,6 +87,7 @@ app.UseHsts();
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseStaticFiles();
+app.UseSerilogRequestLogging();
 app.UseAntiforgery();
 
 app.UseAuthentication();
@@ -91,6 +100,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(TimeTracker.Client.Features.Timer.Pages.TimerPage).Assembly);
 
+app.MapApplicationHealthChecks();
 app.MapControllers();
 app.MapTimeEntryEndpoints();
 app.MapProjectEndpoints();
