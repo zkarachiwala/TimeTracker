@@ -5,6 +5,8 @@ public class AuthTests : PageTest
 {
     private readonly List<string> _consoleErrors = [];
     private readonly List<string> _failedRequests = [];
+    private EventHandler<IRequest>? _onRequestFailed;
+    private EventHandler<IConsoleMessage>? _onConsoleMessage;
 
     public override BrowserNewContextOptions ContextOptions() => new()
     {
@@ -19,19 +21,23 @@ public class AuthTests : PageTest
     {
         _consoleErrors.Clear();
         _failedRequests.Clear();
-        Page.RequestFailed += (_, req) => _failedRequests.Add($"Request failed: {req.Url}");
-        Page.Console += (_, msg) =>
+        _onRequestFailed = (_, req) => _failedRequests.Add($"Request failed: {req.Url}");
+        _onConsoleMessage = (_, msg) =>
         {
             if (msg.Type != "error") return;
             if (msg.Text.StartsWith("Failed to load resource")) return;
             if (msg.Text.StartsWith("Failed to load module script")) return;
             _consoleErrors.Add(msg.Text);
         };
+        Page.RequestFailed += _onRequestFailed;
+        Page.Console += _onConsoleMessage;
     }
 
     [TearDown]
     public void AssertNoConsoleErrors()
     {
+        if (_onRequestFailed is not null) Page.RequestFailed -= _onRequestFailed;
+        if (_onConsoleMessage is not null) Page.Console -= _onConsoleMessage;
         var all = _consoleErrors.Concat(_failedRequests).ToList();
         Assert.That(all, Is.Empty,
             $"Unexpected browser errors:\n{string.Join("\n", all)}");
@@ -111,17 +117,11 @@ public class AuthTests : PageTest
     // ── Access denied page ─────────────────────────────────────────────────────
 
     [Test]
-    public async Task AccessDeniedPageIsReachable()
+    public async Task AccessDeniedPageShowsExpectedContent()
     {
         await Page.GotoAsync("/access-denied");
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Access denied" }))
             .ToBeVisibleAsync(new() { Timeout = 10_000 });
-    }
-
-    [Test]
-    public async Task AccessDeniedPageShowsBackToSignIn()
-    {
-        await Page.GotoAsync("/access-denied");
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Back to sign in" }))
             .ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
