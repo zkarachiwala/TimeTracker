@@ -37,18 +37,18 @@ public static class AuthEndpoints
 
             if (result.Status == ExternalLoginStatus.EmailNotAllowed)
             {
-                logger.LogWarning("Auth: login rejected — email {Email} not in allowed list", email);
+                logger.LogWarning("Auth: login rejected — email not in allowed list");
                 return Results.Redirect("/access-denied");
             }
 
             if (result.Status != ExternalLoginStatus.Success)
             {
-                logger.LogWarning("Auth: login failed for {Email} with status {Status}", email, result.Status);
+                logger.LogWarning("Auth: login failed with status {Status}", result.Status);
                 return Results.Redirect($"/login?error={result.Status.ToString().ToLowerInvariant().Replace("_", "-")}");
             }
 
             await signInManager.SignInAsync(result.User!, isPersistent: true);
-            logger.LogInformation("Auth: user {Email} signed in via {Provider}", email, info.LoginProvider);
+            logger.LogInformation("Auth: user signed in via {Provider}", info.LoginProvider);
             var safeReturnUrl = Uri.TryCreate(returnUrl, UriKind.Relative, out _) ? returnUrl! : "/timeentries";
             return Results.LocalRedirect(safeReturnUrl);
         }).RequireRateLimiting("auth");
@@ -64,7 +64,7 @@ public static class AuthEndpoints
             if (user is not null)
             {
                 await userManager.UpdateSecurityStampAsync(user);
-                logger.LogInformation("Auth: security stamp rotated on logout for {Email}", user.Email);
+                logger.LogInformation("Auth: security stamp rotated on logout");
             }
             await signInManager.SignOutAsync();
             return Results.Redirect("/login");
@@ -79,7 +79,7 @@ public static class AuthEndpoints
             var user = await userManager.GetUserAsync(principal);
             if (user is null) return Results.Unauthorized();
             await userManager.UpdateSecurityStampAsync(user);
-            logger.LogInformation("Auth: all sessions revoked for {Email}", user.Email);
+            logger.LogInformation("Auth: all sessions revoked");
             return Results.Ok();
         }).RequireAuthorization(
             new AuthorizationPolicyBuilder().RequireAuthenticatedUser().RequireRole("Admin").Build()
