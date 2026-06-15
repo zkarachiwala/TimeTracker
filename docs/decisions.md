@@ -427,6 +427,19 @@ Each layer is independently valuable but they work together: the cap limits per-
 
 **Decision:** Serilog with structured JSON console output (Azure App Service captures stdout and makes it queryable in the portal), a `/health` endpoint backed by EF Core DB connectivity checks, and UptimeRobot (free tier) monitoring `/health` externally. Application Insights deferred due to cost. OpenTelemetry → Grafana Cloud tracked as the future path in [#121](https://github.com/zkarachiwala/TimeTracker/issues/121).
 
+**External monitoring service — options considered:**
+
+All four services have a genuine free tier. Cost was therefore not the differentiator; the decision turned on maturity, interval, and feature set.
+
+| Service | Free check interval | Free monitors | Established | Notes |
+|---------|---------------------|---------------|-------------|-------|
+| **UptimeRobot** | 5 min | 50 | 2010 | Industry default; status pages included on free tier |
+| Freshping | 1 min | 50 | 2017 | Faster interval; Freshworks product (vendor lock-in risk) |
+| Better Stack | 3 min | 10 | 2021 | Better incident management UI; newer, fewer references |
+| StatusCake | 5 min | Unlimited | 2012 | More monitors but fewer community references |
+
+**Why UptimeRobot:** Longest-established free monitoring service (15+ years), most community documentation, status pages included on the free tier, and 50 monitors is more than sufficient. The 5-minute interval is the free-tier minimum for all comparable services except Freshping. Freshping's 1-minute interval is better but Freshworks is a large SaaS vendor adding a dependency that could change the free tier terms; UptimeRobot's free tier has been stable for many years.
+
 **Consequences:**
 - ✅ Zero cost — structured logs available in Azure App Service log stream and deployments blade
 - ✅ `/health` endpoint enables external monitoring and gives a reliable readiness signal
