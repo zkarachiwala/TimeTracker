@@ -1,5 +1,3 @@
-using System.Formats.Asn1;
-
 namespace TimeTracker.Shared.Entities;
 
 public class ProjectUser
@@ -8,4 +6,5 @@ public class ProjectUser
     public string UserId { get; set; } = string.Empty;
     public int ProjectId { get; set; }
     public Project Project { get; set; } = null!;
+    public string? CreatedBy { get; set; }
 }

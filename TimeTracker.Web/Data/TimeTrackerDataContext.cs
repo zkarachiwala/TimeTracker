@@ -1,11 +1,16 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace TimeTracker.Web.Data;
 
 public class TimeTrackerDataContext : DbContext
 {
-    public TimeTrackerDataContext(DbContextOptions<TimeTrackerDataContext> options) : base(options)
-    {        
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+
+    public TimeTrackerDataContext(
+        DbContextOptions<TimeTrackerDataContext> options,
+        IHttpContextAccessor? httpContextAccessor = null) : base(options)
+    {
+        _httpContextAccessor = httpContextAccessor;
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -20,6 +25,38 @@ public class TimeTrackerDataContext : DbContext
         modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.DefaultHourlyRate).HasPrecision(18, 2);
         modelBuilder.Entity<Project>().Property(p => p.HourlyRate).HasPrecision(18, 2);
         base.OnModelCreating(modelBuilder);
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var userId = _httpContextAccessor?.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            if (entry.State == EntityState.Added)
+                entry.Entity.CreatedBy = userId;
+
+            if (entry.State == EntityState.Modified)
+                entry.Entity.UpdatedBy = userId;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<SoftDeleteableEntity>())
+        {
+            if (entry.State == EntityState.Modified
+                && entry.Entity.IsDeleted
+                && entry.OriginalValues.GetValue<bool>(nameof(SoftDeleteableEntity.IsDeleted)) == false)
+            {
+                entry.Entity.DeletedBy = userId;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ProjectUser>())
+        {
+            if (entry.State == EntityState.Added)
+                entry.Entity.CreatedBy = userId;
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
     }
 
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
