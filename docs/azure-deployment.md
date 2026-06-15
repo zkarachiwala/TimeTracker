@@ -144,6 +144,19 @@ ALTER ROLE db_datawriter ADD MEMBER [<APP>];
 
 Replace `<APP>` with the value you set for `APP` above (e.g. `timetracker-zak`).
 
+### Step 5b — Grant Row-Level Security permissions
+
+The EF Core migration that installs RLS (`AddAuditTrailAndRowLevelSecurity`) creates SQL functions and security policies. These DDL operations require two additional grants beyond `db_datareader`/`db_datawriter`. Run as admin in the same SQL session:
+
+```sql
+GRANT CREATE FUNCTION TO [<APP>];
+GRANT ALTER ANY SECURITY POLICY TO [<APP>];
+```
+
+> **Why these are separate:** `db_datareader` and `db_datawriter` grant DML access only. Schema-level DDL (`CREATE FUNCTION`) and security infrastructure (`ALTER ANY SECURITY POLICY`) require explicit grants. These are the minimum permissions needed; no elevation to `db_owner` or `db_ddladmin` is required.
+>
+> **db_owner exemption:** `db_owner` and `sysadmin` users are exempt from RLS by SQL Server design. The production Managed Identity holds only `db_datareader + db_datawriter`, so RLS **is** enforced in production. Local dev uses `sa` (sysadmin), so RLS is bypassed locally — this is intentional.
+
 ---
 
 ## Step 6 — Configure App Service

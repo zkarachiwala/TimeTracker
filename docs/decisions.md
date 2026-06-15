@@ -23,6 +23,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D017](#d017-cloudflare-free-plan-over-paid-cdnwaf) | Cloudflare free plan over paid CDN/WAF | 2026-06 | Accepted |
 | [D018](#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens) | Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens | 2026-06 | Accepted |
 | [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Accepted |
+| [D020](#d020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
 
 ---
 
@@ -436,3 +437,58 @@ All four services have a genuine free tier. Cost was therefore not the different
 - ❌ No distributed tracing or correlation IDs — individual requests cannot be traced end-to-end
 - ❌ No performance baselines or alerting on error spikes (UptimeRobot only alerts on downtime, not degradation)
 - ❌ Log retention is limited to what Azure App Service log stream keeps (short-lived); no queryable log store
+
+---
+
+## D020: SQL Server Row-Level Security + audit trail
+
+**Date:** 2026-06 — **Status:** Accepted — **Supersedes:** [TD19](technical-debt.md#security)
+
+**Context:** Data isolation was enforced only at the service layer (`IUserContextService`). A bug in the service layer, or direct `DbContext` access bypassing the service, could expose cross-user data. SQL Server Row-Level Security (RLS) is available on the free Azure SQL tier at zero cost.
+
+**Decision:** Add RLS filter predicates to `TimeEntries`, `ProjectUsers`, and `Projects`. Add audit trail columns (`CreatedBy`, `UpdatedBy`, `DeletedBy`) to all entities via `SaveChangesAsync` override in `TimeTrackerDataContext`.
+
+**How it works:**
+
+- `UserSessionContextInterceptor` (`DbCommandInterceptor`) sets `SESSION_CONTEXT(N'UserId')` before every EF Core command. This fires per-command (not per-connection) because SQL Server connection pooling reuses physical connections without resetting session context.
+- Three SQL Server predicate functions in the `app` schema:
+  - `fn_filter_by_user_id` — reused for `TimeEntries` and `ProjectUsers` (direct `UserId` column)
+  - `fn_filter_projects_by_user` — EXISTS join into `ProjectUsers` (Projects have no direct `UserId`)
+- `SECURITY POLICY` on each table with `STATE = ON`
+- Audit columns (`CreatedBy`, `UpdatedBy`, `DeletedBy`) populated in `TimeTrackerDataContext.SaveChangesAsync` from `IHttpContextAccessor`
+
+**db_owner bypass (intentional):**
+
+SQL Server exempts `db_owner` and `sysadmin` members from RLS by design. Local development uses `sa` (sysadmin), so policies are bypassed locally. Production uses Managed Identity with `db_datareader + db_datawriter` only — RLS is fully enforced there. This is the correct split: local dev has unrestricted access; production is locked down.
+
+**Permission requirements for migration:**
+
+The EF Core migration creates SQL functions and security policies. The app DB user requires two one-time grants (see `azure-deployment.md` Step 5b):
+```sql
+GRANT CREATE FUNCTION TO [timetracker-zak];
+GRANT ALTER ANY SECURITY POLICY TO [timetracker-zak];
+```
+These are not in `db_datareader`/`db_datawriter`. Without them the migration fails at the RLS step.
+
+**Local RLS verification:**
+
+Because `sa` bypasses RLS, cross-tenant isolation cannot be verified locally with the default dev login. `RlsIntegrationTests` in `TimeTracker.Tests` provides three tests that:
+1. Seed data via an admin (`sa`) connection
+2. Create a temporary `timetracker_rls_test` login with `db_datareader + db_datawriter` only
+3. Assert that querying as that login with `SESSION_CONTEXT` set to User A returns only User A's rows
+
+Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERVER_APP_CONNECTION=...`
+
+**Clients not included:**
+
+`Clients` has no direct `UserId` column and is linked to users via Projects → ProjectUsers (two hops). The service layer already scopes client access through projects. Applying RLS to `Clients` requires a multi-hop predicate that adds complexity with low additional security benefit at current scale. Deferred.
+
+**Consequences:**
+
+- ✅ Defence in depth — data isolation holds even if `IUserContextService` is bypassed
+- ✅ Audit trail on all entities — who created, updated, and soft-deleted each record
+- ✅ RLS is a standard enterprise pattern — high transferable skill value
+- ✅ Zero cost — Azure SQL free tier supports RLS natively
+- ❌ One extra `sp_set_session_context` round-trip per EF Core command (~0.1ms on localhost; negligible on Azure SQL in the same region)
+- ❌ `sa` bypass means local dev cannot directly observe RLS filtering — requires opt-in integration tests
+- ❌ `Clients` table not covered — service-layer isolation remains the only guard there

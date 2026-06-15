@@ -30,7 +30,12 @@ builder.Services.AddRazorComponents().AddInteractiveWebAssemblyComponents();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
-builder.Services.AddDbContextFactory<TimeTrackerDataContext>(o => o.UseSqlServer(timeTrackerConnection));
+builder.Services.AddSingleton<UserSessionContextInterceptor>();
+builder.Services.AddDbContextFactory<TimeTrackerDataContext>((sp, o) =>
+{
+    o.UseSqlServer(timeTrackerConnection);
+    o.AddInterceptors(sp.GetRequiredService<UserSessionContextInterceptor>());
+});
 builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityConnection));
 
 builder.Services.AddApplicationAuth(builder.Configuration);
