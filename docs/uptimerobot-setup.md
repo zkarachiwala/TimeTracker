@@ -39,7 +39,7 @@ Before creating a monitor, make sure an alert contact is configured.
    |-------|-------|
    | Monitor Type | **HTTP(s)** |
    | Friendly Name | `TimeTracker - Health` |
-   | URL (or IP) | `https://timetracker.dzk.com.au/health` |
+   | URL (or IP) | `https://timetracker-zak.azurewebsites.net/health` |
    | Monitoring Interval | **5 minutes** (free tier minimum) |
    | Monitor Timeout | 30 seconds |
 

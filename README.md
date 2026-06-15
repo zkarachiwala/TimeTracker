@@ -104,7 +104,7 @@ The app runs across two separate hosting targets:
 
 | Target | URL | Purpose |
 |--------|-----|---------|
-| **Azure App Service F1** | [timetracker.dzk.com.au](https://timetracker.dzk.com.au) | Live app — Google OAuth, SQL Server, full functionality |
+| **Azure App Service F1** | [timetracker-zak.azurewebsites.net](https://timetracker-zak.azurewebsites.net) | Live app — Google OAuth, SQL Server, full functionality |
 | **GitHub Pages** | [zkarachiwala.github.io/TimeTracker](https://zkarachiwala.github.io/TimeTracker/) | Read-only showcase — mock data, no login required |
 
 Both are deployed automatically by GitHub Actions on every merge to `main` that contains code changes. The live app uses OIDC to authenticate against Azure; the showcase publishes a standalone Blazor WASM bundle compiled with `#if SHOWCASE` mock services.

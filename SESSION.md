@@ -2,7 +2,7 @@
 
 ## Current state
 - Branch: `feat/structured-logging-97` — all commits pushed, PR #122 ready to merge
-- UptimeRobot: live and monitoring `https://timetracker.dzk.com.au/health`
+- UptimeRobot: live and monitoring `https://timetracker-zak.azurewebsites.net/health`
 
 ## Completed this session
 - ✅ D019 updated with UptimeRobot service selection rationale (comparison table)

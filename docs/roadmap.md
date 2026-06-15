@@ -87,7 +87,7 @@ For architecture detail see [architecture.md](architecture.md).
 ### Phase 9 — Playwright UX regression testing ✅
 - `TimeTracker.Playwright` NUnit project with `Microsoft.Playwright.NUnit`
 - Auth strategy: storage state replay — `playwright/.auth/user.json` encoded as `PLAYWRIGHT_AUTH_STATE_B64` GitHub secret
-- Test target: deployed App Service (`timetracker.dzk.com.au`) post-deploy
+- Test target: deployed App Service (`timetracker-zak.azurewebsites.net`) post-deploy
 - Coverage: unauthenticated redirects, login page, timer, time entries, projects, clients, reports, navigation
 - Playwright job in `deploy.yml` runs after `deploy` job succeeds on `main`
 
