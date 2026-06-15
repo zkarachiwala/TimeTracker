@@ -14,7 +14,7 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 | 2026-06 | Renamed `TimeTracker.Wasm` → `TimeTracker.Client` (Microsoft standard .Client naming) | `feature/wasm-islands` |
 | 2026-06 | Added `TimeTracker.Contracts` — shared DTOs; `CookieAuthenticationStateProvider`; `/api/auth/user` endpoint; `ReportsCalculations` static class; 92 unit tests | `feature/wasm-islands` |
 | 2026-06 | **GitHub Pages showcase** — `#if SHOWCASE` mock services; `wwwroot-showcase/` asset isolation; base-href-agnostic relative paths; SPA 404 routing; auto-deployed from `deploy.yml` | #72–78 |
-| 2026-06 | Added `TimeTracker.Playwright` — E2E tests; Cloudflare custom domain `timetracker.dzk.com.au` | #43–56 |
+| 2026-06 | Added `TimeTracker.Playwright` — E2E tests | #43–56 |
 | 2026-06 | Deployed to Azure App Service F1 + Azure SQL; GitHub Actions OIDC push-to-deploy | #43–45 |
 | 2026-06 | Security hardening: CSP, HSTS, rate limiting, 83 tests | #42 |
 | 2026-05 | MudBlazor UI uplift; replaced Tailwind + Radzen + QuickGrid | #38 |
@@ -73,7 +73,7 @@ TimeTracker.Client/
 - **Global InteractiveWebAssembly** rendering — `App.razor` renders `<Routes @rendermode="InteractiveWebAssembly" />`. The entire routed app runs as WASM in the browser. No SignalR.
 - REST API endpoints served from the same ASP.NET Core host
 - Deployed to **Azure App Service F1** with **Azure SQL Database** (free offer)
-- Custom domain `timetracker.dzk.com.au` via Cloudflare proxy (Cloudflare terminates TLS)
+- Deployed at `https://timetracker-zak.azurewebsites.net` (Azure F1 free tier does not support custom domains)
 - Runs at `https://localhost:7006` (dev). API docs at `/scalar/v1` (dev only).
 
 ### Data layer

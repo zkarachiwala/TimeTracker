@@ -384,30 +384,19 @@ Each layer is independently valuable but they work together: the cap limits per-
 
 ## D017: Cloudflare free plan over paid CDN/WAF
 
-**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD21](technical-debt.md#cdn--networking)
+**Date:** 2026-06 — **Status:** Superseded — **Tracks:** [TD21](technical-debt.md#cdn--networking)
 
-**Context:** The app is served at `timetracker.dzk.com.au` via a custom domain. A CDN and DDoS protection layer is desirable for performance and basic security hardening. Several options were evaluated.
+**Context:** This decision was based on the incorrect assumption that a custom domain (`timetracker.dzk.com.au`) could be pointed at the app via Cloudflare. Two blockers make this unworkable at zero cost: (1) Azure App Service F1 free tier does not natively support custom domains, and (2) Cloudflare free tier URL redirections do not function as needed. The production URL has always been `https://timetracker-zak.azurewebsites.net`.
 
-**Decision:** Cloudflare free plan. DNS is managed through Cloudflare, providing CDN caching, basic DDoS mitigation, and SSL termination at zero cost.
-
-**Options considered:**
-
-| Option | Cost | WAF custom rules | Analytics |
-|--------|------|-----------------|-----------|
-| **Cloudflare Free** | $0 | ❌ Managed rules only | Limited |
-| Cloudflare Pro | ~$20/month | ✅ Custom rules, rate limiting | Full |
-| Azure Front Door Standard | ~$35/month | ✅ Managed WAF | Full |
-| Azure Front Door Premium | ~$330/month | ✅ Custom WAF, bot protection | Full |
+**Decision:** No CDN/WAF layer. The app is served directly from Azure App Service at `timetracker-zak.azurewebsites.net`. Azure provides TLS termination via the default `*.azurewebsites.net` certificate at no cost.
 
 **Consequences:**
 - ✅ Zero cost — consistent with D003 zero-cost hosting constraint
-- ✅ Automatic SSL, CDN caching, and basic DDoS mitigation with no configuration overhead
-- ✅ Cloudflare-managed WAF rules cover known CVEs and common attack patterns without custom rules
-- ❌ No custom WAF rules — cannot block specific patterns or rate-limit at the CDN layer
-- ❌ No bot management
-- ❌ Limited analytics
+- ❌ No CDN caching or DDoS mitigation
+- ❌ No WAF
+- ❌ No custom domain
 
-**Upgrade path:** Cloudflare Pro (~$20/month) adds custom WAF rules and rate limiting at the CDN layer. Azure Front Door is an alternative if deeper Azure-native integration is needed.
+**Upgrade path:** A custom domain and CDN/WAF (Cloudflare or Azure Front Door) become available by upgrading App Service to at least the Basic (B1) tier.
 
 ---
 
