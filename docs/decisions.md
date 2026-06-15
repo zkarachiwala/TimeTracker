@@ -21,6 +21,8 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D015](#d015-showcase-static-assets-isolated-to-wwwroot-showcase) | Showcase static assets isolated to `wwwroot-showcase/` | 2026-06 | Accepted |
 | [D016](#d016-playwright--full-suite-pre-push-ci-smoke-test-only) | Playwright — full suite pre-push, CI smoke test only | 2026-06 | Accepted |
 | [D017](#d017-cloudflare-free-plan-over-paid-cdnwaf) | Cloudflare free plan over paid CDN/WAF | 2026-06 | Accepted |
+| [D018](#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens) | Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens | 2026-06 | Accepted |
+| [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Accepted |
 
 ---
 
@@ -406,3 +408,42 @@ Each layer is independently valuable but they work together: the cap limits per-
 - ❌ Limited analytics
 
 **Upgrade path:** Cloudflare Pro (~$20/month) adds custom WAF rules and rate limiting at the CDN layer. Azure Front Door is an alternative if deeper Azure-native integration is needed.
+
+---
+
+## D019: Serilog + /health endpoint + UptimeRobot over Application Insights
+
+**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD23](technical-debt.md#observability)
+
+**Context:** #97 required structured logging, a health check endpoint, and uptime monitoring. Application Insights is the natural Azure APM choice, but the current workspace-based model stores data in Log Analytics with pay-as-you-go pricing — no free monthly data allowance. Free hosting is a hard constraint ([D003](#d003-zero-cost-hosting-azure-f1--azure-sql-free)).
+
+**Options considered:**
+
+| Option | Cost | Structured logs | Distributed tracing | Uptime monitoring |
+|--------|------|----------------|---------------------|-------------------|
+| **Serilog → console + UptimeRobot** | $0 | ✅ JSON stdout | ❌ | ✅ (free tier) |
+| Application Insights | Pay-as-you-go per GB | ✅ | ✅ | ✅ |
+| OpenTelemetry → Grafana Cloud | $0 (free tier) | ✅ | ✅ | ✅ |
+
+**Decision:** Serilog with structured JSON console output (Azure App Service captures stdout and makes it queryable in the portal), a `/health` endpoint backed by EF Core DB connectivity checks, and UptimeRobot (free tier) monitoring `/health` externally. Application Insights deferred due to cost. OpenTelemetry → Grafana Cloud tracked as the future path in [#121](https://github.com/zkarachiwala/TimeTracker/issues/121).
+
+**External monitoring service — options considered:**
+
+All four services have a genuine free tier. Cost was therefore not the differentiator; the decision turned on maturity, interval, and feature set.
+
+| Service | Free check interval | Free monitors | Established | Notes |
+|---------|---------------------|---------------|-------------|-------|
+| **UptimeRobot** | 5 min | 50 | 2010 | Industry default; status pages included on free tier |
+| Freshping | 1 min | 50 | 2017 | Faster interval; Freshworks product (vendor lock-in risk) |
+| Better Stack | 3 min | 10 | 2021 | Better incident management UI; newer, fewer references |
+| StatusCake | 5 min | Unlimited | 2012 | More monitors but fewer community references |
+
+**Why UptimeRobot:** Longest-established free monitoring service (15+ years), most community documentation, status pages included on the free tier, and 50 monitors is more than sufficient. The 5-minute interval is the free-tier minimum for all comparable services except Freshping. Freshping's 1-minute interval is better but Freshworks is a large SaaS vendor adding a dependency that could change the free tier terms; UptimeRobot's free tier has been stable for many years.
+
+**Consequences:**
+- ✅ Zero cost — structured logs available in Azure App Service log stream and deployments blade
+- ✅ `/health` endpoint enables external monitoring and gives a reliable readiness signal
+- ✅ Serilog is the .NET industry standard — high transferable skill value
+- ❌ No distributed tracing or correlation IDs — individual requests cannot be traced end-to-end
+- ❌ No performance baselines or alerting on error spikes (UptimeRobot only alerts on downtime, not degradation)
+- ❌ Log retention is limited to what Azure App Service log stream keeps (short-lived); no queryable log store

@@ -177,6 +177,27 @@ All policies are driven from `RateLimiting` config in `appsettings.json` so limi
 
 **Dev override location:** `appsettings.Development.json` → `RateLimiting:AuthStatus:PermitLimit = 200`. Production `appsettings.json` keeps both at 10.
 
+### Logging
+
+Serilog replaces the default ASP.NET Core logger. Production writes structured JSON to stdout, which Azure App Service captures in the log stream. Development uses plain text for readability. Both environments are configured via `appsettings.json` / `appsettings.Development.json` using `ReadFrom.Configuration`.
+
+Request logging is handled by `app.UseSerilogRequestLogging()`, placed after `UseStaticFiles` to avoid logging static asset requests.
+
+### Health checks
+
+Two endpoints, separated by intent:
+
+| Endpoint | Auth | DB ping | Purpose |
+|----------|------|---------|---------|
+| `GET /health` | Anonymous | ❌ | Liveness — process is running. Safe for UptimeRobot every 5 min. |
+| `GET /health/detail` | Required | ✅ | Readiness — EF Core connectivity check on both DbContexts. Manual use only. |
+
+`/health` deliberately omits the DB ping. The Azure SQL free tier allows 100,000 vCore seconds/month (~55 hours at minimum 0.5 vCores). An external monitor pinging the DB every 5 minutes would prevent auto-pause and exhaust the free allowance in ~2 days.
+
+UptimeRobot monitors `/health` every 5 minutes — see [`docs/uptimerobot-setup.md`](uptimerobot-setup.md).
+
+Application Insights is not included (pay-as-you-go, no free monthly allowance on current workspace-based model). Future APM path is OpenTelemetry → Grafana Cloud ([#121](https://github.com/zkarachiwala/TimeTracker/issues/121)). See [D019](decisions.md#d019-serilog--health-endpoint--uptimerobot-over-application-insights) and [TD23](technical-debt.md#observability).
+
 ### Infrastructure
 
 | Concern | Solution | Cost |
@@ -186,7 +207,9 @@ All policies are driven from `RateLimiting` config in `appsettings.json` so limi
 | Database | Azure SQL Database free offer | Free — 32 GB, 7-day automated backups, no expiry |
 | Auth | Google OAuth 2.0 via ASP.NET Identity | Free |
 | CI/CD | GitHub Actions — OIDC push-to-deploy | Free |
-| Tests | 105 service integration tests (EF InMemory) | — |
+| Structured logging | Serilog → stdout (Azure App Service log stream) | Free |
+| Uptime monitoring | UptimeRobot free tier → `/health` endpoint | Free |
+| Tests | 107 service integration tests (EF InMemory) | — |
 
 ---
 

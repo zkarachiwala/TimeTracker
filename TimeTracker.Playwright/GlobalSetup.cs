@@ -25,8 +25,16 @@ public class GlobalSetup
     [OneTimeTearDown]
     public void TearDown()
     {
-        _appProcess?.Kill(entireProcessTree: true);
-        _appProcess?.Dispose();
+        try
+        {
+            _appProcess?.Kill(entireProcessTree: true);
+            _appProcess?.WaitForExit(5000);
+        }
+        catch { }
+        finally
+        {
+            _appProcess?.Dispose();
+        }
     }
 
     private static async Task<Process> StartAppAsync()
@@ -43,7 +51,14 @@ public class GlobalSetup
                 RedirectStandardError = true,
             }
         };
+        // Drain stdout/stderr asynchronously so the 64 KB pipe buffer never fills.
+        // If the buffer fills the app blocks trying to write log output and stops
+        // responding to HTTP requests — causing every test after the first to hang.
+        process.OutputDataReceived += (_, _) => { };
+        process.ErrorDataReceived += (_, _) => { };
         process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         await WaitForAppAsync(timeoutSeconds: 180);
         return process;
     }
