@@ -23,15 +23,16 @@ Every GitHub issue created for this repository must be:
 gh project item-add 1 --owner zkarachiwala --url https://github.com/zkarachiwala/TimeTracker/issues/<number>
 ```
 
-## Git hooks
+## Playwright tests
 
-`.githooks/pre-push` runs the unauthenticated Playwright tests automatically before every push when app code has changed. Activate once per clone:
+Run manually after app code changes — do NOT automate via git hooks:
 
 ```bash
-git config core.hooksPath .githooks
+# App must already be running on https://localhost:7006 before running this
+BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal"
 ```
 
-The hook skips gracefully if the app is not running. It never runs authenticated tests (those require locally captured auth state — see `AuthSetup.cs`).
+The pre-push hook (`.githooks/pre-push`) is intentionally disabled. Never re-enable it — it caused repeated background process incidents by blocking `git push` for 2–3 minutes.
 
 ## Git discipline
 
