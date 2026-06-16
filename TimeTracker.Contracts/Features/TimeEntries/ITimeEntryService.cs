@@ -10,4 +10,6 @@ public interface ITimeEntryService
     Task<TimeEntryResponse?> GetActiveTimeEntry(CancellationToken ct = default);
     Task<List<TimeEntryResponse>> GetTodaysTimeEntries(CancellationToken ct = default);
     Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId, CancellationToken ct = default);
+    Task<List<DeletedTimeEntryResponse>> GetDeletedTimeEntries(CancellationToken ct = default);
+    Task RestoreTimeEntry(int id, CancellationToken ct = default);
 }

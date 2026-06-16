@@ -53,4 +53,9 @@ public class MockProjectService(MockDataStore store) : IProjectService
         store.Projects.RemoveAll(p => p.Id == id);
         return Task.CompletedTask;
     }
+
+    public Task<List<DeletedProjectResponse>> GetDeletedProjects(CancellationToken ct = default) =>
+        Task.FromResult(new List<DeletedProjectResponse>());
+
+    public Task RestoreProject(int id, CancellationToken ct = default) => Task.CompletedTask;
 }

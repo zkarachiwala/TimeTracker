@@ -9,4 +9,6 @@ public interface IClientService
     Task ArchiveClient(int id, CancellationToken ct = default);
     Task UnarchiveClient(int id, CancellationToken ct = default);
     Task DeleteClient(int id, CancellationToken ct = default);
+    Task<List<DeletedClientResponse>> GetDeletedClients(CancellationToken ct = default);
+    Task RestoreClient(int id, CancellationToken ct = default);
 }

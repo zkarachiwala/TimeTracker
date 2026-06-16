@@ -84,6 +84,21 @@
                            OnClick="@(IsArchived ? (Func<Task>)ToggleArchive : BeginArchive)">
                     @(IsArchived ? "Unarchive project" : "Archive project")
                 </MudButton>
+
+                @if (_confirmingDelete)
+                {
+                    <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Error" Class="mt-1"
+                               StartIcon="@Icons.Material.Filled.DeleteForever"
+                               OnClick="DeleteProject">Confirm delete</MudButton>
+                    <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
+                               OnClick="@(() => _confirmingDelete = false)">Cancel</MudButton>
+                }
+                else
+                {
+                    <MudButton FullWidth="true" Variant="Variant.Text" Color="Color.Error" Class="mt-1"
+                               StartIcon="@Icons.Material.Filled.Delete"
+                               OnClick="@(() => _confirmingDelete = true)">Delete project</MudButton>
+                }
             }
         }
     </div>
@@ -107,6 +122,7 @@
     private bool _open;
     private bool _confirmingArchive;
     private DateTime? _archiveDate;
+    private bool _confirmingDelete;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -169,6 +185,7 @@
         rateTouched = false;
         _confirmingArchive = false;
         _archiveDate = null;
+        _confirmingDelete = false;
     }
 
     private void OnClientChanged()
@@ -249,6 +266,14 @@
             EndDate = newEndDate
         });
         Snackbar.Add(IsArchived ? "Project unarchived" : "Project archived", Severity.Success);
+        await Close();
+        await OnSaved.InvokeAsync();
+    }
+
+    private async Task DeleteProject()
+    {
+        await ProjectService.DeleteProject(Project!.Id);
+        Snackbar.Add($"\"{Project.Name}\" deleted.", Severity.Info);
         await Close();
         await OnSaved.InvokeAsync();
     }

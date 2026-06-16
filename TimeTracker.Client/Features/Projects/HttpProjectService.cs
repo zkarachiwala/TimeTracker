@@ -28,4 +28,13 @@ public class HttpProjectService(HttpClient http) : IProjectService
         var response = await http.DeleteAsync($"api/projects/{id}", ct);
         response.EnsureSuccessStatusCode();
     }
+
+    public Task<List<DeletedProjectResponse>> GetDeletedProjects(CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<DeletedProjectResponse>>("api/projects/deleted", ct)!;
+
+    public async Task RestoreProject(int id, CancellationToken ct = default)
+    {
+        var response = await http.PostAsync($"api/projects/{id}/restore", null, ct);
+        response.EnsureSuccessStatusCode();
+    }
 }

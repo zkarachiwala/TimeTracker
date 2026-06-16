@@ -89,4 +89,26 @@ public class ProjectService : IProjectService
         project.DateDeleted = DateTime.Now;
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<List<DeletedProjectResponse>> GetDeletedProjects(CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var projects = await ctx.Projects
+            .Where(p => p.IsDeleted)
+            .OrderByDescending(p => p.DateDeleted)
+            .ToListAsync(ct);
+        return projects.Adapt<List<DeletedProjectResponse>>();
+    }
+
+    public async Task RestoreProject(int id, CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var project = await ctx.Projects
+            .FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted, ct)
+            ?? throw new EntityNotFoundException($"Project {id} not found.");
+
+        project.IsDeleted = false;
+        project.DateDeleted = null;
+        await ctx.SaveChangesAsync(ct);
+    }
 }

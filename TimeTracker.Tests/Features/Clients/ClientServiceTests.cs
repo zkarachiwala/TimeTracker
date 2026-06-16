@@ -210,6 +210,55 @@ public class ClientServiceTests
     }
 
     [Fact]
+    public async Task ArchiveClient_ThrowsInvalidOperationException_WhenClientHasNonArchivedProjects()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient();
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+        seed.Projects.Add(new Project { Name = "Active Project", ClientId = client.Id, ProjectUsers = [new ProjectUser { UserId = "user-1" }] });
+        await seed.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateService(options).ArchiveClient(client.Id));
+    }
+
+    [Fact]
+    public async Task ArchiveClient_SucceedsWhenAllProjectsAreArchived()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient();
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+        seed.Projects.Add(new Project { Name = "Archived Project", ClientId = client.Id, EndDate = DateTime.Today, ProjectUsers = [new ProjectUser { UserId = "user-1" }] });
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).ArchiveClient(client.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.True(context.Clients.Single().IsArchived);
+    }
+
+    [Fact]
+    public async Task ArchiveClient_SucceedsWhenAllProjectsAreSoftDeleted()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient();
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+        seed.Projects.Add(new Project { Name = "Deleted Project", ClientId = client.Id, IsDeleted = true, ProjectUsers = [new ProjectUser { UserId = "user-1" }] });
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).ArchiveClient(client.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.True(context.Clients.Single().IsArchived);
+    }
+
+    [Fact]
     public async Task DeleteClient_SoftDeletesClient()
     {
         var options = CreateOptions();
@@ -279,5 +328,80 @@ public class ClientServiceTests
 
         using var context = new TimeTrackerDataContext(options);
         Assert.True(context.Clients.Single().IsDeleted);
+    }
+
+    // --- GetDeletedClients / RestoreClient ---
+
+    [Fact]
+    public async Task GetDeletedClients_ReturnsOnlySoftDeletedClients()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var deleted = MakeClient("Deleted");
+        deleted.IsDeleted = true;
+        seed.Clients.AddRange(MakeClient("Active"), deleted);
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetDeletedClients();
+
+        Assert.Single(result);
+        Assert.Equal("Deleted", result[0].Name);
+    }
+
+    [Fact]
+    public async Task GetDeletedClients_ExcludesActiveClients()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        seed.Clients.AddRange(MakeClient("Active A"), MakeClient("Active B"));
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetDeletedClients();
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task RestoreClient_ClearsIsDeletedAndDateDeleted()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient("Was Deleted");
+        client.IsDeleted = true;
+        client.DateDeleted = DateTime.Now;
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).RestoreClient(client.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        var restored = context.Clients.Single();
+        Assert.False(restored.IsDeleted);
+        Assert.Null(restored.DateDeleted);
+    }
+
+    [Fact]
+    public async Task RestoreClient_MakesClientVisibleInNormalQuery()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient("Was Deleted");
+        client.IsDeleted = true;
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).RestoreClient(client.Id);
+
+        var result = await CreateService(options).GetAllClients();
+        Assert.Single(result);
+        Assert.Equal("Was Deleted", result[0].Name);
+    }
+
+    [Fact]
+    public async Task RestoreClient_ThrowsEntityNotFoundException_WhenNotFound()
+    {
+        var options = CreateOptions();
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            CreateService(options).RestoreClient(999));
     }
 }

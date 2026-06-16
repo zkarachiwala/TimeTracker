@@ -47,3 +47,5 @@ public class TimeEntryResponseWrapper
     public int Count { get; init; }
     public TimeSpan TotalDuration { get; init; }
 }
+
+public record DeletedTimeEntryResponse(int Id, string ProjectName, DateTime Start, DateTime? End, string? Note, DateTime? DateDeleted, string? DeletedBy);

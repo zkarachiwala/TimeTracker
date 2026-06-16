@@ -283,4 +283,77 @@ public class ProjectServiceTests
         await Assert.ThrowsAsync<EntityNotFoundException>(() =>
             CreateService(options).UpdateProject(999, new ProjectUpdateRequest { Name = "Updated" }));
     }
+
+    // --- GetDeletedProjects / RestoreProject ---
+
+    [Fact]
+    public async Task GetDeletedProjects_ReturnsOnlySoftDeletedProjects()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        seed.Projects.AddRange(MakeProject(UserId, "Active"), MakeProject(UserId, "Deleted", isDeleted: true));
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetDeletedProjects();
+
+        Assert.Single(result);
+        Assert.Equal("Deleted", result[0].Name);
+    }
+
+    [Fact]
+    public async Task GetDeletedProjects_ReturnsDeletedProjectsFromAllUsers()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        seed.Projects.AddRange(
+            MakeProject(UserId, "User1 Deleted", isDeleted: true),
+            MakeProject(OtherUserId, "User2 Deleted", isDeleted: true));
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetDeletedProjects();
+
+        Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
+    public async Task RestoreProject_ClearsIsDeletedAndDateDeleted()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId, "Was Deleted", isDeleted: true);
+        project.DateDeleted = DateTime.Now;
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).RestoreProject(project.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        var restored = context.Projects.Single();
+        Assert.False(restored.IsDeleted);
+        Assert.Null(restored.DateDeleted);
+    }
+
+    [Fact]
+    public async Task RestoreProject_MakesProjectVisibleInNormalQuery()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId, "Was Deleted", isDeleted: true);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).RestoreProject(project.Id);
+
+        var result = await CreateService(options).GetAllProjects();
+        Assert.Single(result);
+        Assert.Equal("Was Deleted", result[0].Name);
+    }
+
+    [Fact]
+    public async Task RestoreProject_ThrowsEntityNotFoundException_WhenNotFound()
+    {
+        var options = CreateOptions();
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            CreateService(options).RestoreProject(999));
+    }
 }

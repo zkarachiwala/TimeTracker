@@ -61,5 +61,14 @@ public static class TimeEntryEndpoints
             try { await svc.DeleteTimeEntry(id, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
+
+        group.MapGet("/deleted", async (ITimeEntryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetDeletedTimeEntries(ct)));
+
+        group.MapPost("/{id:int}/restore", async (int id, ITimeEntryService svc, CancellationToken ct) =>
+        {
+            try { await svc.RestoreTimeEntry(id, ct); return Results.NoContent(); }
+            catch (EntityNotFoundException) { return Results.NotFound(); }
+        }).RequireRateLimiting("write");
     }
 }

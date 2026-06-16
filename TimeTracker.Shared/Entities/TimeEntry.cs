@@ -1,6 +1,6 @@
 namespace TimeTracker.Shared.Entities;
 
-public class TimeEntry : BaseEntity
+public class TimeEntry : SoftDeleteableEntity
 {
     public int? ProjectId { get; set; }
     public Project Project { get; set; } = null!;

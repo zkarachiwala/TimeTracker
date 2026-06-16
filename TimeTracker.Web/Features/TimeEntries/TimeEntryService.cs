@@ -24,7 +24,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
     private static IQueryable<TimeEntry> UserEntries(TimeTrackerDataContext ctx, string userId) =>
         ctx.TimeEntries
             .Include(te => te.Project)
-            .Where(te => te.UserId == userId && !te.Project.IsDeleted);
+            .Where(te => te.UserId == userId && !te.IsDeleted && !te.Project.IsDeleted);
 
     public async Task<TimeEntryResponse?> GetTimeEntryById(int id, CancellationToken ct = default)
     {
@@ -32,7 +32,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entry = await ctx.TimeEntries
             .Include(te => te.Project)
-            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId, ct);
+            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId && !te.IsDeleted, ct);
         return entry?.Adapt<TimeEntryResponse>();
     }
 
@@ -58,7 +58,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entry = await ctx.TimeEntries
-            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId, ct)
+            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId && !te.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Time entry {id} not found.");
 
         entry.ProjectId = request.ProjectId;
@@ -76,10 +76,11 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entry = await ctx.TimeEntries
-            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId, ct)
+            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId && !te.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Time entry {id} not found.");
 
-        ctx.TimeEntries.Remove(entry);
+        entry.IsDeleted = true;
+        entry.DateDeleted = DateTime.Now;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -130,7 +131,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entry = await ctx.TimeEntries
             .Include(te => te.Project)
-            .FirstOrDefaultAsync(te => te.UserId == userId && te.End == null && !te.Project.IsDeleted, ct);
+            .FirstOrDefaultAsync(te => te.UserId == userId && !te.IsDeleted && te.End == null && !te.Project.IsDeleted, ct);
         return entry?.Adapt<TimeEntryResponse>();
     }
 
@@ -155,6 +156,31 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
             .OrderByDescending(te => te.Start)
             .ToListAsync(ct);
         return entries.Adapt<List<TimeEntryResponse>>();
+    }
+
+    public async Task<List<DeletedTimeEntryResponse>> GetDeletedTimeEntries(CancellationToken ct = default)
+    {
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var entries = await ctx.TimeEntries
+            .Include(te => te.Project)
+            .Where(te => te.UserId == userId && te.IsDeleted)
+            .OrderByDescending(te => te.DateDeleted)
+            .ToListAsync(ct);
+        return entries.Adapt<List<DeletedTimeEntryResponse>>();
+    }
+
+    public async Task RestoreTimeEntry(int id, CancellationToken ct = default)
+    {
+        var userId = await GetUserIdAsync();
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var entry = await ctx.TimeEntries
+            .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId && te.IsDeleted, ct)
+            ?? throw new EntityNotFoundException($"Time entry {id} not found.");
+
+        entry.IsDeleted = false;
+        entry.DateDeleted = null;
+        await ctx.SaveChangesAsync(ct);
     }
 
     private async Task<TimeEntryResponseWrapper> ToWrapper(

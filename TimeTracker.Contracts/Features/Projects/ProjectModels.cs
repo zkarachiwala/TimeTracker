@@ -46,3 +46,5 @@ public class ProjectUpdateRequest
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
 }
+
+public record DeletedProjectResponse(int Id, string Name, string? ClientName, DateTime? DateDeleted, string? DeletedBy);
