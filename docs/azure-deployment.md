@@ -275,13 +275,23 @@ Upgrading to at least the Basic (B1) tier unlocks custom domain binding and App 
 
 ## Database Backup Setup
 
-A GitHub Actions workflow (`.github/workflows/backup.yml`) exports a `.bacpac` nightly at 02:00 UTC and stores it as a 90-day artifact. It uses a dedicated service principal with the minimum possible permissions — separate from the deploy SP.
+A GitHub Actions workflow (`.github/workflows/backup.yml`) exports a `.bacpac` nightly at 02:00 UTC and pushes it to a private GitHub repository (`TimeTracker-backups`). It uses a dedicated service principal with the minimum possible permissions — separate from the deploy SP.
+
+### How it works
+
+Each run does the following:
+
+1. **Azure login via OIDC** — no stored client secrets. GitHub issues a short-lived token; Azure trusts it because a federated credential links this repo's `main` branch to the `timetracker-github-backup` service principal.
+2. **Firewall punch-through** — the runner's public IP is fetched and a firewall rule is opened on the SQL server just for that IP. The rule is deleted at the end of the run (even if the run fails — the close step uses `if: always()`).
+3. **SqlPackage export** — an Azure AD access token is obtained for the SP and passed directly to SqlPackage. No SQL username or password is ever used. The output is a `.bacpac` file (a self-contained schema + data archive).
+4. **Push to private repo** — the `.bacpac` is committed to `TimeTracker-backups` using a fine-grained PAT scoped only to that repo (contents: write). The backup repo is private; `.bacpac` files are never exposed as public artifacts.
+5. **30-day retention** — before committing, the workflow deletes any `.bacpac` files whose filename date is older than 30 days. This keeps the backup repo to a rolling month of history without any manual cleanup.
 
 **Credential model:**
 - Separate app registration (`timetracker-github-backup`) from the deploy SP
 - Custom Azure role: only `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server resource
-- SQL user: `db_datareader` + `VIEW DATABASE STATE` + `VIEW DEFINITION` — no `db_owner`
-- OIDC (no client secrets stored anywhere)
+- SQL user: `db_owner` (required — see Step E)
+- OIDC for Azure login (no client secrets); fine-grained PAT for the backup repo push (no broad GitHub token)
 
 ### Step A — Set variables and create the app registration
 
