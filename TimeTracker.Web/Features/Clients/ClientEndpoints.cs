@@ -36,6 +36,7 @@ public static class ClientEndpoints
         {
             try { await service.ArchiveClient(id, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
+            catch (InvalidOperationException ex) { return Results.Conflict(ex.Message); }
         }).RequireRateLimiting("write");
 
         adminGroup.MapPost("/{id:int}/unarchive", async (int id, IClientService service, CancellationToken ct) =>

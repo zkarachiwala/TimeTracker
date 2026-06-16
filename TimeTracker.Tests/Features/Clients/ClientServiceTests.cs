@@ -210,6 +210,55 @@ public class ClientServiceTests
     }
 
     [Fact]
+    public async Task ArchiveClient_ThrowsInvalidOperationException_WhenClientHasNonArchivedProjects()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient();
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+        seed.Projects.Add(new Project { Name = "Active Project", ClientId = client.Id, ProjectUsers = [new ProjectUser { UserId = "user-1" }] });
+        await seed.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateService(options).ArchiveClient(client.Id));
+    }
+
+    [Fact]
+    public async Task ArchiveClient_SucceedsWhenAllProjectsAreArchived()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient();
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+        seed.Projects.Add(new Project { Name = "Archived Project", ClientId = client.Id, EndDate = DateTime.Today, ProjectUsers = [new ProjectUser { UserId = "user-1" }] });
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).ArchiveClient(client.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.True(context.Clients.Single().IsArchived);
+    }
+
+    [Fact]
+    public async Task ArchiveClient_SucceedsWhenAllProjectsAreSoftDeleted()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient();
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+        seed.Projects.Add(new Project { Name = "Deleted Project", ClientId = client.Id, IsDeleted = true, ProjectUsers = [new ProjectUser { UserId = "user-1" }] });
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).ArchiveClient(client.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.True(context.Clients.Single().IsArchived);
+    }
+
+    [Fact]
     public async Task DeleteClient_SoftDeletesClient()
     {
         var options = CreateOptions();

@@ -1,4 +1,5 @@
 @inject IClientService ClientService
+@inject IProjectService ProjectService
 @inject ISnackbar Snackbar
 
 <MudDrawer Open="_open" OpenChanged="HandleOpenChanged" Anchor="Anchor.Bottom"
@@ -35,12 +36,33 @@
 
         @if (IsEditing)
         {
-            <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
-                       Style="color:var(--mud-palette-text-secondary)"
-                       StartIcon="@(Client!.IsArchived ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.EventBusy)"
-                       OnClick="ToggleArchive">
-                @(Client!.IsArchived ? "Reactivate client" : "Archive client")
-            </MudButton>
+            <MudTooltip Text="@(_hasNonArchivedProjects ? "Archive all projects first" : "")" Placement="Placement.Top">
+                <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
+                           Style="color:var(--mud-palette-text-secondary)"
+                           Disabled="@(_hasNonArchivedProjects)"
+                           StartIcon="@(Client!.IsArchived ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.EventBusy)"
+                           OnClick="ToggleArchive">
+                    @(Client!.IsArchived ? "Reactivate client" : "Archive client")
+                </MudButton>
+            </MudTooltip>
+
+            @if (!_hasActiveProjects)
+            {
+                @if (_confirmingDelete)
+                {
+                    <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Error" Class="mt-1"
+                               StartIcon="@Icons.Material.Filled.DeleteForever"
+                               OnClick="DeleteClient">Confirm delete</MudButton>
+                    <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
+                               OnClick="@(() => _confirmingDelete = false)">Cancel</MudButton>
+                }
+                else
+                {
+                    <MudButton FullWidth="true" Variant="Variant.Text" Color="Color.Error" Class="mt-1"
+                               StartIcon="@Icons.Material.Filled.Delete"
+                               OnClick="@(() => _confirmingDelete = true)">Delete client</MudButton>
+                }
+            }
         }
     </div>
     } @* end @if (_open) *@
@@ -59,19 +81,32 @@
     private string contactPhone = string.Empty;
 
     private bool _open;
+    private bool _confirmingDelete;
+    private bool _hasActiveProjects;
+    private bool _hasNonArchivedProjects;
 
-    protected override Task OnParametersSetAsync()
+    protected override async Task OnParametersSetAsync()
     {
         if (Open && !_open)
         {
             _open = true;
+            _confirmingDelete = false;
             Reset();
+            if (IsEditing)
+                await LoadProjectFlags();
         }
         else if (!Open && _open)
         {
             _open = false;
         }
-        return Task.CompletedTask;
+    }
+
+    private async Task LoadProjectFlags()
+    {
+        var projects = await ProjectService.GetAllProjects();
+        var clientProjects = projects.Where(p => p.ClientId == Client!.Id).ToList();
+        _hasActiveProjects = clientProjects.Count > 0;
+        _hasNonArchivedProjects = clientProjects.Any(p => !p.EndDate.HasValue);
     }
 
     private async Task HandleOpenChanged(bool value)
@@ -88,6 +123,7 @@
 
     private void Reset()
     {
+        _confirmingDelete = false;
         if (Client is not null && Client.Id > 0)
         {
             name = Client.Name;
@@ -145,6 +181,14 @@
             await ClientService.ArchiveClient(Client.Id);
         var label = Client.IsArchived ? "reactivated" : "archived";
         Snackbar.Add($"Client {label}", Severity.Info);
+        await Close();
+        await OnSaved.InvokeAsync();
+    }
+
+    private async Task DeleteClient()
+    {
+        await ClientService.DeleteClient(Client!.Id);
+        Snackbar.Add($"\"{Client.Name}\" deleted.", Severity.Info);
         await Close();
         await OnSaved.InvokeAsync();
     }

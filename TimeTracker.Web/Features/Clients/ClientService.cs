@@ -69,6 +69,11 @@ public class ClientService : IClientService
         var client = await ctx.Clients.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Client {id} not found.");
 
+        var hasNonArchivedProjects = await ctx.Projects
+            .AnyAsync(p => p.ClientId == id && !p.IsDeleted && !p.EndDate.HasValue, ct);
+        if (hasNonArchivedProjects)
+            throw new InvalidOperationException("Cannot archive a client that has non-archived projects.");
+
         client.IsArchived = true;
         client.DateUpdated = DateTime.Now;
         await ctx.SaveChangesAsync(ct);
