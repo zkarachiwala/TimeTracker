@@ -1,31 +1,28 @@
-# Session handoff — 2026-06-15
+# Session handoff — 2026-06-17
 
 ## Current state
-- Branch: `feat/structured-logging-97` — all commits pushed, PR #122 ready to merge
-- UptimeRobot: live and monitoring `https://timetracker-zak.azurewebsites.net/health`
+- Branch: `main` — clean, all PRs merged
 
 ## Completed this session
-- ✅ D019 updated with UptimeRobot service selection rationale (comparison table)
-- ✅ TD24 added then retired — Playwright inter-test hang was a stdout pipe deadlock in GlobalSetup, not a WASM/HTTP2 issue
-- ✅ Playwright handler leak fixed in AuthTests, AuthenticatedPageTest, AuthenticatedDesktopPageTest
-- ✅ Two access-denied assertions merged into one test
-- ✅ GlobalSetup pipe deadlock fixed (`BeginOutputReadLine`/`BeginErrorReadLine` after `process.Start()`)
-- ✅ Playwright suite passes clean
+- ✅ Playwright failures fixed — 12 tests were failing because Chromium aborted in-flight `api/timeentries/active` fetch when tests navigated away before `LoadData()` completed; added `"Tracking now" or "Start a timer"` visibility wait to three SetUps (PR #131)
+- ✅ CodeQL alert #8 (CWE-359) resolved — removed `result.Status` enum value from auth log message (PR #132)
+- ✅ **#104 Automated database backup** — nightly `.bacpac` export via GitHub Actions to private `TimeTracker-backups` repo (PRs #133, #134, #135)
+  - Dedicated service principal (`timetracker-github-backup`) with OIDC, no stored secrets
+  - Custom Azure RBAC role: firewall rule write/delete only, scoped to SQL server
+  - SQL user: `db_owner` (required for `DBCC SHOW_STATISTICS` and RLS bypass during export)
+  - Backups pushed to private `TimeTracker-backups` repo; files older than 30 days auto-purged
+  - Fully documented in `docs/azure-deployment.md` → "Database Backup Setup" (Steps A–H)
+- ✅ Stale content removed from `docs/azure-deployment.md` (obsolete Playwright auth state section)
+- ✅ `docs/architecture.md` updated with backup row and RLS/audit trail entries
 
 ## Next session
-1. User to merge PR #122 (`feat/structured-logging-97`)
-2. Step 5 — Security hardening:
-   - **#101** 🟡 SQL Server Row-Level Security
-   - **#104** 🟡 Automated database backup export
+- No outstanding code work — backlog items below
 
 ## Backlog (low priority)
 - **#95** 🟢 Database-backed user management
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
-
-## Manual steps outstanding (external, no code needed)
-- Azure: enable App Service log stream to capture Serilog stdout
 
 ## Active tech debt (genuine constraints, no action until paid tier)
 | # | Item | ADR |
@@ -46,4 +43,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-15. Next: merge PR #122, then Step 5 (#101 RLS, #104 backup).*
+*Updated 2026-06-17. All session work merged. No outstanding code changes.*
