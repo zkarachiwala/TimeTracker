@@ -275,13 +275,46 @@ Upgrading to at least the Basic (B1) tier unlocks custom domain binding and App 
 
 ## Database Backup Setup
 
-A GitHub Actions workflow (`.github/workflows/backup.yml`) exports a `.bacpac` nightly at 02:00 UTC and stores it as a 90-day artifact. It uses a dedicated service principal with the minimum possible permissions — separate from the deploy SP.
+A GitHub Actions workflow (`.github/workflows/backup.yml`) exports a `.bacpac` nightly at 02:00 UTC and pushes it to a private GitHub repository (`TimeTracker-backups`). It uses a dedicated service principal with the minimum possible permissions — separate from the deploy SP.
 
-**Credential model:**
+### How it works
+
+#### What is a `.bacpac`?
+
+A `.bacpac` is a self-contained export format produced by Microsoft's SqlPackage tool. It contains the full database schema and all data in a single file. You can import it into any SQL Server instance to restore the database to the state it was in at export time.
+
+#### Why a private GitHub repository?
+
+The obvious alternative — GitHub Actions artifacts — is not safe for a public repository. Artifacts on public repos are downloadable by anyone without authentication. A `.bacpac` contains all user data, so it must be stored somewhere private. A separate private repository (`TimeTracker-backups`) is used instead. The backup workflow pushes files there using a fine-grained PAT scoped exclusively to that one repo (contents: write, nothing else).
+
+#### Why can't the workflow use a SQL username and password?
+
+The SQL server is created with `--enable-ad-only-auth`, which disables SQL username/password login entirely. Only Azure AD identities can connect. The workflow authenticates as an Azure AD service principal (`timetracker-github-backup`) and exchanges that identity for a short-lived database access token — no password ever exists.
+
+#### The flow, step by step
+
+Each nightly run at 02:00 UTC does the following:
+
+1. **Azure login via OIDC** — GitHub issues a short-lived token to the Actions runner; Azure trusts it because a federated credential links this repo's `main` branch to the `timetracker-github-backup` service principal. No client secrets are stored anywhere.
+2. **Firewall punch-through** — GitHub Actions runners get a different public IP every run. The workflow fetches the runner's current IP and opens a SQL Server firewall rule for exactly that IP. The rule is removed at the end of the run regardless of success or failure (`if: always()`).
+3. **SqlPackage export** — the service principal exchanges its Azure AD identity for a short-lived SQL access token and passes it to SqlPackage. The output is a `backup-YYYY-MM-DD.bacpac` file on the runner's disk.
+4. **Push to private repo** — the `.bacpac` is cloned into `TimeTracker-backups` and committed. Any files whose filename date is older than 30 days are deleted first, so the repo always holds a rolling 30-day window of backups.
+5. **Firewall rule removed** — the temporary rule opened in step 2 is deleted.
+
+#### Why `db_owner` for the backup SQL user?
+
+Two constraints make `db_owner` the minimum viable permission for export:
+
+- **SqlPackage requires `DBCC SHOW_STATISTICS`** to analyse indexes during export. This permission requires `db_owner` or `db_ddladmin`; `db_datareader` alone is insufficient.
+- **Row-Level Security** — the app schema enforces RLS policies that filter data by `SESSION_CONTEXT(N'UserId')`. A backup user has no session context, so a `db_datareader` account would export empty tables. `db_owner` is exempt from RLS by SQL Server design, ensuring the full dataset is captured.
+
+The Azure RBAC side remains tightly constrained — the service principal can only write and delete firewall rules on this one SQL server. `db_owner` on the database does not expand that.
+
+**Credential summary:**
 - Separate app registration (`timetracker-github-backup`) from the deploy SP
-- Custom Azure role: only `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server resource
-- SQL user: `db_datareader` + `VIEW DATABASE STATE` + `VIEW DEFINITION` — no `db_owner`
-- OIDC (no client secrets stored anywhere)
+- Custom Azure role: `firewallRules/write` + `firewallRules/delete` only, scoped to the SQL server resource
+- SQL user: `db_owner` on `TimeTrackerDb`
+- OIDC for Azure login (no client secrets); fine-grained PAT for the backup repo push (no broad GitHub token)
 
 ### Step A — Set variables and create the app registration
 

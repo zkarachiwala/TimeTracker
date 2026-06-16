@@ -24,6 +24,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D018](#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens) | Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens | 2026-06 | Accepted |
 | [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Accepted |
 | [D020](#d020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
+| [D021](#d021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
 
 ---
 
@@ -472,6 +473,7 @@ These are not in `db_datareader`/`db_datawriter`. Without them the migration fai
 
 **Local RLS verification:**
 
+
 Because `sa` bypasses RLS, cross-tenant isolation cannot be verified locally with the default dev login. `RlsIntegrationTests` in `TimeTracker.Tests` provides three tests that:
 1. Seed data via an admin (`sa`) connection
 2. Create a temporary `timetracker_rls_test` login with `db_datareader + db_datawriter` only
@@ -492,3 +494,39 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 - ❌ One extra `sp_set_session_context` round-trip per EF Core command (~0.1ms on localhost; negligible on Azure SQL in the same region)
 - ❌ `sa` bypass means local dev cannot directly observe RLS filtering — requires opt-in integration tests
 - ❌ `Clients` table not covered — service-layer isolation remains the only guard there
+
+---
+
+## D021: Nightly `.bacpac` export to private GitHub repo
+
+**Date:** 2026-06 — **Status:** Accepted — **Closes:** [#104](https://github.com/zkarachiwala/TimeTracker/issues/104)
+
+**Context:** Azure SQL free tier provides only 7-day automated backup retention (see [D003](#d003-zero-cost-hosting-azure-f1--azure-sql-free), [TD4](technical-debt.md#infrastructure--compute)). A longer-lived export was needed. Free hosting is a hard constraint.
+
+**Options considered:**
+
+| Option | Cost | Private by default | Notes |
+|--------|------|--------------------|-------|
+| **GitHub Actions → private repo** | $0 | ✅ | Fine-grained PAT scoped to one repo; no extra infrastructure |
+| GitHub Actions → artifact | $0 | ❌ | Artifacts on public repos are publicly downloadable by anyone — not safe for personal data |
+| Azure Blob Storage | ~$0.02/GB/month | ✅ | No true free tier; requires Storage Account and SAS token management |
+| Azure SQL long-term retention | Paid tier only | ✅ | Not available on the free offer |
+
+**Decision:** Export a `.bacpac` nightly via GitHub Actions to a dedicated private repository (`TimeTracker-backups`). Keep a rolling 30-day window; files older than 30 days are deleted before each commit.
+
+**Credential model — why this specific setup:**
+
+- **OIDC instead of a client secret** — the deploy SP already uses OIDC (no stored secrets); consistency and no secret rotation burden.
+- **Dedicated SP (`timetracker-github-backup`)** — separate from the deploy SP so that if the backup credential is ever compromised it cannot deploy code.
+- **Custom Azure RBAC role (firewall write/delete only)** — the SP needs to open and close a SQL firewall rule for the runner's ephemeral IP. The minimum built-in role that covers this (`SQL Server Contributor`) also grants the ability to modify the SQL server itself. A custom role with only `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server resource, is the correct minimum.
+- **`db_owner` on the database** — two constraints make this the minimum viable SQL permission: (1) SqlPackage requires `DBCC SHOW_STATISTICS` to analyse indexes, which requires `db_owner` or `db_ddladmin`; `db_datareader` alone is insufficient. (2) RLS filter policies block all rows for a connection with no `SESSION_CONTEXT` — a `db_datareader` account would export empty tables. `db_owner` is exempt from RLS by SQL Server design. The Azure RBAC role above limits what the SP can do to Azure infrastructure; `db_owner` on the database does not expand that.
+- **Fine-grained PAT for the repo push** — OIDC cannot push to GitHub; a PAT is required. A fine-grained PAT scoped to `TimeTracker-backups` with `contents: write` only is the minimum possible credential. It cannot read or write any other repository.
+- **Private repo over artifact** — GitHub Actions artifacts on public repositories are downloadable by any unauthenticated user. A `.bacpac` contains all user data; a private repository is the correct boundary.
+
+**Consequences:**
+- ✅ Zero cost — GitHub Actions minutes and private repos are free under the personal plan
+- ✅ No stored client secrets anywhere — OIDC for Azure, fine-grained PAT for GitHub
+- ✅ Backup credential is isolated — cannot deploy code or access any Azure resource other than firewall rules on one SQL server
+- ✅ 30-day rolling retention is managed automatically — no manual cleanup
+- ❌ Fine-grained PATs expire (maximum 1 year) — requires a calendar reminder to rotate `BACKUP_REPO_TOKEN` annually
+- ❌ `db_owner` on the database is broader than ideal — necessary given SqlPackage and RLS constraints, but worth reviewing if either changes in a future SqlPackage version
