@@ -283,9 +283,17 @@ A GitHub Actions workflow (`.github/workflows/backup.yml`) exports a `.bacpac` n
 - SQL user: `db_datareader` + `VIEW DATABASE STATE` + `VIEW DEFINITION` — no `db_owner`
 - OIDC (no client secrets stored anywhere)
 
-### Step A — Create the app registration and service principal
+### Step A — Set variables and create the app registration
+
+These steps are self-contained — you do not need to have run Step 0 first. Set the resource names here:
 
 ```bash
+RG=timetracker-rg
+SERVER=timetracker-sql
+
+SUB=$(az account show --query id -o tsv)
+TENANT=$(az account show --query tenantId -o tsv)
+
 az ad app create --display-name "timetracker-github-backup"
 
 BACKUP_APP_ID=$(az ad app list --display-name "timetracker-github-backup" --query "[0].appId" -o tsv)
@@ -293,9 +301,6 @@ BACKUP_APP_OID=$(az ad app list --display-name "timetracker-github-backup" --que
 
 az ad sp create --id $BACKUP_APP_ID
 BACKUP_SP_OID=$(az ad sp show --id $BACKUP_APP_ID --query id -o tsv)
-
-TENANT=$(az account show --query tenantId -o tsv)
-SUB=$(az account show --query id -o tsv)
 ```
 
 ### Step B — Create a minimal custom Azure role
@@ -339,7 +344,7 @@ az ad app federated-credential create \
 
 ### Step E — Create the SQL database user
 
-Connect to `${SERVER}.database.windows.net` with your Azure AD admin account (Azure Data Studio or `sqlcmd`) and run against `TimeTrackerDb`:
+Connect to `timetracker-sql.database.windows.net` with your Azure AD admin account (Azure Data Studio or `sqlcmd`) and run against `TimeTrackerDb`:
 
 ```sql
 CREATE USER [timetracker-github-backup] FROM EXTERNAL PROVIDER;
