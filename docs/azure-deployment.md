@@ -348,13 +348,15 @@ Connect to `timetracker-sql.database.windows.net` with your Azure AD admin accou
 
 ```sql
 CREATE USER [timetracker-github-backup] FROM EXTERNAL PROVIDER;
-ALTER ROLE db_datareader ADD MEMBER [timetracker-github-backup];
-GRANT VIEW DATABASE STATE TO [timetracker-github-backup];
-GRANT VIEW DEFINITION TO [timetracker-github-backup];
+ALTER ROLE db_owner ADD MEMBER [timetracker-github-backup];
 ```
 
-`VIEW DATABASE STATE` is required by SqlPackage to read internal database state during export.
-`VIEW DEFINITION` is required to read schema object definitions for the `.bacpac`.
+`db_owner` is required for two reasons specific to this database:
+
+1. **SqlPackage needs `DBCC SHOW_STATISTICS`** to analyse indexes during export — this requires `db_owner` or `db_ddladmin`; `db_datareader` alone is insufficient.
+2. **RLS bypasses** — the app schema has Row-Level Security policies that filter data by `SESSION_CONTEXT(N'UserId')`. A backup user has no session context, so a `db_datareader` account would export empty tables. `db_owner` is exempt from RLS by SQL Server design, ensuring the full dataset is captured.
+
+The Azure RBAC side of this SP is still tightly locked (firewall rule write/delete only, scoped to the SQL server resource) — `db_owner` on the database does not expand that.
 
 ### Step F — Add to GitHub
 
