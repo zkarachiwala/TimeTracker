@@ -43,7 +43,7 @@ public static class AuthEndpoints
 
             if (result.Status != ExternalLoginStatus.Success)
             {
-                logger.LogWarning("Auth: login failed with status {Status}", result.Status);
+                logger.LogWarning("Auth: login failed — unexpected status from external login service");
                 return Results.Redirect($"/login?error={result.Status.ToString().ToLowerInvariant().Replace("_", "-")}");
             }
 
