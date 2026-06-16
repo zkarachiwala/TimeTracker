@@ -272,55 +272,6 @@ Upgrading to at least the Basic (B1) tier unlocks custom domain binding and App 
 
 ---
 
-## Refreshing the Playwright auth state
-
-The Playwright E2E suite authenticates by replaying a stored browser session. That session is encoded as the `PLAYWRIGHT_AUTH_STATE_B64` GitHub Actions secret. The session cookie has a **1-day expiration** — once it expires, all authenticated tests will fail with a timeout waiting for `.tt-fab button`.
-
-### When to refresh
-
-- After the auth cookie expires (authenticated tests all fail with 30 s timeout on `.tt-fab button`)
-- After a full sign-out or Identity schema change
-
-### Steps
-
-**1 — Start the app locally in Development mode**
-
-```bash
-cd TimeTracker.Web && dotnet run
-```
-
-The dev login endpoint (`/api/dev/login`) is only available in Development mode. The app must be running before step 2.
-
-**2 — Capture fresh auth state**
-
-```bash
-BROWSER= PLAYWRIGHT_BASE_URL=https://localhost:7006 \
-  dotnet test TimeTracker.Playwright \
-  --filter "FullyQualifiedName~CaptureAuthState" \
-  --logger "console;verbosity=normal"
-```
-
-This navigates to `/api/dev/login`, signs in as the first Admin user, waits for WASM to hydrate, and saves the browser session to:
-
-```
-TimeTracker.Playwright/bin/Debug/net10.0/playwright/.auth/user.json
-```
-
-**3 — Update the GitHub secret**
-
-```bash
-cat TimeTracker.Playwright/bin/Debug/net10.0/playwright/.auth/user.json \
-  | base64 -w 0 \
-  | gh secret set PLAYWRIGHT_AUTH_STATE_B64
-```
-
-No copy/paste required — `gh` reads from stdin and updates the secret directly.
-
-**4 — Verify**
-
-Merge any change to `main` (or re-run the Deploy workflow). The Playwright job runs post-deploy and should show all authenticated tests passing.
-
----
 
 ## Database Backup Setup
 
