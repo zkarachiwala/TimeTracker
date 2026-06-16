@@ -1,0 +1,74 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for OIDC login
+  contents: read
+
+jobs:
+  backup:
+    name: Export .bacpac
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.BACKUP_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get runner public IP
+        id: ip
+        run: echo "addr=$(curl -sf https://api.ipify.org)" >> $GITHUB_OUTPUT
+
+      - name: Open SQL firewall for runner
+        run: |
+          az sql server firewall-rule create \
+            --resource-group ${{ vars.BACKUP_RESOURCE_GROUP }} \
+            --server ${{ vars.BACKUP_SQL_SERVER }} \
+            --name github-actions-backup \
+            --start-ip-address ${{ steps.ip.outputs.addr }} \
+            --end-ip-address ${{ steps.ip.outputs.addr }}
+
+      - name: Get Azure AD token for SQL
+        id: token
+        run: |
+          TOKEN=$(az account get-access-token \
+            --resource https://database.windows.net \
+            --query accessToken -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "value=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Install SqlPackage
+        run: dotnet tool install -g microsoft.sqlpackage
+
+      - name: Export .bacpac
+        run: |
+          sqlpackage \
+            /Action:Export \
+            /TargetFile:"backup-$(date +%Y-%m-%d).bacpac" \
+            /SourceServerName:"${{ vars.BACKUP_SQL_SERVER }}.database.windows.net" \
+            /SourceDatabaseName:"${{ vars.BACKUP_SQL_DATABASE }}" \
+            /AccessToken:"${{ steps.token.outputs.value }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}
+          path: "*.bacpac"
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Close SQL firewall
+        if: always()
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group ${{ vars.BACKUP_RESOURCE_GROUP }} \
+            --server ${{ vars.BACKUP_SQL_SERVER }} \
+            --name github-actions-backup \
+            --yes 2>/dev/null || true

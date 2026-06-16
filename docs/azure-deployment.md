@@ -272,53 +272,110 @@ Upgrading to at least the Basic (B1) tier unlocks custom domain binding and App 
 
 ---
 
-## Refreshing the Playwright auth state
 
-The Playwright E2E suite authenticates by replaying a stored browser session. That session is encoded as the `PLAYWRIGHT_AUTH_STATE_B64` GitHub Actions secret. The session cookie has a **1-day expiration** — once it expires, all authenticated tests will fail with a timeout waiting for `.tt-fab button`.
+## Database Backup Setup
 
-### When to refresh
+A GitHub Actions workflow (`.github/workflows/backup.yml`) exports a `.bacpac` nightly at 02:00 UTC and stores it as a 90-day artifact. It uses a dedicated service principal with the minimum possible permissions — separate from the deploy SP.
 
-- After the auth cookie expires (authenticated tests all fail with 30 s timeout on `.tt-fab button`)
-- After a full sign-out or Identity schema change
+**Credential model:**
+- Separate app registration (`timetracker-github-backup`) from the deploy SP
+- Custom Azure role: only `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server resource
+- SQL user: `db_datareader` + `VIEW DATABASE STATE` + `VIEW DEFINITION` — no `db_owner`
+- OIDC (no client secrets stored anywhere)
 
-### Steps
+### Step A — Set variables and create the app registration
 
-**1 — Start the app locally in Development mode**
-
-```bash
-cd TimeTracker.Web && dotnet run
-```
-
-The dev login endpoint (`/api/dev/login`) is only available in Development mode. The app must be running before step 2.
-
-**2 — Capture fresh auth state**
+These steps are self-contained — you do not need to have run Step 0 first. Set the resource names here:
 
 ```bash
-BROWSER= PLAYWRIGHT_BASE_URL=https://localhost:7006 \
-  dotnet test TimeTracker.Playwright \
-  --filter "FullyQualifiedName~CaptureAuthState" \
-  --logger "console;verbosity=normal"
+RG=timetracker-rg
+SERVER=timetracker-sql
+
+SUB=$(az account show --query id -o tsv)
+TENANT=$(az account show --query tenantId -o tsv)
+
+az ad app create --display-name "timetracker-github-backup"
+
+BACKUP_APP_ID=$(az ad app list --display-name "timetracker-github-backup" --query "[0].appId" -o tsv)
+BACKUP_APP_OID=$(az ad app list --display-name "timetracker-github-backup" --query "[0].id" -o tsv)
+
+az ad sp create --id $BACKUP_APP_ID
+BACKUP_SP_OID=$(az ad sp show --id $BACKUP_APP_ID --query id -o tsv)
 ```
 
-This navigates to `/api/dev/login`, signs in as the first Admin user, waits for WASM to hydrate, and saves the browser session to:
-
-```
-TimeTracker.Playwright/bin/Debug/net10.0/playwright/.auth/user.json
-```
-
-**3 — Update the GitHub secret**
+### Step B — Create a minimal custom Azure role
 
 ```bash
-cat TimeTracker.Playwright/bin/Debug/net10.0/playwright/.auth/user.json \
-  | base64 -w 0 \
-  | gh secret set PLAYWRIGHT_AUTH_STATE_B64
+az role definition create --role-definition "{
+  \"Name\": \"TimeTracker Backup Firewall Manager\",
+  \"Description\": \"Adds and removes a single SQL Server firewall rule for the GitHub Actions backup workflow\",
+  \"Actions\": [
+    \"Microsoft.Sql/servers/firewallRules/write\",
+    \"Microsoft.Sql/servers/firewallRules/delete\"
+  ],
+  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+}"
 ```
 
-No copy/paste required — `gh` reads from stdin and updates the secret directly.
+### Step C — Assign the role, scoped to the SQL server only
 
-**4 — Verify**
+```bash
+az role assignment create \
+  --role "TimeTracker Backup Firewall Manager" \
+  --assignee-object-id $BACKUP_SP_OID \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Sql/servers/$SERVER
+```
 
-Merge any change to `main` (or re-run the Deploy workflow). The Playwright job runs post-deploy and should show all authenticated tests passing.
+This SP can add and remove firewall rules on this one SQL server. It cannot read or modify any other Azure resource.
+
+### Step D — Create the federated credential
+
+```bash
+az ad app federated-credential create \
+  --id $BACKUP_APP_OID \
+  --parameters "{
+    \"name\": \"timetracker-backup-main\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"repo:zkarachiwala/TimeTracker:ref:refs/heads/main\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+```
+
+### Step E — Create the SQL database user
+
+Connect to `timetracker-sql.database.windows.net` with your Azure AD admin account (Azure Data Studio or `sqlcmd`) and run against `TimeTrackerDb`:
+
+```sql
+CREATE USER [timetracker-github-backup] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [timetracker-github-backup];
+GRANT VIEW DATABASE STATE TO [timetracker-github-backup];
+GRANT VIEW DEFINITION TO [timetracker-github-backup];
+```
+
+`VIEW DATABASE STATE` is required by SqlPackage to read internal database state during export.
+`VIEW DEFINITION` is required to read schema object definitions for the `.bacpac`.
+
+### Step F — Add to GitHub
+
+```bash
+echo "BACKUP_AZURE_CLIENT_ID: $BACKUP_APP_ID"
+```
+
+In **Settings → Secrets and variables → Actions** add:
+
+| Type | Name | Value |
+|------|------|-------|
+| Secret | `BACKUP_AZURE_CLIENT_ID` | From above |
+| Variable | `BACKUP_RESOURCE_GROUP` | `timetracker-rg` |
+| Variable | `BACKUP_SQL_SERVER` | `timetracker-sql` |
+| Variable | `BACKUP_SQL_DATABASE` | `TimeTrackerDb` |
+
+`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are reused from the deploy setup.
+
+### Verifying
+
+Run the workflow manually from **Actions → Database Backup → Run workflow**. A `.bacpac` artifact will appear on the run within a few minutes. Check that the firewall rule `github-actions-backup` is absent from the SQL server after the run completes (the cleanup step removes it unconditionally).
 
 ---
 
@@ -328,3 +385,4 @@ Merge any change to `main` (or re-run the Deploy workflow). The Playwright job r
 |----------|------|-------|---------------|
 | App Service | F1 | 60 CPU min/day, 1 GB RAM, sleeps after 20 min idle | Throttled, no charge |
 | Azure SQL | Free offer | 32 GB data, 32 GB backup | Auto-pauses, no charge |
+| GitHub Actions | Free | 2,000 min/month, 500 MB artifact storage | Blocked until next cycle |
