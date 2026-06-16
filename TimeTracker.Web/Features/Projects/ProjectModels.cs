@@ -8,5 +8,8 @@ public class ProjectMappingConfig : IRegister
     {
         config.NewConfig<Project, ProjectResponse>()
             .Map(dest => dest.ClientName, src => src.Client != null ? src.Client.Name : null);
+
+        config.NewConfig<Project, DeletedProjectResponse>()
+            .Map(dest => dest.ClientName, src => src.Client != null ? src.Client.Name : null);
     }
 }

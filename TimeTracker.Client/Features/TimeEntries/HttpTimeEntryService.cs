@@ -43,4 +43,13 @@ public class HttpTimeEntryService(HttpClient http) : ITimeEntryService
 
     public Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId, CancellationToken ct = default) =>
         http.GetFromJsonAsync<List<TimeEntryResponse>>($"api/timeentries/project/{projectId}/all", ct)!;
+
+    public Task<List<DeletedTimeEntryResponse>> GetDeletedTimeEntries(CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<DeletedTimeEntryResponse>>("api/timeentries/deleted", ct)!;
+
+    public async Task RestoreTimeEntry(int id, CancellationToken ct = default)
+    {
+        var response = await http.PostAsync($"api/timeentries/{id}/restore", null, ct);
+        response.EnsureSuccessStatusCode();
+    }
 }

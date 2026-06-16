@@ -253,7 +253,7 @@ public class TimeEntryServiceTests
     }
 
     [Fact]
-    public async Task DeleteTimeEntry_RemovesEntry()
+    public async Task DeleteTimeEntry_SoftDeletesEntry()
     {
         var options = CreateOptions();
         using var seed = new TimeTrackerDataContext(options);
@@ -267,7 +267,27 @@ public class TimeEntryServiceTests
         await CreateService(options).DeleteTimeEntry(entry.Id);
 
         using var context = new TimeTrackerDataContext(options);
-        Assert.Empty(context.TimeEntries);
+        var deleted = context.TimeEntries.Single();
+        Assert.True(deleted.IsDeleted);
+        Assert.NotNull(deleted.DateDeleted);
+    }
+
+    [Fact]
+    public async Task DeleteTimeEntry_DoesNotHardDeleteRecord()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        var entry = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Now };
+        seed.TimeEntries.Add(entry);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).DeleteTimeEntry(entry.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(1, context.TimeEntries.Count());
     }
 
     [Fact]
@@ -530,6 +550,107 @@ public class TimeEntryServiceTests
         Assert.Single(result.TimeEntries);
         Assert.Equal(3, result.Count);
         Assert.Equal(TimeSpan.FromHours(4.5), result.TotalDuration);
+    }
+
+    [Fact]
+    public async Task GetAllTimeEntriesByYear_ExcludesSoftDeletedEntries()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        seed.TimeEntries.AddRange(
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2024, 6, 1) },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2024, 6, 2), IsDeleted = true });
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetAllTimeEntriesByYear(2024);
+        Assert.Single(result);
+    }
+
+    // --- GetDeletedTimeEntries / RestoreTimeEntry ---
+
+    [Fact]
+    public async Task GetDeletedTimeEntries_ReturnsOnlyDeletedEntriesForCurrentUser()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        var otherProject = MakeProject(OtherUserId);
+        seed.Projects.AddRange(project, otherProject);
+        await seed.SaveChangesAsync();
+        seed.TimeEntries.AddRange(
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Now, IsDeleted = true },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Now },
+            new TimeEntry { ProjectId = otherProject.Id, UserId = OtherUserId, Start = DateTime.Now, IsDeleted = true });
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetDeletedTimeEntries();
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public async Task RestoreTimeEntry_ClearsIsDeletedAndDateDeleted()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        var entry = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Now, IsDeleted = true, DateDeleted = DateTime.Now };
+        seed.TimeEntries.Add(entry);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).RestoreTimeEntry(entry.Id);
+
+        using var context = new TimeTrackerDataContext(options);
+        var restored = context.TimeEntries.Single();
+        Assert.False(restored.IsDeleted);
+        Assert.Null(restored.DateDeleted);
+    }
+
+    [Fact]
+    public async Task RestoreTimeEntry_MakesEntryVisibleInNormalQuery()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        var entry = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddHours(9), IsDeleted = true };
+        seed.TimeEntries.Add(entry);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).RestoreTimeEntry(entry.Id);
+
+        var result = await CreateService(options).GetTodaysTimeEntries();
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public async Task RestoreTimeEntry_ThrowsEntityNotFoundException_WhenNotFound()
+    {
+        var options = CreateOptions();
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            CreateService(options).RestoreTimeEntry(999));
+    }
+
+    [Fact]
+    public async Task RestoreTimeEntry_ThrowsEntityNotFoundException_WhenOwnedByOtherUser()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(OtherUserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        var entry = new TimeEntry { ProjectId = project.Id, UserId = OtherUserId, Start = DateTime.Now, IsDeleted = true };
+        seed.TimeEntries.Add(entry);
+        await seed.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            CreateService(options).RestoreTimeEntry(entry.Id));
     }
 
     [Fact]

@@ -61,4 +61,9 @@ public class MockClientService(MockDataStore store) : IClientService
         store.Clients.RemoveAll(c => c.Id == id);
         return Task.CompletedTask;
     }
+
+    public Task<List<DeletedClientResponse>> GetDeletedClients(CancellationToken ct = default) =>
+        Task.FromResult(new List<DeletedClientResponse>());
+
+    public Task RestoreClient(int id, CancellationToken ct = default) => Task.CompletedTask;
 }

@@ -43,3 +43,5 @@ public class ClientUpdateRequest
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
 }
+
+public record DeletedClientResponse(int Id, string Name, DateTime? DateDeleted, string? DeletedBy);

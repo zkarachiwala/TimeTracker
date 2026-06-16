@@ -74,5 +74,7 @@ public class ClientEndpointAuthTests
         public Task ArchiveClient(int id, CancellationToken ct = default) => Task.CompletedTask;
         public Task UnarchiveClient(int id, CancellationToken ct = default) => Task.CompletedTask;
         public Task DeleteClient(int id, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<List<DeletedClientResponse>> GetDeletedClients(CancellationToken ct = default) => Task.FromResult(new List<DeletedClientResponse>());
+        public Task RestoreClient(int id, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

@@ -37,5 +37,14 @@ public static class ProjectEndpoints
             try { await svc.DeleteProject(id, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
+
+        adminGroup.MapGet("/deleted", async (IProjectService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetDeletedProjects(ct)));
+
+        adminGroup.MapPost("/{id:int}/restore", async (int id, IProjectService svc, CancellationToken ct) =>
+        {
+            try { await svc.RestoreProject(id, ct); return Results.NoContent(); }
+            catch (EntityNotFoundException) { return Results.NotFound(); }
+        }).RequireRateLimiting("write");
     }
 }

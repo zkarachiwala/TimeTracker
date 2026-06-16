@@ -1,0 +1,144 @@
+@page "/trash"
+@attribute [Authorize(Roles = "Admin")]
+@inject IProjectService ProjectService
+@inject IClientService ClientService
+@inject ITimeEntryService TimeEntryService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Trash — TimeTracker</PageTitle>
+
+<div class="pa-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Trash</MudText>
+
+    <MudText Typo="Typo.overline" Class="mb-2 d-block">Projects</MudText>
+    @if (_deletedProjects.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">No deleted projects.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Class="mb-4" Outlined="true">
+            @foreach (var p in _deletedProjects)
+            {
+                <div class="d-flex align-center justify-space-between pa-3 mud-border-b">
+                    <div>
+                        <MudText Typo="Typo.body1">@p.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @(p.ClientName is not null ? $"{p.ClientName} · " : "")Deleted @FormatDate(p.DateDeleted)
+                        </MudText>
+                    </div>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                               Disabled="@(!RendererInfo.IsInteractive)"
+                               OnClick="@(() => RestoreProjectAsync(p))">Restore</MudButton>
+                </div>
+            }
+        </MudPaper>
+    }
+
+    <MudText Typo="Typo.overline" Class="mb-2 d-block">Clients</MudText>
+    @if (_deletedClients.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">No deleted clients.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Class="mb-4" Outlined="true">
+            @foreach (var c in _deletedClients)
+            {
+                <div class="d-flex align-center justify-space-between pa-3 mud-border-b">
+                    <div>
+                        <MudText Typo="Typo.body1">@c.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Deleted @FormatDate(c.DateDeleted)
+                        </MudText>
+                    </div>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                               Disabled="@(!RendererInfo.IsInteractive)"
+                               OnClick="@(() => RestoreClientAsync(c))">Restore</MudButton>
+                </div>
+            }
+        </MudPaper>
+    }
+
+    <MudText Typo="Typo.overline" Class="mb-2 d-block">Time Entries</MudText>
+    @if (_deletedTimeEntries.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">No deleted time entries.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Outlined="true">
+            @foreach (var e in _deletedTimeEntries)
+            {
+                <div class="d-flex align-center justify-space-between pa-3 mud-border-b">
+                    <div>
+                        <MudText Typo="Typo.body1">@e.ProjectName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @e.Start.ToLocalTime().ToString("d MMM yyyy, h:mm tt")
+                            @(e.End.HasValue ? $" – {e.End.Value.ToLocalTime():h:mm tt}" : " (no end)")
+                            · Deleted @FormatDate(e.DateDeleted)
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(e.Note))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@e.Note</MudText>
+                        }
+                    </div>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                               Disabled="@(!RendererInfo.IsInteractive)"
+                               OnClick="@(() => RestoreTimeEntryAsync(e))">Restore</MudButton>
+                </div>
+            }
+        </MudPaper>
+    }
+</div>
+
+<div class="bottom-nav-spacer"></div>
+
+@code {
+    private List<DeletedProjectResponse> _deletedProjects = [];
+    private List<DeletedClientResponse> _deletedClients = [];
+    private List<DeletedTimeEntryResponse> _deletedTimeEntries = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var projectsTask = ProjectService.GetDeletedProjects();
+            var clientsTask = ClientService.GetDeletedClients();
+            var entriesTask = TimeEntryService.GetDeletedTimeEntries();
+            await Task.WhenAll(projectsTask, clientsTask, entriesTask);
+            _deletedProjects = projectsTask.Result;
+            _deletedClients = clientsTask.Result;
+            _deletedTimeEntries = entriesTask.Result;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("login", forceLoad: true);
+        }
+    }
+
+    private async Task RestoreProjectAsync(DeletedProjectResponse project)
+    {
+        await ProjectService.RestoreProject(project.Id);
+        _deletedProjects.Remove(project);
+        Snackbar.Add($"\"{project.Name}\" restored.", Severity.Success);
+    }
+
+    private async Task RestoreClientAsync(DeletedClientResponse client)
+    {
+        await ClientService.RestoreClient(client.Id);
+        _deletedClients.Remove(client);
+        Snackbar.Add($"\"{client.Name}\" restored.", Severity.Success);
+    }
+
+    private async Task RestoreTimeEntryAsync(DeletedTimeEntryResponse entry)
+    {
+        await TimeEntryService.RestoreTimeEntry(entry.Id);
+        _deletedTimeEntries.Remove(entry);
+        Snackbar.Add($"Time entry restored.", Severity.Success);
+    }
+
+    private static string FormatDate(DateTime? date) =>
+        date.HasValue ? date.Value.ToString("d MMM yyyy") : "unknown date";
+}

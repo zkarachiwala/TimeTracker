@@ -99,4 +99,26 @@ public class ClientService : IClientService
         client.DateDeleted = DateTime.Now;
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<List<DeletedClientResponse>> GetDeletedClients(CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var clients = await ctx.Clients
+            .Where(c => c.IsDeleted)
+            .OrderByDescending(c => c.DateDeleted)
+            .ToListAsync(ct);
+        return clients.Adapt<List<DeletedClientResponse>>();
+    }
+
+    public async Task RestoreClient(int id, CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var client = await ctx.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted, ct)
+            ?? throw new EntityNotFoundException($"Client {id} not found.");
+
+        client.IsDeleted = false;
+        client.DateDeleted = null;
+        await ctx.SaveChangesAsync(ct);
+    }
 }

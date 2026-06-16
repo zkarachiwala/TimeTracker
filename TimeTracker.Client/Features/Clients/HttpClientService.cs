@@ -40,4 +40,13 @@ public class HttpClientService(HttpClient http) : IClientService
         var response = await http.DeleteAsync($"api/clients/{id}", ct);
         response.EnsureSuccessStatusCode();
     }
+
+    public Task<List<DeletedClientResponse>> GetDeletedClients(CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<DeletedClientResponse>>("api/clients/deleted", ct)!;
+
+    public async Task RestoreClient(int id, CancellationToken ct = default)
+    {
+        var response = await http.PostAsync($"api/clients/{id}/restore", null, ct);
+        response.EnsureSuccessStatusCode();
+    }
 }

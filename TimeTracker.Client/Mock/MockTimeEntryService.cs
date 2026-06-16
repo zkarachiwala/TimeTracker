@@ -69,4 +69,9 @@ public class MockTimeEntryService(MockDataStore store) : ITimeEntryService
         store.TimeEntries.RemoveAll(e => e.Id == id);
         return Task.CompletedTask;
     }
+
+    public Task<List<DeletedTimeEntryResponse>> GetDeletedTimeEntries(CancellationToken ct = default) =>
+        Task.FromResult(new List<DeletedTimeEntryResponse>());
+
+    public Task RestoreTimeEntry(int id, CancellationToken ct = default) => Task.CompletedTask;
 }
