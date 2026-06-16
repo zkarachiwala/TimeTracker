@@ -35,7 +35,7 @@
                 @ElapsedDisplay
             </MudText>
             <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.7); margin-bottom:16px">
-                Started @activeEntry.Start.ToString("h:mm tt")
+                Started @activeEntry.Start.ToLocalTime().ToString("h:mm tt")
             </MudText>
 
             <MudButton FullWidth="true" Size="Size.Large" OnClick="StopTimer"
@@ -161,7 +161,7 @@ else if (_providersReady)
         get
         {
             if (activeEntry is null) return "00:00:00";
-            var elapsed = DateTime.Now - activeEntry.Start;
+            var elapsed = DateTime.UtcNow - activeEntry.Start;
             return $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
         }
     }
@@ -225,7 +225,7 @@ else if (_providersReady)
         await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
         {
             ProjectId = selectedProjectId,
-            Start = DateTime.Now,
+            Start = DateTime.UtcNow,
             End = null
         });
         await Reload();
@@ -238,7 +238,7 @@ else if (_providersReady)
         {
             ProjectId = activeEntry.Project.Id,
             Start = activeEntry.Start,
-            End = DateTime.Now,
+            End = DateTime.UtcNow,
             Note = activeEntry.Note
         });
         Snackbar.Add("Timer saved", Severity.Success);
@@ -248,12 +248,12 @@ else if (_providersReady)
     private async Task LogBlock(int minutes)
     {
         if (selectedProjectId <= 0) return;
-        var start = DateTime.Now.AddMinutes(-minutes);
+        var start = DateTime.UtcNow.AddMinutes(-minutes);
         await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
         {
             ProjectId = selectedProjectId,
             Start = start,
-            End = DateTime.Now
+            End = DateTime.UtcNow
         });
         Snackbar.Add($"{minutes}m logged", Severity.Success);
         await Reload();

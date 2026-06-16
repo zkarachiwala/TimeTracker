@@ -8,6 +8,10 @@ public class TimerTests : AuthenticatedPageTest
     {
         await Page.GotoAsync("/");
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
+        // Wait for LoadData() to complete so api/timeentries/active is not in-flight when assertions run.
+        // Without this, Chromium aborts the pending fetch and fires Page.RequestFailed.
+        await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
     [Test]

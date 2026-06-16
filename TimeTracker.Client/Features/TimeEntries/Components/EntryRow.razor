@@ -29,11 +29,11 @@
     [Parameter] public bool ShowProject { get; set; } = true;
     [Parameter] public EventCallback<TimeEntryResponse> OnEdit { get; set; }
 
-    private static string FormatTime(DateTime dt) => dt.ToString("h:mm tt");
+    private static string FormatTime(DateTime dt) => dt.ToLocalTime().ToString("h:mm tt");
 
     private static string FormatDuration(DateTime start, DateTime? end)
     {
-        var duration = (end ?? DateTime.Now) - start;
+        var duration = (end ?? DateTime.UtcNow) - start;
         var h = (int)duration.TotalHours;
         var m = duration.Minutes;
         return h > 0 ? $"{h}h {m}m" : $"{m}m";

@@ -151,10 +151,12 @@
     {
         if (Entry is not null && Entry.Id > 0)
         {
+            var localStart = Entry.Start.ToLocalTime();
+            var localEnd = Entry.End?.ToLocalTime();
             projectId = Entry.Project.Id;
-            date = Entry.Start.Date;
-            startTime = Entry.Start.TimeOfDay;
-            endTime = Entry.End?.TimeOfDay;
+            date = localStart.Date;
+            startTime = localStart.TimeOfDay;
+            endTime = localEnd?.TimeOfDay;
             note = Entry.Note ?? string.Empty;
             invoiceReference = Entry.InvoiceReference;
         }
@@ -171,15 +173,16 @@
 
     private void QuickDuration(int minutes)
     {
-        if (!startTime.HasValue) startTime = TimeSpan.FromHours(DateTime.Now.Hour).Add(TimeSpan.FromMinutes(DateTime.Now.Minute));
+        if (!startTime.HasValue) startTime = DateTime.Now.TimeOfDay;
         endTime = startTime.Value.Add(TimeSpan.FromMinutes(minutes));
     }
 
     private async Task Save()
     {
         var baseDate = date ?? DateTime.Today;
-        var start = baseDate.Add(startTime!.Value);
-        var end = baseDate.Add(endTime!.Value);
+        // baseDate and picker times are local — convert to UTC before sending to the API.
+        var start = baseDate.Add(startTime!.Value).ToUniversalTime();
+        var end = baseDate.Add(endTime!.Value).ToUniversalTime();
         if (end <= start) end = end.AddDays(1);
 
         if (IsEditing)

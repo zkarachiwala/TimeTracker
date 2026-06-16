@@ -12,6 +12,10 @@ public class NavigationTests : AuthenticatedPageTest
         // Admin-role nav links (clients, projects) only render once that resolves — wait for one
         // of them to confirm auth state is settled before any test assertion.
         await Expect(Page.Locator(".bottom-nav").GetByText("Clients")).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        // Wait for LoadData() to complete so api/timeentries/active is not in-flight when tests navigate away.
+        // Without this, Chromium aborts the pending fetch and fires Page.RequestFailed.
+        await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
     [Test]

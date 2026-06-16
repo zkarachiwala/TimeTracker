@@ -8,6 +8,10 @@ public class DesktopNavigationTests : AuthenticatedDesktopPageTest
     {
         await Page.GotoAsync("/");
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
+        // Wait for LoadData() to complete so api/timeentries/active is not in-flight when tests navigate away.
+        // Without this, Chromium aborts the pending fetch and fires Page.RequestFailed.
+        await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
     private async Task OpenDrawer()

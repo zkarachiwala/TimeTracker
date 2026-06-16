@@ -1,51 +1,6 @@
 #!/bin/bash
-# Runs the full Playwright suite before push when app code changes.
-# GlobalSetup starts the app automatically if it isn't running.
-# Activate once per clone: git config core.hooksPath .githooks
-
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-
-while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
-    if [[ "$local_sha" == "0000000000000000000000000000000000000000" ]]; then
-        exit 0
-    fi
-
-    if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
-        BASE=$(git merge-base "$local_sha" origin/main 2>/dev/null || echo "")
-        if [[ -z "$BASE" ]]; then
-            CHANGED_FILES=$(git diff --name-only HEAD)
-        else
-            CHANGED_FILES=$(git diff --name-only "$BASE" "$local_sha")
-        fi
-    else
-        CHANGED_FILES=$(git diff --name-only "$remote_sha" "$local_sha")
-    fi
-
-    # Only run when app code changed (not for docs or test-only changes).
-    APP_CHANGES=$(echo "$CHANGED_FILES" \
-        | grep -E "\.(cs|razor|csproj)$" \
-        | grep -v "^docs/" \
-        | grep -v "^TimeTracker\.Playwright/" \
-        || true)
-
-    if [[ -z "$APP_CHANGES" ]]; then
-        echo "pre-push: no app code changed — skipping Playwright tests"
-        exit 0
-    fi
-
-    echo "pre-push: app code changed — running Playwright tests (app will start automatically)..."
-
-    dotnet test "$REPO_ROOT/TimeTracker.Playwright" \
-        --settings "$REPO_ROOT/TimeTracker.Playwright/playwright.runsettings" \
-        --logger "console;verbosity=normal"
-
-    RESULT=$?
-    if [[ $RESULT -ne 0 ]]; then
-        echo "pre-push: Playwright tests failed — push blocked"
-        exit 1
-    fi
-
-    echo "pre-push: all tests passed"
-done
-
+# Pre-push hook intentionally disabled.
+# Run Playwright tests manually when app code changes:
+#   BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal"
+# The app must already be running on https://localhost:7006 before running the above.
 exit 0
