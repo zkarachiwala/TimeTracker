@@ -46,22 +46,22 @@
                 </MudButton>
             </MudTooltip>
 
-            @if (!_hasActiveProjects)
+            @if (_confirmingDelete)
             {
-                @if (_confirmingDelete)
-                {
-                    <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Error" Class="mt-1"
-                               StartIcon="@Icons.Material.Filled.DeleteForever"
-                               OnClick="DeleteClient">Confirm delete</MudButton>
-                    <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
-                               OnClick="@(() => _confirmingDelete = false)">Cancel</MudButton>
-                }
-                else
-                {
+                <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Error" Class="mt-1"
+                           StartIcon="@Icons.Material.Filled.DeleteForever"
+                           OnClick="DeleteClient">Confirm delete</MudButton>
+                <MudButton FullWidth="true" Variant="Variant.Text" Class="mt-1"
+                           OnClick="@(() => _confirmingDelete = false)">Cancel</MudButton>
+            }
+            else
+            {
+                <MudTooltip Text="@(_hasActiveProjects ? "Delete all projects first" : "")" Placement="Placement.Top">
                     <MudButton FullWidth="true" Variant="Variant.Text" Color="Color.Error" Class="mt-1"
+                               Disabled="@_hasActiveProjects"
                                StartIcon="@Icons.Material.Filled.Delete"
                                OnClick="@(() => _confirmingDelete = true)">Delete client</MudButton>
-                }
+                </MudTooltip>
             }
         }
     </div>
