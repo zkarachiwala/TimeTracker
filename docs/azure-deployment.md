@@ -322,9 +322,111 @@ Merge any change to `main` (or re-run the Deploy workflow). The Playwright job r
 
 ---
 
+## Database Backup Setup
+
+A GitHub Actions workflow (`.github/workflows/backup.yml`) exports a `.bacpac` nightly at 02:00 UTC and stores it as a 90-day artifact. It uses a dedicated service principal with the minimum possible permissions — separate from the deploy SP.
+
+**Credential model:**
+- Separate app registration (`timetracker-github-backup`) from the deploy SP
+- Custom Azure role: only `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server resource
+- SQL user: `db_datareader` + `VIEW DATABASE STATE` + `VIEW DEFINITION` — no `db_owner`
+- OIDC (no client secrets stored anywhere)
+
+### Step A — Create the app registration and service principal
+
+```bash
+az ad app create --display-name "timetracker-github-backup"
+
+BACKUP_APP_ID=$(az ad app list --display-name "timetracker-github-backup" --query "[0].appId" -o tsv)
+BACKUP_APP_OID=$(az ad app list --display-name "timetracker-github-backup" --query "[0].id" -o tsv)
+
+az ad sp create --id $BACKUP_APP_ID
+BACKUP_SP_OID=$(az ad sp show --id $BACKUP_APP_ID --query id -o tsv)
+
+TENANT=$(az account show --query tenantId -o tsv)
+SUB=$(az account show --query id -o tsv)
+```
+
+### Step B — Create a minimal custom Azure role
+
+```bash
+az role definition create --role-definition "{
+  \"Name\": \"TimeTracker Backup Firewall Manager\",
+  \"Description\": \"Adds and removes a single SQL Server firewall rule for the GitHub Actions backup workflow\",
+  \"Actions\": [
+    \"Microsoft.Sql/servers/firewallRules/write\",
+    \"Microsoft.Sql/servers/firewallRules/delete\"
+  ],
+  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+}"
+```
+
+### Step C — Assign the role, scoped to the SQL server only
+
+```bash
+az role assignment create \
+  --role "TimeTracker Backup Firewall Manager" \
+  --assignee-object-id $BACKUP_SP_OID \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Sql/servers/$SERVER
+```
+
+This SP can add and remove firewall rules on this one SQL server. It cannot read or modify any other Azure resource.
+
+### Step D — Create the federated credential
+
+```bash
+az ad app federated-credential create \
+  --id $BACKUP_APP_OID \
+  --parameters "{
+    \"name\": \"timetracker-backup-main\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"repo:zkarachiwala/TimeTracker:ref:refs/heads/main\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+```
+
+### Step E — Create the SQL database user
+
+Connect to `${SERVER}.database.windows.net` with your Azure AD admin account (Azure Data Studio or `sqlcmd`) and run against `TimeTrackerDb`:
+
+```sql
+CREATE USER [timetracker-github-backup] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [timetracker-github-backup];
+GRANT VIEW DATABASE STATE TO [timetracker-github-backup];
+GRANT VIEW DEFINITION TO [timetracker-github-backup];
+```
+
+`VIEW DATABASE STATE` is required by SqlPackage to read internal database state during export.
+`VIEW DEFINITION` is required to read schema object definitions for the `.bacpac`.
+
+### Step F — Add to GitHub
+
+```bash
+echo "BACKUP_AZURE_CLIENT_ID: $BACKUP_APP_ID"
+```
+
+In **Settings → Secrets and variables → Actions** add:
+
+| Type | Name | Value |
+|------|------|-------|
+| Secret | `BACKUP_AZURE_CLIENT_ID` | From above |
+| Variable | `BACKUP_RESOURCE_GROUP` | `timetracker-rg` |
+| Variable | `BACKUP_SQL_SERVER` | `timetracker-sql` |
+| Variable | `BACKUP_SQL_DATABASE` | `TimeTrackerDb` |
+
+`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are reused from the deploy setup.
+
+### Verifying
+
+Run the workflow manually from **Actions → Database Backup → Run workflow**. A `.bacpac` artifact will appear on the run within a few minutes. Check that the firewall rule `github-actions-backup` is absent from the SQL server after the run completes (the cleanup step removes it unconditionally).
+
+---
+
 ## Free tier limits
 
 | Resource | Plan | Limit | When exceeded |
 |----------|------|-------|---------------|
 | App Service | F1 | 60 CPU min/day, 1 GB RAM, sleeps after 20 min idle | Throttled, no charge |
 | Azure SQL | Free offer | 32 GB data, 32 GB backup | Auto-pauses, no charge |
+| GitHub Actions | Free | 2,000 min/month, 500 MB artifact storage | Blocked until next cycle |

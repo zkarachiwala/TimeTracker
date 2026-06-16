@@ -10,6 +10,8 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 
 | Date | Change | PR/Branch |
 |------|--------|-----------|
+| 2026-06 | **Nightly database backup** — GitHub Actions `.bacpac` export via dedicated OIDC SP (custom role: firewall rule write/delete only); 90-day artifact retention | #104 |
+| 2026-06 | **SQL Server Row-Level Security + audit trail** — `UserSessionContextInterceptor` sets `SESSION_CONTEXT(N'UserId')` before every EF Core command; predicate functions filter per-user; `CreatedBy`/`UpdatedBy`/`DeletedBy` audit columns | #130 |
 | 2026-06 | **Global InteractiveWebAssembly** — abandoned SSR+WASM islands hybrid; MudBlazor #9743 prevents interactive layouts in SSR | `feature/wasm-islands` |
 | 2026-06 | Renamed `TimeTracker.Wasm` → `TimeTracker.Client` (Microsoft standard .Client naming) | `feature/wasm-islands` |
 | 2026-06 | Added `TimeTracker.Contracts` — shared DTOs; `CookieAuthenticationStateProvider`; `/api/auth/user` endpoint; `ReportsCalculations` static class; 92 unit tests | `feature/wasm-islands` |
@@ -205,11 +207,12 @@ Application Insights is not included (pay-as-you-go, no free monthly allowance o
 | Live app hosting | Azure App Service F1 | Free — hard limit, no overage possible |
 | Showcase hosting | GitHub Pages | Free |
 | Database | Azure SQL Database free offer | Free — 32 GB, 7-day automated backups, no expiry |
+| Database backup | GitHub Actions nightly `.bacpac` export → 90-day artifact | Free (within 2,000 min/month Actions quota) |
 | Auth | Google OAuth 2.0 via ASP.NET Identity | Free |
 | CI/CD | GitHub Actions — OIDC push-to-deploy | Free |
 | Structured logging | Serilog → stdout (Azure App Service log stream) | Free |
 | Uptime monitoring | UptimeRobot free tier → `/health` endpoint | Free |
-| Tests | 107 service integration tests (EF InMemory) | — |
+| Tests | 110 service integration tests (EF InMemory) | — |
 
 ---
 
