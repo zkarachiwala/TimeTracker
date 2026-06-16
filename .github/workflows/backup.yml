@@ -48,21 +48,27 @@ jobs:
         run: dotnet tool install -g microsoft.sqlpackage
 
       - name: Export .bacpac
+        id: export
         run: |
+          FILE="backup-$(date +%Y-%m-%d).bacpac"
           sqlpackage \
             /Action:Export \
-            /TargetFile:"backup-$(date +%Y-%m-%d).bacpac" \
+            /TargetFile:"$FILE" \
             /SourceServerName:"${{ vars.BACKUP_SQL_SERVER }}.database.windows.net" \
             /SourceDatabaseName:"${{ vars.BACKUP_SQL_DATABASE }}" \
             /AccessToken:"${{ steps.token.outputs.value }}"
+          echo "file=$FILE" >> $GITHUB_OUTPUT
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: db-backup-${{ github.run_number }}
-          path: "*.bacpac"
-          retention-days: 90
-          if-no-files-found: error
+      - name: Push to private backup repo
+        run: |
+          git clone https://x-access-token:${{ secrets.BACKUP_REPO_TOKEN }}@github.com/${{ github.repository_owner }}/${{ vars.BACKUP_REPO_NAME }}.git backup-repo
+          cp ${{ steps.export.outputs.file }} backup-repo/
+          cd backup-repo
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add .
+          git diff --staged --quiet || git commit -m "backup: ${{ steps.export.outputs.file }}"
+          git push
 
       - name: Close SQL firewall
         if: always()

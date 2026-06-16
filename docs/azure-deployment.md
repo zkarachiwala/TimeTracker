@@ -348,34 +348,54 @@ Connect to `timetracker-sql.database.windows.net` with your Azure AD admin accou
 
 ```sql
 CREATE USER [timetracker-github-backup] FROM EXTERNAL PROVIDER;
-ALTER ROLE db_datareader ADD MEMBER [timetracker-github-backup];
-GRANT VIEW DATABASE STATE TO [timetracker-github-backup];
-GRANT VIEW DEFINITION TO [timetracker-github-backup];
+ALTER ROLE db_owner ADD MEMBER [timetracker-github-backup];
 ```
 
-`VIEW DATABASE STATE` is required by SqlPackage to read internal database state during export.
-`VIEW DEFINITION` is required to read schema object definitions for the `.bacpac`.
+`db_owner` is required for two reasons specific to this database:
 
-### Step F — Add to GitHub
+1. **SqlPackage needs `DBCC SHOW_STATISTICS`** to analyse indexes during export — this requires `db_owner` or `db_ddladmin`; `db_datareader` alone is insufficient.
+2. **RLS bypasses** — the app schema has Row-Level Security policies that filter data by `SESSION_CONTEXT(N'UserId')`. A backup user has no session context, so a `db_datareader` account would export empty tables. `db_owner` is exempt from RLS by SQL Server design, ensuring the full dataset is captured.
+
+The Azure RBAC side of this SP is still tightly locked (firewall rule write/delete only, scoped to the SQL server resource) — `db_owner` on the database does not expand that.
+
+### Step F — Create the private backup repository
+
+Create a **private** repository at `github.com/zkarachiwala/TimeTracker-backups` (or any name you choose — must be private). Leave it empty; the workflow will push `.bacpac` files to it daily.
+
+### Step G — Create a fine-grained PAT for the backup repo
+
+Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**:
+
+| Field | Value |
+|-------|-------|
+| Token name | `TimeTracker backup push` |
+| Expiration | 1 year (maximum for fine-grained PATs — set a calendar reminder to rotate) |
+| Resource owner | `zkarachiwala` |
+| Repository access | Only select repositories → `TimeTracker-backups` |
+| Repository permissions | Contents → **Read and write** (all others: No access) |
+
+### Step H — Add secrets and variables to GitHub
 
 ```bash
 echo "BACKUP_AZURE_CLIENT_ID: $BACKUP_APP_ID"
 ```
 
-In **Settings → Secrets and variables → Actions** add:
+In **Settings → Secrets and variables → Actions** on the `TimeTracker` repo add:
 
 | Type | Name | Value |
 |------|------|-------|
 | Secret | `BACKUP_AZURE_CLIENT_ID` | From above |
+| Secret | `BACKUP_REPO_TOKEN` | Fine-grained PAT from Step G |
 | Variable | `BACKUP_RESOURCE_GROUP` | `timetracker-rg` |
 | Variable | `BACKUP_SQL_SERVER` | `timetracker-sql` |
 | Variable | `BACKUP_SQL_DATABASE` | `TimeTrackerDb` |
+| Variable | `BACKUP_REPO_NAME` | `TimeTracker-backups` (or whatever you named it) |
 
 `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are reused from the deploy setup.
 
 ### Verifying
 
-Run the workflow manually from **Actions → Database Backup → Run workflow**. A `.bacpac` artifact will appear on the run within a few minutes. Check that the firewall rule `github-actions-backup` is absent from the SQL server after the run completes (the cleanup step removes it unconditionally).
+Run the workflow manually from **Actions → Database Backup → Run workflow**. A `.bacpac` file will be committed to the private `TimeTracker-backups` repo. Check that the firewall rule `github-actions-backup` is absent from the SQL server after the run completes (the cleanup step removes it unconditionally).
 
 ---
 
