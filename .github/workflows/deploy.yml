@@ -72,6 +72,13 @@ jobs:
       - name: Restore
         run: dotnet restore TimeTracker.sln
 
+      - name: Run EF migrations
+        run: |
+          dotnet tool install --global dotnet-ef
+          dotnet ef database update --context TimeTrackerDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --connection "${{ secrets.PROD_DB_CONNECTION_STRING }}"
+
       - name: Publish
         run: >
           dotnet publish TimeTracker.Web/TimeTracker.Web.csproj
