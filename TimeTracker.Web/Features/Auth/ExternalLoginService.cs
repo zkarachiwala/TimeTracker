@@ -3,30 +3,13 @@ using TimeTracker.Shared.Entities;
 
 namespace TimeTracker.Web.Features.Auth;
 
-public class ExternalLoginService(UserManager<User> userManager, IConfiguration configuration) : IExternalLoginService
+public class ExternalLoginService(UserManager<User> userManager) : IExternalLoginService
 {
     public async Task<ExternalLoginResult> FindOrCreateUserAsync(string email, string loginProvider, string providerKey)
     {
-        var allowedEmails = configuration.GetSection("Authentication:AllowedEmails").Get<string[]>() ?? [];
-        if (!allowedEmails.Contains(email, StringComparer.OrdinalIgnoreCase))
-            return new ExternalLoginResult(ExternalLoginStatus.EmailNotAllowed);
-
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
-        {
-            user = new User { UserName = email, Email = email, EmailConfirmed = true };
-            var createResult = await userManager.CreateAsync(user);
-            if (!createResult.Succeeded)
-                return new ExternalLoginResult(ExternalLoginStatus.CreateUserFailed);
-        }
-
-        var adminEmail = configuration["Authentication:AdminEmail"];
-        if (!string.IsNullOrEmpty(adminEmail) &&
-            string.Equals(email, adminEmail, StringComparison.OrdinalIgnoreCase) &&
-            !await userManager.IsInRoleAsync(user, "Admin"))
-        {
-            await userManager.AddToRoleAsync(user, "Admin");
-        }
+            return new ExternalLoginResult(ExternalLoginStatus.EmailNotAllowed);
 
         var existingLogins = await userManager.GetLoginsAsync(user);
         if (!existingLogins.Any(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey))

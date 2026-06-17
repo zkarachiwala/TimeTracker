@@ -134,4 +134,58 @@ public class UserManagementServiceTests
             Assert.Single(roles);
         }
     }
+
+    [Fact]
+    public async Task AddUser_creates_user_record()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            var result = await svc.AddUserAsync(Email1);
+
+            Assert.Equal(AddUserResult.Success, result);
+            Assert.NotNull(await fixture.UserManager.FindByEmailAsync(Email1));
+        }
+    }
+
+    [Fact]
+    public async Task AddUser_returns_AlreadyExists_for_duplicate_email()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            await svc.AddUserAsync(Email1);
+            var result = await svc.AddUserAsync(Email1);
+
+            Assert.Equal(AddUserResult.AlreadyExists, result);
+            Assert.Single(fixture.UserManager.Users.ToList());
+        }
+    }
+
+    [Fact]
+    public async Task AddUser_is_case_insensitive_for_duplicate_check()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            await svc.AddUserAsync(Email1);
+            var result = await svc.AddUserAsync(Email1.ToUpper());
+
+            Assert.Equal(AddUserResult.AlreadyExists, result);
+        }
+    }
+
+    [Fact]
+    public async Task AddUser_new_user_has_no_roles()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            await svc.AddUserAsync(Email1);
+            var user = await fixture.UserManager.FindByEmailAsync(Email1);
+            var roles = await fixture.UserManager.GetRolesAsync(user!);
+
+            Assert.Empty(roles);
+        }
+    }
 }

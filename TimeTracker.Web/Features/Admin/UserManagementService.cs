@@ -19,6 +19,17 @@ public class UserManagementService(UserManager<User> userManager) : IUserManagem
         return result;
     }
 
+    public async Task<AddUserResult> AddUserAsync(string email, CancellationToken ct = default)
+    {
+        var existing = await userManager.FindByEmailAsync(email);
+        if (existing is not null)
+            return AddUserResult.AlreadyExists;
+
+        var user = new User { UserName = email, Email = email, EmailConfirmed = true };
+        var result = await userManager.CreateAsync(user);
+        return result.Succeeded ? AddUserResult.Success : AddUserResult.Failed;
+    }
+
     public async Task<SetAdminRoleResult> SetAdminRoleAsync(string userId, bool isAdmin, CancellationToken ct = default)
     {
         var user = await userManager.FindByIdAsync(userId);

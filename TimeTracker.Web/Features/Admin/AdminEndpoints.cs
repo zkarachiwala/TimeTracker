@@ -13,6 +13,20 @@ public static class AdminEndpoints
         group.MapGet("/users", async (IUserManagementService svc, CancellationToken ct) =>
             Results.Ok(await svc.GetUsersAsync(ct)));
 
+        group.MapPost("/users", async (AddUserRequest request, IUserManagementService svc, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Email))
+                return Results.BadRequest("Email is required.");
+
+            var result = await svc.AddUserAsync(request.Email, ct);
+            return result switch
+            {
+                AddUserResult.Success     => Results.Created(),
+                AddUserResult.AlreadyExists => Results.Conflict("A user with that email already exists."),
+                _                         => Results.Problem("Failed to create user.")
+            };
+        }).RequireRateLimiting("write");
+
         group.MapPut("/users/{userId}/role", async (string userId, SetAdminRoleRequest request, IUserManagementService svc, CancellationToken ct) =>
         {
             var result = await svc.SetAdminRoleAsync(userId, request.IsAdmin, ct);

@@ -80,6 +80,19 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     if (!await roleManager.RoleExistsAsync("Admin"))
         await roleManager.CreateAsync(new IdentityRole("Admin"));
+
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    if (!await userManager.Users.AnyAsync())
+    {
+        var adminEmail = app.Configuration["Authentication:AdminEmail"];
+        if (!string.IsNullOrEmpty(adminEmail))
+        {
+            var adminUser = new User { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+            var createResult = await userManager.CreateAsync(adminUser);
+            if (createResult.Succeeded)
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -114,9 +127,5 @@ app.MapProjectEndpoints();
 app.MapClientEndpoints();
 app.MapAuthEndpoints();
 app.MapAdminEndpoints();
-
-var allowedEmails = app.Configuration.GetSection("Authentication:AllowedEmails").Get<string[]>();
-if (allowedEmails is null || allowedEmails.Length == 0)
-    throw new InvalidOperationException("Authentication:AllowedEmails must be configured with at least one entry.");
 
 app.Run();
