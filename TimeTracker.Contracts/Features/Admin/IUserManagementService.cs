@@ -1,6 +1,4 @@
-using TimeTracker.Contracts.Features.Admin;
-
-namespace TimeTracker.Client.Features.Admin;
+namespace TimeTracker.Contracts.Features.Admin;
 
 public interface IUserManagementService
 {

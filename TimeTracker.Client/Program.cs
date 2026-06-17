@@ -35,7 +35,7 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<ITimeEntryService, HttpTimeEntryService>();
 builder.Services.AddScoped<IProjectService, HttpProjectService>();
 builder.Services.AddScoped<IClientService, HttpClientService>();
-builder.Services.AddScoped<IUserManagementService, HttpUserManagementService>();
+builder.Services.AddScoped<TimeTracker.Contracts.Features.Admin.IUserManagementService, HttpUserManagementService>();
 #endif
 
 await builder.Build().RunAsync();

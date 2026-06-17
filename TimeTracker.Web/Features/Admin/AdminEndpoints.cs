@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using TimeTracker.Contracts.Features.Admin;
+using TimeTracker.Shared.Exceptions;
 
 namespace TimeTracker.Web.Features.Admin;
 
@@ -17,25 +18,32 @@ public static class AdminEndpoints
         {
             if (string.IsNullOrWhiteSpace(request.Email))
                 return Results.BadRequest("Email is required.");
-
-            var result = await svc.AddUserAsync(request.Email, ct);
-            return result switch
+            try
             {
-                AddUserResult.Success     => Results.Created(),
-                AddUserResult.AlreadyExists => Results.Conflict("A user with that email already exists."),
-                _                         => Results.Problem("Failed to create user.")
-            };
+                await svc.AddUserAsync(request.Email, ct);
+                return Results.Created();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
         }).RequireRateLimiting("write");
 
         group.MapPut("/users/{userId}/role", async (string userId, SetAdminRoleRequest request, IUserManagementService svc, CancellationToken ct) =>
         {
-            var result = await svc.SetAdminRoleAsync(userId, request.IsAdmin, ct);
-            return result switch
+            try
             {
-                SetAdminRoleResult.Success   => Results.NoContent(),
-                SetAdminRoleResult.LastAdmin => Results.Conflict("Cannot remove the last admin."),
-                _                            => Results.NotFound()
-            };
+                await svc.SetAdminRoleAsync(userId, request.IsAdmin, ct);
+                return Results.NoContent();
+            }
+            catch (EntityNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
         }).RequireRateLimiting("write");
     }
 }

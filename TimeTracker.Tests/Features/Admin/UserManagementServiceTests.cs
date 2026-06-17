@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using TimeTracker.Shared.Entities;
+using TimeTracker.Shared.Exceptions;
 using TimeTracker.Tests.Infrastructure;
 using TimeTracker.Web.Features.Admin;
 using Xunit;
@@ -59,106 +60,24 @@ public class UserManagementServiceTests
     }
 
     [Fact]
-    public async Task SetAdminRole_promotes_user_to_admin()
-    {
-        var (svc, fixture) = await BuildAsync();
-        using (fixture)
-        {
-            var user = await CreateUserAsync(fixture, Email1);
-
-            var result = await svc.SetAdminRoleAsync(user.Id, true);
-
-            Assert.Equal(SetAdminRoleResult.Success, result);
-            Assert.True(await fixture.UserManager.IsInRoleAsync(user, "Admin"));
-        }
-    }
-
-    [Fact]
-    public async Task SetAdminRole_demotes_user_from_admin_when_another_admin_exists()
-    {
-        var (svc, fixture) = await BuildAsync();
-        using (fixture)
-        {
-            var alice = await CreateUserAsync(fixture, Email1);
-            var bob = await CreateUserAsync(fixture, Email2);
-            await fixture.UserManager.AddToRoleAsync(alice, "Admin");
-            await fixture.UserManager.AddToRoleAsync(bob, "Admin");
-
-            var result = await svc.SetAdminRoleAsync(alice.Id, false);
-
-            Assert.Equal(SetAdminRoleResult.Success, result);
-            Assert.False(await fixture.UserManager.IsInRoleAsync(alice, "Admin"));
-        }
-    }
-
-    [Fact]
-    public async Task SetAdminRole_blocks_removing_last_admin()
-    {
-        var (svc, fixture) = await BuildAsync();
-        using (fixture)
-        {
-            var user = await CreateUserAsync(fixture, Email1);
-            await fixture.UserManager.AddToRoleAsync(user, "Admin");
-
-            var result = await svc.SetAdminRoleAsync(user.Id, false);
-
-            Assert.Equal(SetAdminRoleResult.LastAdmin, result);
-            Assert.True(await fixture.UserManager.IsInRoleAsync(user, "Admin"));
-        }
-    }
-
-    [Fact]
-    public async Task SetAdminRole_returns_NotFound_for_unknown_user()
-    {
-        var (svc, fixture) = await BuildAsync();
-        using (fixture)
-        {
-            var result = await svc.SetAdminRoleAsync("nonexistent-id", true);
-            Assert.Equal(SetAdminRoleResult.NotFound, result);
-        }
-    }
-
-    [Fact]
-    public async Task SetAdminRole_is_idempotent_for_existing_role()
-    {
-        var (svc, fixture) = await BuildAsync();
-        using (fixture)
-        {
-            var user = await CreateUserAsync(fixture, Email1);
-            await fixture.UserManager.AddToRoleAsync(user, "Admin");
-
-            var result = await svc.SetAdminRoleAsync(user.Id, true);
-
-            Assert.Equal(SetAdminRoleResult.Success, result);
-            var roles = await fixture.UserManager.GetRolesAsync(user);
-            Assert.Single(roles);
-        }
-    }
-
-    [Fact]
     public async Task AddUser_creates_user_record()
     {
         var (svc, fixture) = await BuildAsync();
         using (fixture)
         {
-            var result = await svc.AddUserAsync(Email1);
-
-            Assert.Equal(AddUserResult.Success, result);
+            await svc.AddUserAsync(Email1);
             Assert.NotNull(await fixture.UserManager.FindByEmailAsync(Email1));
         }
     }
 
     [Fact]
-    public async Task AddUser_returns_AlreadyExists_for_duplicate_email()
+    public async Task AddUser_throws_for_duplicate_email()
     {
         var (svc, fixture) = await BuildAsync();
         using (fixture)
         {
             await svc.AddUserAsync(Email1);
-            var result = await svc.AddUserAsync(Email1);
-
-            Assert.Equal(AddUserResult.AlreadyExists, result);
-            Assert.Single(fixture.UserManager.Users.ToList());
+            await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AddUserAsync(Email1));
         }
     }
 
@@ -169,9 +88,7 @@ public class UserManagementServiceTests
         using (fixture)
         {
             await svc.AddUserAsync(Email1);
-            var result = await svc.AddUserAsync(Email1.ToUpper());
-
-            Assert.Equal(AddUserResult.AlreadyExists, result);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AddUserAsync(Email1.ToUpper()));
         }
     }
 
@@ -184,8 +101,77 @@ public class UserManagementServiceTests
             await svc.AddUserAsync(Email1);
             var user = await fixture.UserManager.FindByEmailAsync(Email1);
             var roles = await fixture.UserManager.GetRolesAsync(user!);
-
             Assert.Empty(roles);
+        }
+    }
+
+    [Fact]
+    public async Task SetAdminRole_promotes_user_to_admin()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            var user = await CreateUserAsync(fixture, Email1);
+            await svc.SetAdminRoleAsync(user.Id, true);
+            Assert.True(await fixture.UserManager.IsInRoleAsync(user, "Admin"));
+        }
+    }
+
+    [Fact]
+    public async Task SetAdminRole_demotes_user_when_another_admin_exists()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            var alice = await CreateUserAsync(fixture, Email1);
+            var bob = await CreateUserAsync(fixture, Email2);
+            await fixture.UserManager.AddToRoleAsync(alice, "Admin");
+            await fixture.UserManager.AddToRoleAsync(bob, "Admin");
+
+            await svc.SetAdminRoleAsync(alice.Id, false);
+
+            Assert.False(await fixture.UserManager.IsInRoleAsync(alice, "Admin"));
+        }
+    }
+
+    [Fact]
+    public async Task SetAdminRole_throws_when_removing_last_admin()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            var user = await CreateUserAsync(fixture, Email1);
+            await fixture.UserManager.AddToRoleAsync(user, "Admin");
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SetAdminRoleAsync(user.Id, false));
+
+            Assert.True(await fixture.UserManager.IsInRoleAsync(user, "Admin"));
+        }
+    }
+
+    [Fact]
+    public async Task SetAdminRole_throws_for_unknown_user()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            await Assert.ThrowsAsync<EntityNotFoundException>(() => svc.SetAdminRoleAsync("nonexistent-id", true));
+        }
+    }
+
+    [Fact]
+    public async Task SetAdminRole_is_idempotent_for_existing_role()
+    {
+        var (svc, fixture) = await BuildAsync();
+        using (fixture)
+        {
+            var user = await CreateUserAsync(fixture, Email1);
+            await fixture.UserManager.AddToRoleAsync(user, "Admin");
+
+            await svc.SetAdminRoleAsync(user.Id, true);
+
+            var roles = await fixture.UserManager.GetRolesAsync(user);
+            Assert.Single(roles);
         }
     }
 }

@@ -62,7 +62,7 @@ builder.Services.AddScoped<ITimeEntryQueryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
-builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<TimeTracker.Contracts.Features.Admin.IUserManagementService, UserManagementService>();
 
 var app = builder.Build();
 
