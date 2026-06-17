@@ -67,6 +67,7 @@ public class ProjectEndpointAuthTests
     private sealed class StubProjectService : IProjectService
     {
         public Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default) => Task.FromResult(new List<ProjectResponse>());
+        public Task<List<ProjectResponse>> GetAssignedProjects(CancellationToken ct = default) => Task.FromResult(new List<ProjectResponse>());
         public Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default) => Task.FromResult<ProjectResponse?>(null);
         public Task CreateProject(ProjectCreateRequest request, CancellationToken ct = default) => Task.CompletedTask;
         public Task UpdateProject(int id, ProjectUpdateRequest request, CancellationToken ct = default) => Task.CompletedTask;

@@ -7,6 +7,9 @@ public class MockProjectService(MockDataStore store) : IProjectService
     public Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default) =>
         Task.FromResult(store.Projects.ToList());
 
+    public Task<List<ProjectResponse>> GetAssignedProjects(CancellationToken ct = default) =>
+        Task.FromResult(store.Projects.ToList());
+
     public Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default) =>
         Task.FromResult(store.Projects.FirstOrDefault(p => p.Id == id));
 

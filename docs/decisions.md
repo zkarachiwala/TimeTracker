@@ -558,3 +558,70 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 - ❌ App startup is blocked until migrations complete — acceptable for a personal app, wrong for high-availability services
 
 **Why the trade-off is acceptable:** Azure F1 is single-instance by definition. There is no slot swap or scale-out. The race condition cannot occur at current hosting tier. If the app ever moves to a paid tier with multiple instances, this decision should be revisited and replaced with a pipeline migration step.
+
+---
+
+## D023: Single-tenant architecture — one company, shared data
+
+**Date:** 2026-06 — **Status:** Accepted
+
+**Context:** The system is built for a single company whose employees are the users. All users within that company share the same projects, clients, and time-entry data. The question arose whether multi-tenancy (company-level segregation) should be introduced as part of adding user management (#95).
+
+**Decision:** The system remains explicitly single-tenant. There is no `Company` or `Tenant` entity. All authenticated users operate within the same data space.
+
+**Multi-tenancy is explicitly out of scope.** If the system were ever extended to serve multiple companies it would require:
+- A `Company` (tenant) entity with a global admin who bootstraps each tenant
+- Foreign keys from every table to `CompanyId`
+- Row-level security or query filters on every query
+- Separate OAuth app registrations per tenant
+- A complete redesign of the bootstrap and onboarding flow
+
+This is a foundational change, not an incremental one. It is not justified for the current use case.
+
+**What this means for the current design:**
+- Projects and clients are not confidential between colleagues — all authenticated users can see all projects and clients
+- `ProjectUser` controls who can *log time* against a project, not who can *see* it
+- Reports and time entries remain user-scoped (you see your own time only)
+- User management (adding users, assigning roles) is handled by the Admin UI — see [D024](#d024-projectuser-as-time-allocation-gate--orphaned-reference-pattern)
+
+**Consequences:**
+- ✅ Zero complexity overhead — no tenant ID on any query
+- ✅ Simple user management — one admin, one user table, one set of projects
+- ❌ Cannot serve multiple companies from the same instance — a second company would see the first company's data
+
+---
+
+## D024: `ProjectUser` as time-allocation gate + orphaned reference pattern
+
+**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [#95](https://github.com/zkarachiwala/TimeTracker/issues/95)
+
+**Context:** Adding multi-user support required deciding what `ProjectUser` membership controls. Two options: (a) gate *visibility* — only see projects you're assigned to; (b) gate *time allocation* — only log time against projects you're assigned to, but see all projects.
+
+**Decision:** `ProjectUser` is a time-allocation gate only. All authenticated users can see all projects and clients. Only the time-entry project dropdown is restricted to assigned projects.
+
+**Rationale:**
+- Projects and clients are not confidential between colleagues (see [D023](#d023-single-tenant-architecture--one-company-shared-data))
+- A user removed from a project must still be able to see their historical entries and navigate to the project — hiding it would create unexplained gaps in their records
+- Reports must reconcile — YTD totals and project breakdowns must account for all the user's entries including those on projects they are no longer assigned to
+
+**Orphaned reference pattern for dropdowns:**
+
+When a user has a time entry referencing a project they are no longer assigned to, that entry's project is an *orphaned reference* — valid historical data pointing to something no longer selectable. The dropdown handles this as follows:
+
+| Scenario | Dropdown contents | Behaviour |
+|----------|-------------------|-----------|
+| New entry | Assigned projects only | All items selectable |
+| Editing entry, project still assigned | Assigned projects only | All items selectable; can freely change project |
+| Editing entry, project no longer assigned | Assigned projects + current project (disabled, labelled *"(not assigned)"*) | Can change to any assigned project; orphaned project is visible but not selectable |
+
+This pattern — showing a disabled placeholder for the current value when the referenced item is no longer available — prevents blank or broken fields while preserving the constraint. It is used widely in SaaS tools (Jira archived sprints, Xero deleted accounts, GitHub removed labels). See [UI Patterns — Orphaned reference in dropdowns](architecture.md#orphaned-reference-in-dropdowns) for the implementation pattern.
+
+**`GetAssignedProjects` vs `GetAllProjects`:**
+- `GetAllProjects` — returns all non-deleted projects; used by project list page, project detail page, and reports
+- `GetAssignedProjects` — returns only projects where `ProjectUser.UserId == currentUser`; used exclusively by the time-entry form project dropdown
+
+**Consequences:**
+- ✅ Historical entries always visible and correctly labelled
+- ✅ Reports reconcile — all user entries included regardless of current assignment
+- ✅ Clear, auditable gate — project assignment is about time allocation, not data access
+- ❌ A removed user can still navigate to the project detail page and see their own entries there — this is intentional and correct

@@ -8,6 +8,9 @@ public class HttpProjectService(HttpClient http) : IProjectService
     public Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default) =>
         http.GetFromJsonAsync<List<ProjectResponse>>("api/projects/", ct)!;
 
+    public Task<List<ProjectResponse>> GetAssignedProjects(CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<ProjectResponse>>("api/projects/assigned", ct)!;
+
     public Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default) =>
         http.GetFromJsonAsync<ProjectResponse>($"api/projects/{id}", ct);
 

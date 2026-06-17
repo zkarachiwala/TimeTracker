@@ -35,7 +35,7 @@ public class ProjectServiceTests
         };
 
     [Fact]
-    public async Task GetAllProjects_ReturnsOnlyUserProjects()
+    public async Task GetAllProjects_ReturnsAllNonDeletedProjects()
     {
         var options = CreateOptions();
         using var context = new TimeTrackerDataContext(options);
@@ -44,8 +44,35 @@ public class ProjectServiceTests
 
         var result = await CreateService(options).GetAllProjects();
 
+        Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
+    public async Task GetAssignedProjects_ReturnsOnlyProjectsAssignedToCurrentUser()
+    {
+        var options = CreateOptions();
+        using var context = new TimeTrackerDataContext(options);
+        context.Projects.AddRange(MakeProject(UserId, "My Project"), MakeProject(OtherUserId, "Other Project"));
+        await context.SaveChangesAsync();
+
+        var result = await CreateService(options).GetAssignedProjects();
+
         Assert.Single(result);
         Assert.Equal("My Project", result[0].Name);
+    }
+
+    [Fact]
+    public async Task GetAssignedProjects_ExcludesSoftDeletedProjects()
+    {
+        var options = CreateOptions();
+        using var context = new TimeTrackerDataContext(options);
+        context.Projects.AddRange(MakeProject(UserId, "Active"), MakeProject(UserId, "Deleted", isDeleted: true));
+        await context.SaveChangesAsync();
+
+        var result = await CreateService(options).GetAssignedProjects();
+
+        Assert.Single(result);
+        Assert.Equal("Active", result[0].Name);
     }
 
     [Fact]
@@ -93,17 +120,19 @@ public class ProjectServiceTests
     }
 
     [Fact]
-    public async Task GetProjectById_ReturnsNull_WhenUserNotMember()
+    public async Task GetProjectById_ReturnsProject_WhenUserNotAssigned()
     {
         var options = CreateOptions();
         using var context = new TimeTrackerDataContext(options);
-        var project = MakeProject(OtherUserId);
+        var project = MakeProject(OtherUserId, "Other Project");
         context.Projects.Add(project);
         await context.SaveChangesAsync();
 
+        // All projects are visible to all users (single-tenant, D023)
         var result = await CreateService(options).GetProjectById(project.Id);
 
-        Assert.Null(result);
+        Assert.NotNull(result);
+        Assert.Equal("Other Project", result.Name);
     }
 
     [Fact]

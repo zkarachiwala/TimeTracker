@@ -111,7 +111,7 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 - On 401 mid-session, pages call `Nav.NavigateTo("login", forceLoad: true)` to force full reload and reset WASM state
 - Google OAuth via `Microsoft.AspNetCore.Authentication.Google`; provider-agnostic callback via `SignInManager`
 - OAuth challenge links use `data-enhance-nav="false"` to force full-page navigation (Blazor enhanced nav would turn it into a fetch, blocked by CSP)
-- Allowed emails gated via `Authentication:AllowedEmails` config list
+- Access gated by pre-created Identity user records; `Authentication:AdminEmail` seeds the first admin at startup if no users exist
 - Login at `/login`, logout at `/auth/logout`
 - Local dev DB credentials via **.NET User Secrets** (`DbUser`, `DbPassword`)
 
@@ -152,6 +152,30 @@ private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
 `LocationChanged` fires on every navigation: browser-intercepted link clicks and programmatic `NavigateTo` calls. Source: https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0
 
 Both decisions were explicit and researched — see [D001](decisions.md#d001-global-wasm-rendering-over-ssr--wasm-islands) (why not SSR + islands) and [D002](decisions.md#d002-mudblazor-over-fluent-ui-blazor-and-bootstrap) (why MudBlazor). Full justification including MudBlazor GitHub issues, the six render-mode constraints, and Fluent UI migration cost is in the [Reference section](#reference) below.
+
+#### Orphaned reference in dropdowns
+
+When a record holds a foreign key to an item that is no longer available for selection (e.g. a time entry referencing a project the user is no longer assigned to), the dropdown must not show a blank or broken field. The pattern:
+
+1. Load the list of currently selectable items (e.g. `GetAssignedProjects`)
+2. If the record's current value is **not** in that list, append it as a **disabled item** with a label indicating its status (e.g. `"Project Name (not assigned)"`)
+3. The binding resolves correctly to the current value; the disabled item is visible but not selectable
+
+```razor
+@* In EntrySheet — project dropdown *@
+@foreach (var p in _assignedProjects)
+{
+    <MudSelectItem Value="@p.Id">@p.Name</MudSelectItem>
+}
+@if (_orphanedProject is not null)
+{
+    <MudSelectItem Value="@_orphanedProject.Id" Disabled="true">
+        @_orphanedProject.Name (not assigned)
+    </MudSelectItem>
+}
+```
+
+This pattern applies whenever: (a) a picker is restricted to a subset of items, and (b) an existing record may reference an item outside that subset. See [D024](decisions.md#d024-projectuser-as-time-allocation-gate--orphaned-reference-pattern) for the decision context.
 
 #### API query abuse protection — defence in depth (see [D018](decisions.md#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens))
 

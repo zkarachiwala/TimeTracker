@@ -14,6 +14,9 @@ public static class ProjectEndpoints
         group.MapGet("/", async (IProjectService svc, CancellationToken ct) =>
             Results.Ok(await svc.GetAllProjects(ct)));
 
+        group.MapGet("/assigned", async (IProjectService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetAssignedProjects(ct)));
+
         group.MapGet("/{id:int}", async (int id, IProjectService svc, CancellationToken ct) =>
         {
             var result = await svc.GetProjectById(id, ct);
