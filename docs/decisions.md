@@ -25,6 +25,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Accepted |
 | [D020](#d020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
 | [D021](#d021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
+| [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Accepted |
 
 ---
 
@@ -530,3 +531,30 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 - ✅ 30-day rolling retention is managed automatically — no manual cleanup
 - ❌ Fine-grained PATs expire (maximum 1 year) — requires a calendar reminder to rotate `BACKUP_REPO_TOKEN` annually
 - ❌ `db_owner` on the database is broader than ideal — necessary given SqlPackage and RLS constraints, but worth reviewing if either changes in a future SqlPackage version
+
+---
+
+## D022: EF Core `MigrateAsync()` at startup
+
+**Date:** 2026-06 — **Status:** Accepted
+
+**Context:** EF Core migrations need to reach the production database whenever schema changes are deployed. Options are: run migrations manually, add a migration step to the CI/CD pipeline, or call `MigrateAsync()` in `Program.cs` so the app migrates itself on startup.
+
+**Decision:** Call `Database.MigrateAsync()` for both `TimeTrackerDataContext` and `IdentityDataContext` during app startup in `Program.cs`.
+
+**Options considered:**
+
+| Option | Effort | Risk |
+|--------|--------|------|
+| **`MigrateAsync()` at startup** | Zero — already in place | Race condition on multi-instance deploy |
+| CI/CD pipeline step (`dotnet ef database update`) | Low — one workflow step | Requires prod connection string as CI secret |
+| Manual (`dotnet ef database update` or SQL script) | High — manual step on every deploy | Human error; easy to forget |
+
+**Consequences:**
+- ✅ Zero operational overhead — migrations are automatic on every deploy
+- ✅ No secrets needed in CI — the app already has DB credentials via Azure App Service config
+- ✅ Correct for single-instance hosting (Azure F1 runs one instance at a time)
+- ❌ If two instances start simultaneously (e.g. during a slot swap or scale-out), they can race on the same migration — one will fail with a constraint violation
+- ❌ App startup is blocked until migrations complete — acceptable for a personal app, wrong for high-availability services
+
+**Why the trade-off is acceptable:** Azure F1 is single-instance by definition. There is no slot swap or scale-out. The race condition cannot occur at current hosting tier. If the app ever moves to a paid tier with multiple instances, this decision should be revisited and replaced with a pipeline migration step.
