@@ -85,6 +85,9 @@ public class AdminNavTests : AuthenticatedPageTest
         // Wait for auth state to settle — admin nav links only render once the cookie auth resolves
         await Expect(Page.Locator(".bottom-nav").GetByText("Clients"))
             .ToBeVisibleAsync(new() { Timeout = 15_000 });
+        // Wait for LoadData() to complete so api/timeentries/active is not in-flight when tests navigate away
+        await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
     [Test]
