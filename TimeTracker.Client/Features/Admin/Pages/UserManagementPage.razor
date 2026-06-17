@@ -1,0 +1,84 @@
+@page "/admin/users"
+@attribute [Authorize(Roles = "Admin")]
+@inject IUserManagementService UserManagementService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@using TimeTracker.Client.Features.Admin
+@using TimeTracker.Contracts.Features.Admin
+
+<PageTitle>Users — TimeTracker</PageTitle>
+
+<div class="pa-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Users</MudText>
+
+    @if (_users is null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_users.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">No registered users.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Outlined="true">
+            @foreach (var user in _users)
+            {
+                <div class="d-flex align-center justify-space-between pa-3 mud-border-b">
+                    <div>
+                        <MudText Typo="Typo.body1">@user.Email</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @(user.IsAdmin ? "Admin" : "User")
+                        </MudText>
+                    </div>
+                    <MudButton Variant="Variant.Text"
+                               Color="@(user.IsAdmin ? Color.Error : Color.Primary)"
+                               Size="Size.Small"
+                               Disabled="@(!RendererInfo.IsInteractive || IsLastAdmin(user))"
+                               OnClick="@(() => ToggleAdminAsync(user))">
+                        @(user.IsAdmin ? "Revoke Admin" : "Make Admin")
+                    </MudButton>
+                </div>
+            }
+        </MudPaper>
+    }
+</div>
+
+<div class="bottom-nav-spacer"></div>
+
+@code {
+    private List<AdminUserResponse>? _users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _users = await UserManagementService.GetUsersAsync();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("login", forceLoad: true);
+        }
+    }
+
+    private bool IsLastAdmin(AdminUserResponse user) =>
+        user.IsAdmin && _users!.Count(u => u.IsAdmin) == 1;
+
+    private async Task ToggleAdminAsync(AdminUserResponse user)
+    {
+        try
+        {
+            await UserManagementService.SetAdminRoleAsync(user.Id, !user.IsAdmin);
+            _users = await UserManagementService.GetUsersAsync();
+            Snackbar.Add($"{user.Email} is now {(!user.IsAdmin ? "Admin" : "User")}.", Severity.Success);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Snackbar.Add("Cannot remove the last admin.", Severity.Warning);
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("Something went wrong.", Severity.Error);
+        }
+    }
+}
