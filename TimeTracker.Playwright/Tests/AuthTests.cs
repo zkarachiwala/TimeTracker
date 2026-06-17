@@ -82,6 +82,13 @@ public class AuthTests : PageTest
         await Expect(Page).ToHaveURLAsync(new Regex("/login"));
     }
 
+    [Test]
+    public async Task UnauthenticatedAdminUsersRedirectsToLogin()
+    {
+        await Page.GotoAsync("/admin/users");
+        await Expect(Page).ToHaveURLAsync(new Regex("/login"));
+    }
+
     // ── Login page UI ──────────────────────────────────────────────────────────
 
     [Test]
