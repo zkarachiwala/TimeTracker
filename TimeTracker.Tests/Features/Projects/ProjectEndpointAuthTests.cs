@@ -73,5 +73,8 @@ public class ProjectEndpointAuthTests
         public Task DeleteProject(int id, CancellationToken ct = default) => Task.CompletedTask;
         public Task<List<DeletedProjectResponse>> GetDeletedProjects(CancellationToken ct = default) => Task.FromResult(new List<DeletedProjectResponse>());
         public Task RestoreProject(int id, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<List<ProjectUserResponse>> GetProjectUsers(int projectId, CancellationToken ct = default) => Task.FromResult(new List<ProjectUserResponse>());
+        public Task AssignUserToProject(int projectId, string userId, CancellationToken ct = default) => Task.CompletedTask;
+        public Task UnassignUserFromProject(int projectId, string userId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

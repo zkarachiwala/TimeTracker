@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TimeTracker.Web.Data;
 using TimeTracker.Web.Features.Projects;
@@ -19,8 +20,8 @@ public class ProjectServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-    private static ProjectService CreateService(DbContextOptions<TimeTrackerDataContext> options, string userId = UserId) =>
-        new(new TestDbContextFactory(options), new FakeUserContextService(userId));
+    private static ProjectService CreateService(DbContextOptions<TimeTrackerDataContext> options, string userId = UserId, UserManager<User>? userManager = null) =>
+        new(new TestDbContextFactory(options), new FakeUserContextService(userId), userManager!);
 
     private static Project MakeProject(string userId, string name = "Project", bool isDeleted = false, decimal? hourlyRate = 100m, int? clientId = null) =>
         new()

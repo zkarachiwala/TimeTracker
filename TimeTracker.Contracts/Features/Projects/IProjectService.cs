@@ -9,4 +9,7 @@ public interface IProjectService
     Task DeleteProject(int id, CancellationToken ct = default);
     Task<List<DeletedProjectResponse>> GetDeletedProjects(CancellationToken ct = default);
     Task RestoreProject(int id, CancellationToken ct = default);
+    Task<List<ProjectUserResponse>> GetProjectUsers(int projectId, CancellationToken ct = default);
+    Task AssignUserToProject(int projectId, string userId, CancellationToken ct = default);
+    Task UnassignUserFromProject(int projectId, string userId, CancellationToken ct = default);
 }

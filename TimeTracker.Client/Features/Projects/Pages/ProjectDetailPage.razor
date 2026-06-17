@@ -2,11 +2,15 @@
 @attribute [Authorize]
 @inject IProjectService ProjectService
 @inject ITimeEntryService TimeEntryService
+@inject IUserManagementService UserManagementService
+@inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
 @using TimeTracker.Client.Features.TimeEntries.Components
 @using TimeTracker.Client.Features.Projects.Components
 @using TimeTracker.Client.Shared
+@using TimeTracker.Contracts.Features.Admin
+@using TimeTracker.Contracts.Features.Projects
 
 <PageTitle>Project — TimeTracker</PageTitle>
 
@@ -74,6 +78,52 @@
             </MudCardContent>
         </MudCard>
 
+        @* ── Users (admin only) ── *@
+        <AuthorizeView Roles="Admin">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500" Class="mb-2">Users</MudText>
+            <MudCard Class="mb-4">
+                <MudCardContent>
+                    @if (_projectUsers.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">No users assigned.</MudText>
+                    }
+                    else
+                    {
+                        @foreach (var u in _projectUsers)
+                        {
+                            <div class="d-flex align-center justify-space-between py-1">
+                                <MudText Typo="Typo.body2">@u.Email</MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.PersonRemove"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               Disabled="@(!RendererInfo.IsInteractive)"
+                                               OnClick="@(() => UnassignUserAsync(u))" />
+                            </div>
+                        }
+                        <MudDivider Class="my-2" />
+                    }
+                    <div class="d-flex gap-2 align-center mt-1">
+                        <MudSelect T="AdminUserResponse" @bind-Value="_selectedUser"
+                                   Label="Add user"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Disabled="@(!RendererInfo.IsInteractive)"
+                                   Style="flex:1"
+                                   ToStringFunc="@(u => u?.Email ?? string.Empty)">
+                            @foreach (var u in UnassignedUsers)
+                            {
+                                <MudSelectItem Value="@u">@u.Email</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="@(!RendererInfo.IsInteractive || _selectedUser is null)"
+                                   OnClick="AssignUserAsync">Add</MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </AuthorizeView>
+
         @* ── Recent entries ── *@
         <MudText Typo="Typo.subtitle1" Style="font-weight:500" Class="mb-2">Recent entries</MudText>
         <MudCard>
@@ -119,10 +169,16 @@
 
     private ProjectResponse? project;
     private List<TimeEntryResponse> recentEntries = [];
+    private List<ProjectUserResponse> _projectUsers = [];
+    private List<AdminUserResponse> _allUsers = [];
+    private AdminUserResponse? _selectedUser;
     private double ytdHours;
     private bool projectSheetOpen;
     private bool entrySheetOpen;
     private TimeEntryResponse? sheetEntry;
+
+    private IEnumerable<AdminUserResponse> UnassignedUsers =>
+        _allUsers.Where(u => !_projectUsers.Any(pu => pu.UserId == u.Id));
 
     private string Initials => project is null ? "" :
         (project.ClientName ?? project.Name).Length >= 2
@@ -135,8 +191,17 @@
     {
         try
         {
-            project = await ProjectService.GetProjectById(Id);
+            var projectTask = ProjectService.GetProjectById(Id);
+            var usersTask = ProjectService.GetProjectUsers(Id);
+            var allUsersTask = UserManagementService.GetUsersAsync();
+            await Task.WhenAll(projectTask, usersTask, allUsersTask);
+
+            project = projectTask.Result;
             if (project is null) return;
+
+            _projectUsers = usersTask.Result;
+            _allUsers = allUsersTask.Result;
+            _selectedUser = null;
 
             var allEntries = await TimeEntryService.GetAllTimeEntriesByProject(Id);
             recentEntries = allEntries.Take(8).ToList();
@@ -149,6 +214,35 @@
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             Nav.NavigateTo("login", forceLoad: true);
+        }
+    }
+
+    private async Task AssignUserAsync()
+    {
+        if (_selectedUser is null) return;
+        try
+        {
+            await ProjectService.AssignUserToProject(Id, _selectedUser.Id);
+            Snackbar.Add($"{_selectedUser.Email} added to project.", Severity.Success);
+            await Reload();
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("Failed to add user.", Severity.Error);
+        }
+    }
+
+    private async Task UnassignUserAsync(ProjectUserResponse user)
+    {
+        try
+        {
+            await ProjectService.UnassignUserFromProject(Id, user.UserId);
+            Snackbar.Add($"{user.Email} removed from project.", Severity.Success);
+            await Reload();
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("Failed to remove user.", Severity.Error);
         }
     }
 
