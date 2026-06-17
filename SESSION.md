@@ -14,15 +14,25 @@
   - Fully documented in `docs/azure-deployment.md` → "Database Backup Setup" (Steps A–H)
 - ✅ Stale content removed from `docs/azure-deployment.md` (obsolete Playwright auth state section)
 - ✅ `docs/architecture.md` updated with backup row and RLS/audit trail entries
+- ✅ **#32 Trash / soft-delete restore** (PR #140)
+  - `TimeEntry` upgraded from `BaseEntity` to `SoftDeleteableEntity` (EF migration: `AddSoftDeleteToTimeEntry`)
+  - Delete buttons added to `ProjectSheet` and `ClientSheet` (two-step confirmation, `Color.Error`)
+  - Archive guard on `ClientSheet` — blocked if non-archived projects exist
+  - New `/trash` admin page — restores deleted Projects, Clients, and Time Entries
+  - Trash nav link added under Admin `AuthorizeView` in `NavMenu`
+  - 130 tests passing
+- ✅ **D022 documented** — `MigrateAsync()` at startup decision record added to `docs/decisions.md` (PR #141)
 
 ## Next session
-- No outstanding code work — backlog items below
+- **#95** 🟡 Database-backed user management — planned as next target
 
-## Backlog (low priority)
-- **#95** 🟢 Database-backed user management
+## Backlog
+- **#95** 🟡 Database-backed user management
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
+- **#137** 🟡 Award rate feature — client-level rate flowing to projects; weekend/public holiday multiplier on time entries
+- **#138** 🟢 Calendar view — monthly calendar showing time entries per day on the entries UI
 
 ## Active tech debt (genuine constraints, no action until paid tier)
 | # | Item | ADR |
