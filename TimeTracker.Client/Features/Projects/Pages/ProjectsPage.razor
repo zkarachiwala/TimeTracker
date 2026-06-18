@@ -61,6 +61,10 @@
         {
             Nav.NavigateTo("login", forceLoad: true);
         }
+        catch (HttpRequestException)
+        {
+            // Request aborted during page teardown — not a real error
+        }
     }
 
     private void NavigateToDetail(int id) => Nav.NavigateTo($"projects/{id}");

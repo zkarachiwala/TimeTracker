@@ -8,6 +8,9 @@ public class HttpProjectService(HttpClient http) : IProjectService
     public Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default) =>
         http.GetFromJsonAsync<List<ProjectResponse>>("api/projects/", ct)!;
 
+    public Task<List<ProjectResponse>> GetAssignedProjects(CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<ProjectResponse>>("api/projects/assigned", ct)!;
+
     public Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default) =>
         http.GetFromJsonAsync<ProjectResponse>($"api/projects/{id}", ct);
 
@@ -35,6 +38,21 @@ public class HttpProjectService(HttpClient http) : IProjectService
     public async Task RestoreProject(int id, CancellationToken ct = default)
     {
         var response = await http.PostAsync($"api/projects/{id}/restore", null, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public Task<List<ProjectUserResponse>> GetProjectUsers(int projectId, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<ProjectUserResponse>>($"api/projects/{projectId}/users", ct)!;
+
+    public async Task AssignUserToProject(int projectId, string userId, CancellationToken ct = default)
+    {
+        var response = await http.PostAsJsonAsync($"api/projects/{projectId}/users", new AssignUserRequest(userId), ct);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UnassignUserFromProject(int projectId, string userId, CancellationToken ct = default)
+    {
+        var response = await http.DeleteAsync($"api/projects/{projectId}/users/{userId}", ct);
         response.EnsureSuccessStatusCode();
     }
 }

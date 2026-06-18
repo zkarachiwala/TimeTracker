@@ -7,6 +7,9 @@ public class MockProjectService(MockDataStore store) : IProjectService
     public Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default) =>
         Task.FromResult(store.Projects.ToList());
 
+    public Task<List<ProjectResponse>> GetAssignedProjects(CancellationToken ct = default) =>
+        Task.FromResult(store.Projects.ToList());
+
     public Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default) =>
         Task.FromResult(store.Projects.FirstOrDefault(p => p.Id == id));
 
@@ -58,4 +61,11 @@ public class MockProjectService(MockDataStore store) : IProjectService
         Task.FromResult(new List<DeletedProjectResponse>());
 
     public Task RestoreProject(int id, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task<List<ProjectUserResponse>> GetProjectUsers(int projectId, CancellationToken ct = default) =>
+        Task.FromResult(new List<ProjectUserResponse>());
+
+    public Task AssignUserToProject(int projectId, string userId, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task UnassignUserFromProject(int projectId, string userId, CancellationToken ct = default) => Task.CompletedTask;
 }

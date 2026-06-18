@@ -14,6 +14,7 @@ public sealed class IdentityFixture : IDisposable
 
     public UserManager<User> UserManager => _provider.GetRequiredService<UserManager<User>>();
     public RoleManager<IdentityRole> RoleManager => _provider.GetRequiredService<RoleManager<IdentityRole>>();
+    public IdentityDataContext Db => _provider.GetRequiredService<IdentityDataContext>();
 
     public IdentityFixture(params (string Key, string Value)[] configEntries)
     {

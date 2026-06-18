@@ -28,11 +28,30 @@ gh project item-add 1 --owner zkarachiwala --url https://github.com/zkarachiwala
 Run manually after app code changes — do NOT automate via git hooks:
 
 ```bash
-# App must already be running on https://localhost:7006 before running this
-BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal"
+PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal"
 ```
 
+StopOnError and NumberOfTestWorkers are configured in `TimeTracker.Playwright/playwright.runsettings`, wired into the project via `<RunSettingsFilePath>` in the `.csproj` — no `--settings` flag needed.
+
 The pre-push hook (`.githooks/pre-push`) is intentionally disabled. Never re-enable it — it caused repeated background process incidents by blocking `git push` for 2–3 minutes.
+
+### Playwright failure triage — MANDATORY before any code change
+
+When a Playwright test fails, answer these two questions FIRST. Do not touch any code until both are answered.
+
+**1. Where is the error coming from?**
+- `AssertNoConsoleErrors` failure with `"Request failed: <url>"` → this is a **browser console message** written by Blazor when an `HttpRequestException` goes unhandled. Fix is in the **app** (`LoadData()` catch block), not in the test.
+- `AssertNoConsoleErrors` failure with other text → a real Blazor/JS console error. Fix in the app.
+- `WaitForRequestFinishedAsync` timeout → the API call never completed. Check the server.
+- Element not found / assertion failed → SetUp navigation or wait is wrong.
+
+**2. Is this teardown or mid-test?**
+- If the failed URL is from the timer page (`/api/timeentries/active`, `/api/timeentries/today`) and the test doesn't interact with the timer, it's almost certainly a **teardown abort** — the page closed while a request was still in-flight.
+- Teardown aborts are fixed in the **app** by catching all `HttpRequestException` in `LoadData()`, not just `Unauthorized`. An aborted request has `StatusCode == null` and does not match the `when` guard.
+
+**Never change a test to make a failing test pass. Fix the app or the SetUp.**
+
+Full strategy and wait patterns: `docs/playwright-strategy.md`.
 
 ## Git discipline
 

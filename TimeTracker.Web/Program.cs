@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Scalar.AspNetCore;
 using Serilog;
 using TimeTracker.Web.Data;
+using TimeTracker.Web.Features.Admin;
 using TimeTracker.Web.Features.Auth;
 using TimeTracker.Web.Features.Clients;
 using TimeTracker.Web.Features.Projects;
@@ -61,6 +62,7 @@ builder.Services.AddScoped<ITimeEntryQueryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
+builder.Services.AddScoped<TimeTracker.Contracts.Features.Admin.IUserManagementService, UserManagementService>();
 
 var app = builder.Build();
 
@@ -78,6 +80,19 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     if (!await roleManager.RoleExistsAsync("Admin"))
         await roleManager.CreateAsync(new IdentityRole("Admin"));
+
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    if (!await userManager.Users.AnyAsync())
+    {
+        var adminEmail = app.Configuration["Authentication:AdminEmail"];
+        if (!string.IsNullOrEmpty(adminEmail))
+        {
+            var adminUser = new User { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+            var createResult = await userManager.CreateAsync(adminUser);
+            if (createResult.Succeeded)
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -112,9 +127,6 @@ app.MapTimeEntryEndpoints();
 app.MapProjectEndpoints();
 app.MapClientEndpoints();
 app.MapAuthEndpoints();
-
-var allowedEmails = app.Configuration.GetSection("Authentication:AllowedEmails").Get<string[]>();
-if (allowedEmails is null || allowedEmails.Length == 0)
-    throw new InvalidOperationException("Authentication:AllowedEmails must be configured with at least one entry.");
+app.MapAdminEndpoints();
 
 app.Run();

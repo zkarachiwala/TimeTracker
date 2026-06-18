@@ -17,7 +17,13 @@
     <div style="padding:8px 20px 24px; overflow-y:auto;">
         <MudSelect T="int" Label="Project" @bind-Value="projectId" Variant="Variant.Outlined"
                    Class="mb-3" AnchorOrigin="Origin.BottomCenter">
-            @foreach (var p in projects)
+            @if (_orphanedProject is not null)
+            {
+                <MudSelectItem Value="_orphanedProject.Id" Disabled="true">
+                    @_orphanedProject.Name (not assigned)
+                </MudSelectItem>
+            }
+            @foreach (var p in _assignedProjects)
             {
                 <MudSelectItem Value="p.Id">@p.Name</MudSelectItem>
             }
@@ -88,7 +94,8 @@
     [Parameter] public TimeEntryResponse? Entry { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
 
-    private List<ProjectResponse> projects = [];
+    private List<ProjectResponse> _assignedProjects = [];
+    private ProjectSummary? _orphanedProject;
     private int projectId;
     private DateTime? date = DateTime.Today;
     private TimeSpan? startTime;
@@ -103,8 +110,7 @@
         if (Open && !_open)
         {
             _open = true;
-            if (projects.Count == 0)
-                projects = await ProjectService.GetAllProjects();
+            _assignedProjects = await ProjectService.GetAssignedProjects();
             ResetFromEntry();
         }
         else if (!Open && _open)
@@ -159,10 +165,17 @@
             endTime = localEnd?.TimeOfDay;
             note = Entry.Note ?? string.Empty;
             invoiceReference = Entry.InvoiceReference;
+
+            // Orphaned reference pattern: if the entry's project is no longer assigned,
+            // surface it as a disabled tombstone item so the user can see what it was.
+            _orphanedProject = _assignedProjects.Any(p => p.Id == Entry.Project.Id)
+                ? null
+                : Entry.Project;
         }
         else
         {
-            projectId = projects.FirstOrDefault()?.Id ?? 0;
+            _orphanedProject = null;
+            projectId = _assignedProjects.FirstOrDefault()?.Id ?? 0;
             date = DateTime.Today;
             startTime = null;
             endTime = null;

@@ -1,0 +1,8 @@
+namespace TimeTracker.Contracts.Features.Admin;
+
+public interface IUserManagementService
+{
+    Task<List<AdminUserResponse>> GetUsersAsync(CancellationToken ct = default);
+    Task AddUserAsync(string email, CancellationToken ct = default);
+    Task SetAdminRoleAsync(string userId, bool isAdmin, CancellationToken ct = default);
+}

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
+using TimeTracker.Client.Features.Admin;
 using TimeTracker.Client.Features.Auth;
 using TimeTracker.Client.Features.Clients;
 using TimeTracker.Client.Features.Projects;
@@ -34,6 +35,7 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<ITimeEntryService, HttpTimeEntryService>();
 builder.Services.AddScoped<IProjectService, HttpProjectService>();
 builder.Services.AddScoped<IClientService, HttpClientService>();
+builder.Services.AddScoped<TimeTracker.Contracts.Features.Admin.IUserManagementService, HttpUserManagementService>();
 #endif
 
 await builder.Build().RunAsync();

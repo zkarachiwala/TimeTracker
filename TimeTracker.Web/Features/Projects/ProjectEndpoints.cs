@@ -14,6 +14,9 @@ public static class ProjectEndpoints
         group.MapGet("/", async (IProjectService svc, CancellationToken ct) =>
             Results.Ok(await svc.GetAllProjects(ct)));
 
+        group.MapGet("/assigned", async (IProjectService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetAssignedProjects(ct)));
+
         group.MapGet("/{id:int}", async (int id, IProjectService svc, CancellationToken ct) =>
         {
             var result = await svc.GetProjectById(id, ct);
@@ -44,6 +47,21 @@ public static class ProjectEndpoints
         adminGroup.MapPost("/{id:int}/restore", async (int id, IProjectService svc, CancellationToken ct) =>
         {
             try { await svc.RestoreProject(id, ct); return Results.NoContent(); }
+            catch (EntityNotFoundException) { return Results.NotFound(); }
+        }).RequireRateLimiting("write");
+
+        group.MapGet("/{id:int}/users", async (int id, IProjectService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetProjectUsers(id, ct)));
+
+        adminGroup.MapPost("/{id:int}/users", async (int id, AssignUserRequest request, IProjectService svc, CancellationToken ct) =>
+        {
+            try { await svc.AssignUserToProject(id, request.UserId, ct); return Results.Created(); }
+            catch (InvalidOperationException ex) { return Results.Conflict(ex.Message); }
+        }).RequireRateLimiting("write");
+
+        adminGroup.MapDelete("/{id:int}/users/{userId}", async (int id, string userId, IProjectService svc, CancellationToken ct) =>
+        {
+            try { await svc.UnassignUserFromProject(id, userId, ct); return Results.NoContent(); }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
     }

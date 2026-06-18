@@ -1,5 +1,7 @@
 using Mapster;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using TimeTracker.Contracts.Features.Projects;
 using TimeTracker.Web.Data;
 using TimeTracker.Web.Shared;
 using TimeTracker.Shared.Entities;
@@ -11,33 +13,39 @@ public class ProjectService : IProjectService
 {
     private readonly IDbContextFactory<TimeTrackerDataContext> _contextFactory;
     private readonly IUserContextService _userContextService;
+    private readonly UserManager<User> _userManager;
 
-    public ProjectService(IDbContextFactory<TimeTrackerDataContext> contextFactory, IUserContextService userContextService)
+    public ProjectService(IDbContextFactory<TimeTrackerDataContext> contextFactory, IUserContextService userContextService, UserManager<User> userManager)
     {
         _contextFactory = contextFactory;
         _userContextService = userContextService;
+        _userManager = userManager;
     }
 
     private async Task<string> GetUserIdAsync() =>
         await _userContextService.GetUserIdAsync() ?? throw new EntityNotFoundException("User not found.");
 
-    private static IQueryable<Project> UserProjects(TimeTrackerDataContext ctx, string userId) =>
-        ctx.Projects
-            .Where(p => !p.IsDeleted && p.ProjectUsers.Any(pu => pu.UserId == userId));
-
     public async Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var projects = await ctx.Projects.Where(p => !p.IsDeleted).ToListAsync(ct);
+        return projects.Adapt<List<ProjectResponse>>();
+    }
+
+    public async Task<List<ProjectResponse>> GetAssignedProjects(CancellationToken ct = default)
     {
         var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
-        var projects = await UserProjects(ctx, userId).ToListAsync(ct);
+        var projects = await ctx.Projects
+            .Where(p => !p.IsDeleted && p.ProjectUsers.Any(pu => pu.UserId == userId))
+            .ToListAsync(ct);
         return projects.Adapt<List<ProjectResponse>>();
     }
 
     public async Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default)
     {
-        var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
-        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id, ct);
+        var project = await ctx.Projects.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
         return project?.Adapt<ProjectResponse>();
     }
 
@@ -62,9 +70,8 @@ public class ProjectService : IProjectService
 
     public async Task UpdateProject(int id, ProjectUpdateRequest request, CancellationToken ct = default)
     {
-        var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
-        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id, ct)
+        var project = await ctx.Projects.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Project {id} not found.");
 
         project.Name = request.Name;
@@ -80,9 +87,8 @@ public class ProjectService : IProjectService
 
     public async Task DeleteProject(int id, CancellationToken ct = default)
     {
-        var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
-        var project = await UserProjects(ctx, userId).FirstOrDefaultAsync(p => p.Id == id, ct)
+        var project = await ctx.Projects.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Project {id} not found.");
 
         project.IsDeleted = true;
@@ -109,6 +115,48 @@ public class ProjectService : IProjectService
 
         project.IsDeleted = false;
         project.DateDeleted = null;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<List<ProjectUserResponse>> GetProjectUsers(int projectId, CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var userIds = await ctx.ProjectUsers
+            .Where(pu => pu.ProjectId == projectId)
+            .Select(pu => pu.UserId)
+            .ToListAsync(ct);
+
+        var result = new List<ProjectUserResponse>(userIds.Count);
+        foreach (var userId in userIds)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user?.Email is not null)
+                result.Add(new ProjectUserResponse(userId, user.Email));
+        }
+        return result.OrderBy(u => u.Email).ToList();
+    }
+
+    public async Task AssignUserToProject(int projectId, string userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var alreadyAssigned = await ctx.ProjectUsers
+            .AnyAsync(pu => pu.ProjectId == projectId && pu.UserId == userId, ct);
+
+        if (alreadyAssigned)
+            throw new InvalidOperationException($"User is already assigned to project {projectId}.");
+
+        ctx.ProjectUsers.Add(new ProjectUser { ProjectId = projectId, UserId = userId });
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UnassignUserFromProject(int projectId, string userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        var assignment = await ctx.ProjectUsers
+            .FirstOrDefaultAsync(pu => pu.ProjectId == projectId && pu.UserId == userId, ct)
+            ?? throw new EntityNotFoundException($"User is not assigned to project {projectId}.");
+
+        ctx.ProjectUsers.Remove(assignment);
         await ctx.SaveChangesAsync(ct);
     }
 }
