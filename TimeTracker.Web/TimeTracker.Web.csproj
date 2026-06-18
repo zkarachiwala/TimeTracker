@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.8" />
     <PackageReference Include="MudBlazor" Version="9.5.0" />
+    <PackageReference Include="PublicHoliday" Version="3.13.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.5.3" />
     <PackageReference Include="Mapster" Version="10.0.8" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />

@@ -40,6 +40,7 @@ public class ClientService : IClientService
         {
             Name = request.Name,
             DefaultHourlyRate = request.DefaultHourlyRate,
+            AwardRate = request.AwardRate,
             ContactName = request.ContactName,
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone
@@ -56,6 +57,7 @@ public class ClientService : IClientService
 
         client.Name = request.Name;
         client.DefaultHourlyRate = request.DefaultHourlyRate;
+        client.AwardRate = request.AwardRate;
         client.ContactName = request.ContactName;
         client.ContactEmail = request.ContactEmail;
         client.ContactPhone = request.ContactPhone;

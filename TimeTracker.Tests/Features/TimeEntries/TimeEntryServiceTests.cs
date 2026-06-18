@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TimeTracker.Web.Data;
 using TimeTracker.Web.Features.TimeEntries;
+using TimeTracker.Web.Features.AwardRate;
 using TimeTracker.Shared.Entities;
 using TimeTracker.Shared.Exceptions;
 using TimeTracker.Tests.Infrastructure;
@@ -20,7 +21,7 @@ public class TimeEntryServiceTests
             .Options;
 
     private static TimeEntryService CreateService(DbContextOptions<TimeTrackerDataContext> options, string userId = UserId) =>
-        new(new TestDbContextFactory(options), new FakeUserContextService(userId));
+        new(new TestDbContextFactory(options), new FakeUserContextService(userId), new AwardRateResolver());
 
     private static Project MakeProject(string userId, string name = "Project", bool isDeleted = false) =>
         new() { Name = name, IsDeleted = isDeleted, ProjectUsers = [new ProjectUser { UserId = userId }] };

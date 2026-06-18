@@ -11,11 +11,13 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
 {
     private readonly IDbContextFactory<TimeTrackerDataContext> _contextFactory;
     private readonly IUserContextService _userContextService;
+    private readonly IAwardRateResolver _awardRateResolver;
 
-    public TimeEntryService(IDbContextFactory<TimeTrackerDataContext> contextFactory, IUserContextService userContextService)
+    public TimeEntryService(IDbContextFactory<TimeTrackerDataContext> contextFactory, IUserContextService userContextService, IAwardRateResolver awardRateResolver)
     {
         _contextFactory = contextFactory;
         _userContextService = userContextService;
+        _awardRateResolver = awardRateResolver;
     }
 
     private async Task<string> GetUserIdAsync() =>
@@ -24,7 +26,21 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
     private static IQueryable<TimeEntry> UserEntries(TimeTrackerDataContext ctx, string userId) =>
         ctx.TimeEntries
             .Include(te => te.Project)
+                .ThenInclude(p => p.Client)
             .Where(te => te.UserId == userId && !te.IsDeleted && !te.Project.IsDeleted);
+
+    private TimeEntryResponse Enrich(TimeEntry entry)
+    {
+        var dto = entry.Adapt<TimeEntryResponse>();
+        var (effectiveRate, isAwardRate) = _awardRateResolver.Resolve(
+            entry.Start,
+            entry.Project.HourlyRate,
+            entry.Project.Client?.AwardRate);
+        return dto with { EffectiveRate = effectiveRate, IsAwardRate = isAwardRate };
+    }
+
+    private List<TimeEntryResponse> EnrichList(List<TimeEntry> entries) =>
+        entries.Select(Enrich).ToList();
 
     public async Task<TimeEntryResponse?> GetTimeEntryById(int id, CancellationToken ct = default)
     {
@@ -32,8 +48,9 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entry = await ctx.TimeEntries
             .Include(te => te.Project)
+                .ThenInclude(p => p.Client)
             .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId && !te.IsDeleted, ct);
-        return entry?.Adapt<TimeEntryResponse>();
+        return entry is null ? null : Enrich(entry);
     }
 
     public async Task CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
@@ -122,7 +139,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         var entries = await UserEntries(ctx, userId)
             .Where(te => te.Start.Year == year)
             .ToListAsync(ct);
-        return entries.Adapt<List<TimeEntryResponse>>();
+        return EnrichList(entries);
     }
 
     public async Task<TimeEntryResponse?> GetActiveTimeEntry(CancellationToken ct = default)
@@ -131,8 +148,9 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entry = await ctx.TimeEntries
             .Include(te => te.Project)
+                .ThenInclude(p => p.Client)
             .FirstOrDefaultAsync(te => te.UserId == userId && !te.IsDeleted && te.End == null && !te.Project.IsDeleted, ct);
-        return entry?.Adapt<TimeEntryResponse>();
+        return entry is null ? null : Enrich(entry);
     }
 
     public async Task<List<TimeEntryResponse>> GetTodaysTimeEntries(CancellationToken ct = default)
@@ -144,7 +162,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
             .Where(te => te.Start.Date == today)
             .OrderByDescending(te => te.Start)
             .ToListAsync(ct);
-        return entries.Adapt<List<TimeEntryResponse>>();
+        return EnrichList(entries);
     }
 
     public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId, CancellationToken ct = default)
@@ -155,7 +173,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
             .Where(te => te.ProjectId == projectId)
             .OrderByDescending(te => te.Start)
             .ToListAsync(ct);
-        return entries.Adapt<List<TimeEntryResponse>>();
+        return EnrichList(entries);
     }
 
     public async Task<List<DeletedTimeEntryResponse>> GetDeletedTimeEntries(CancellationToken ct = default)
@@ -205,7 +223,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
 
         return new TimeEntryResponseWrapper
         {
-            TimeEntries = dataTask.Result.Adapt<List<TimeEntryResponse>>(),
+            TimeEntries = EnrichList(dataTask.Result),
             Count = countTask.Result,
             TotalDuration = totalDuration
         };

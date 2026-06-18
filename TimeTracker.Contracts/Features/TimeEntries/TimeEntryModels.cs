@@ -9,7 +9,9 @@ public record TimeEntryResponse(
     DateTime? End,
     string? Note,
     string? InvoiceReference,
-    DateTime? InvoicedAt
+    DateTime? InvoicedAt,
+    decimal? EffectiveRate = null,
+    bool IsAwardRate = false
 );
 
 public record ProjectSummary(int Id, string Name);

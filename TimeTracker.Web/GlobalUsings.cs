@@ -6,3 +6,4 @@ global using TimeTracker.Shared.Exceptions;
 global using TimeTracker.Contracts.Features.TimeEntries;
 global using TimeTracker.Contracts.Features.Projects;
 global using TimeTracker.Contracts.Features.Clients;
+global using TimeTracker.Web.Features.AwardRate;

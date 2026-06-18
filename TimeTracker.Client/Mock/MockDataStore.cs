@@ -30,8 +30,8 @@ public class MockDataStore
 
     private static List<ClientResponse> SeedClients() =>
     [
-        new(1, "Acme Corp",    false, 150m, "Jane Smith", "jane@acme.example",      "+1 555-0101"),
-        new(2, "Beta Digital", false, 175m, "Tom Lee",    "tom@betadigital.example", "+1 555-0202"),
+        new(1, "Acme Corp",    false, 150m, null, "Jane Smith", "jane@acme.example",      "+1 555-0101"),
+        new(2, "Beta Digital", false, 175m, null, "Tom Lee",    "tom@betadigital.example", "+1 555-0202"),
     ];
 
     private static List<ProjectResponse> SeedProjects() =>

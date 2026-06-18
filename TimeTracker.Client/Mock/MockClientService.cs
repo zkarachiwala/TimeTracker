@@ -19,6 +19,7 @@ public class MockClientService(MockDataStore store) : IClientService
             request.Name,
             false,
             request.DefaultHourlyRate,
+            request.AwardRate,
             request.ContactName,
             request.ContactEmail,
             request.ContactPhone));
@@ -36,6 +37,7 @@ public class MockClientService(MockDataStore store) : IClientService
             request.Name,
             old.IsArchived,
             request.DefaultHourlyRate,
+            request.AwardRate,
             request.ContactName,
             request.ContactEmail,
             request.ContactPhone);
