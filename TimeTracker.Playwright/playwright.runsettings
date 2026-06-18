@@ -1,5 +1,6 @@
 <RunSettings>
   <NUnit>
     <StopOnError>true</StopOnError>
+    <NumberOfTestWorkers>1</NumberOfTestWorkers>
   </NUnit>
 </RunSettings>

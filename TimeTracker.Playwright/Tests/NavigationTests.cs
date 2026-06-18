@@ -6,16 +6,19 @@ public class NavigationTests : AuthenticatedPageTest
     [SetUp]
     public async Task StartOnTimer()
     {
+        // WaitForRequestFinishedAsync fires on 'requestfinished' (body fully downloaded), not
+        // 'response' (headers only). Target the last sequential call in LoadData() — if today's
+        // entries have finished, projects and active-timer must also be fully complete.
+        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
+        {
+            Predicate = r => r.Url.Contains("/api/timeentries/today"),
+            Timeout = 15_000
+        });
         await Page.GotoAsync("/");
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        // CookieAuthenticationStateProvider calls /api/auth/user async after WASM is interactive.
-        // Admin-role nav links (clients, projects) only render once that resolves — wait for one
-        // of them to confirm auth state is settled before any test assertion.
+        await loadDataDone;
+        // Auth state resolves on a separate call — wait for auth-gated nav link after data is loaded
         await Expect(Page.Locator(".bottom-nav").GetByText("Clients")).ToBeVisibleAsync(new() { Timeout = 15_000 });
-        // Wait for LoadData() to complete so api/timeentries/active is not in-flight when tests navigate away.
-        // Without this, Chromium aborts the pending fetch and fires Page.RequestFailed.
-        await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
-            .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
     [Test]

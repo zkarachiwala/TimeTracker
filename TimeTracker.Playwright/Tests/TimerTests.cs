@@ -6,12 +6,17 @@ public class TimerTests : AuthenticatedPageTest
     [SetUp]
     public async Task NavigateToTimer()
     {
+        // WaitForRequestFinishedAsync fires on 'requestfinished' (body fully downloaded), not
+        // 'response' (headers only). Target the last sequential call in LoadData() — if today's
+        // entries have finished, projects and active-timer must also be fully complete.
+        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
+        {
+            Predicate = r => r.Url.Contains("/api/timeentries/today"),
+            Timeout = 15_000
+        });
         await Page.GotoAsync("/");
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        // Wait for LoadData() to complete so api/timeentries/active is not in-flight when assertions run.
-        // Without this, Chromium aborts the pending fetch and fires Page.RequestFailed.
-        await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
-            .ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await loadDataDone;
     }
 
     [Test]

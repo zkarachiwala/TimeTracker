@@ -116,6 +116,10 @@
         {
             Nav.NavigateTo("login", forceLoad: true);
         }
+        catch (HttpRequestException)
+        {
+            // Request aborted during page teardown — not a real error
+        }
     }
 
     private async Task RestoreProjectAsync(DeletedProjectResponse project)

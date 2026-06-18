@@ -67,10 +67,12 @@ public class AdminTests : AuthenticatedPageTest
         var email = $"playwright-{Guid.NewGuid():N}@example.com";
 
         await Page.GetByPlaceholder("Email address").FillAsync(email);
+        await Page.GetByPlaceholder("Email address").PressAsync("Tab");
+        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Add" })).ToBeEnabledAsync(new() { Timeout = 5_000 });
         await Page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
 
         // Wait for the new row to appear in the user list
-        await Expect(Page.GetByText(email)).ToBeVisibleAsync(new() { Timeout = 10_000 });
+        await Expect(Page.GetByText(email, new() { Exact = true })).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 }
 
@@ -80,14 +82,24 @@ public class AdminNavTests : AuthenticatedPageTest
     [SetUp]
     public async Task NavigateToTimer()
     {
+        // WaitForRequestFinishedAsync fires on 'requestfinished' (body fully downloaded), not
+        // 'response' (headers only). Target the last sequential call in LoadData() — if today's
+        // entries have finished, projects and active-timer must also be fully complete.
+        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
+        {
+            Predicate = r => r.Url.Contains("/api/timeentries/today"),
+            Timeout = 15_000
+        });
         await Page.GotoAsync("/");
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        // Wait for auth state to settle — admin nav links only render once the cookie auth resolves
+        await loadDataDone;
+        // Auth state resolves on a separate call — wait for auth-gated nav link after data is loaded
         await Expect(Page.Locator(".bottom-nav").GetByText("Clients"))
             .ToBeVisibleAsync(new() { Timeout = 15_000 });
-        // Wait for LoadData() to complete so api/timeentries/active is not in-flight when tests navigate away
-        await Expect(Page.GetByText("Tracking now").Or(Page.GetByText("Start a timer")))
-            .ToBeVisibleAsync(new() { Timeout = 15_000 });
+        // Users link is in the hamburger drawer — open it so tests can see and click it
+        await Page.Locator("#hamburger-btn").ClickAsync();
+        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Users" }))
+            .ToBeInViewportAsync(new() { Timeout = 5_000 });
     }
 
     [Test]

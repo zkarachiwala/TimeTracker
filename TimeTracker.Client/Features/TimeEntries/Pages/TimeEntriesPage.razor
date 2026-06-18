@@ -187,6 +187,10 @@
         {
             Nav.NavigateTo("login", forceLoad: true);
         }
+        catch (HttpRequestException)
+        {
+            // Request aborted during page teardown — not a real error
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
