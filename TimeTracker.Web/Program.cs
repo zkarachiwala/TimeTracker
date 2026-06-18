@@ -103,6 +103,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+app.UseMiddleware<DatabaseWarmupMiddleware>();
 app.UseHsts();
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
