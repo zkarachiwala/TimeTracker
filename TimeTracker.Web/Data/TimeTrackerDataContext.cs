@@ -23,6 +23,7 @@ public class TimeTrackerDataContext : DbContext
         modelBuilder.Entity<Project>().HasOne(p => p.Client).WithMany(c => c.Projects).HasForeignKey(p => p.ClientId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().HasIndex(c => c.Name).IsUnique();
         modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.DefaultHourlyRate).HasPrecision(18, 2);
+        modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.AwardRate).HasPrecision(18, 2);
         modelBuilder.Entity<Project>().Property(p => p.HourlyRate).HasPrecision(18, 2);
         base.OnModelCreating(modelBuilder);
     }
