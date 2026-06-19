@@ -18,9 +18,10 @@
             <Authorized Context="authCtx">
                 <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                          Dense="true" DropShadow="true">
-                    <ActivatorContent>
+                    <ActivatorContent Context="menuCtx">
                         <MudAvatar Style="background:var(--dzk-navy); color:#fff; font-weight:500; font-size:.9rem; width:36px; height:36px; cursor:pointer"
-                                   title="Account">
+                                   title="Account"
+                                   @onclick="menuCtx.OpenAsync">
                             @GetInitials(authCtx.User.Identity?.Name)
                         </MudAvatar>
                     </ActivatorContent>
