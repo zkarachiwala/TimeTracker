@@ -1,8 +1,7 @@
-# Session handoff — 2026-06-18
+# Session handoff — 2026-06-20
 
 ## Current state
-- Branch: `feature/issue-137-award-rate` — in progress, all changes committed after this session
-- Plan file: `docs/plans/issue-137-award-rate.md`
+- Branch: `feature/issue-34-avatar-dropdown` — committed, ready to push and PR
 
 ## Completed this session
 - ✅ Playwright failures fixed — 12 tests were failing because Chromium aborted in-flight `api/timeentries/active` fetch when tests navigated away before `LoadData()` completed; added `"Tracking now" or "Start a timer"` visibility wait to three SetUps (PR #131)
@@ -11,6 +10,7 @@
 - ✅ **#32 Trash / soft-delete restore** (PR #140)
 - ✅ **D022 documented** — `MigrateAsync()` at startup decision record added to `docs/decisions.md` (PR #141)
 - ✅ **#95 Database-backed user management** (PR #144)
+- ✅ **#34 App bar avatar dropdown** — `MudMenu` replaces static avatar; shows name/email/sign-out on click (PR pending)
 - ✅ **#137 Award rate** — all phases complete on this branch:
   - D025 added to `docs/decisions.md` — `PublicHoliday` NuGet chosen (Nager.Date rejected: requires paid license key)
   - TD25 added to `docs/technical-debt.md` — jurisdiction hardcoded to national AU pending external investigation
@@ -26,6 +26,7 @@
   - 164/164 tests green
 
 ## Next session
+- Merge PR for #34 once tested
 - **#138** 🟢 Calendar view
 
 ## Backlog
