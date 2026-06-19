@@ -71,6 +71,14 @@ public class DesktopNavigationTests : AuthenticatedDesktopPageTest
     }
 
     [Test]
+    public async Task AvatarDropdownOpensWithSignOut()
+    {
+        await Page.Locator("[title='Account']").ClickAsync();
+        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }))
+            .ToBeVisibleAsync(new() { Timeout = 5_000 });
+    }
+
+    [Test]
     public async Task DrawerNavTimerNavigatesBackToTimer()
     {
         await OpenDrawer();
