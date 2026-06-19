@@ -34,6 +34,12 @@ Every entry records a decision that was forced by a constraint (cost, tier limit
 |---|--------|----------|-----------|-------------|-----------------|
 | TD23 | | No APM or distributed tracing — structured logs to console only | Application Insights uses workspace-based Log Analytics (pay-as-you-go, no free monthly allowance on current model). Hard constraint: must be free. | No distributed tracing, no correlation IDs, no performance baselines, no alerting on error spikes or latency degradation. Log retention limited to Azure App Service log stream. | OpenTelemetry → Grafana Cloud (genuinely free tier: 50 GB logs, 10k metric series, 50 GB traces). See [D019](decisions.md#d019-serilog--health-endpoint--uptimerobot-over-application-insights), [#121](https://github.com/zkarachiwala/TimeTracker/issues/121). |
 
+### Business rules
+
+| # | Status | Decision | Constraint | Consequence | Proper solution |
+|---|--------|----------|-----------|-------------|-----------------|
+| TD25 | | Award rate public holiday jurisdiction hardcoded to national AU — no user or client/project location tracked | No location data exists on users, clients, or projects. It is also unresolved whether the jurisdiction for public holidays should follow the *user* (where they work) or the *client/project* (where the work is billed). Both models are defensible and the right answer requires external investigation. | State and territory public holidays are not applied. A user in QLD will not have QLD-specific holidays recognised. A client in VIC will not have VIC-specific holidays applied to their entries. | Decide jurisdiction model (user vs client/project). Add a location/state field to the chosen entity. Update `AwardRateResolver` to pass the state code to `AustraliaPublicHoliday` instead of using national-only resolution. See [D025](decisions.md#d025-publicholiday-for-au-public-holiday-resolution). |
+
 ### CDN & networking
 
 | # | Status | Decision | Constraint | Consequence | Proper solution |

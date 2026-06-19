@@ -61,6 +61,7 @@ builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<ITimeEntryQueryService, TimeEntryService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddSingleton<IAwardRateResolver, AwardRateResolver>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
 builder.Services.AddScoped<TimeTracker.Contracts.Features.Admin.IUserManagementService, UserManagementService>();
 

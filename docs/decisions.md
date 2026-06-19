@@ -26,6 +26,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D020](#d020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
 | [D021](#d021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
 | [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Accepted |
+| [D025](#d025-publicholiday-for-au-public-holiday-resolution) | `PublicHoliday` for AU public holiday resolution | 2026-06 | Accepted |
 
 ---
 
@@ -625,3 +626,32 @@ This pattern — showing a disabled placeholder for the current value when the r
 - ✅ Reports reconcile — all user entries included regardless of current assignment
 - ✅ Clear, auditable gate — project assignment is about time allocation, not data access
 - ❌ A removed user can still navigate to the project detail page and see their own entries there — this is intentional and correct
+
+---
+
+## D025: `PublicHoliday` for AU public holiday resolution
+
+**Date:** 2026-06 — **Status:** Accepted — **Closes:** [#137](https://github.com/zkarachiwala/TimeTracker/issues/137) — **Tracks:** [TD25](technical-debt.md#business-rules)
+
+**Context:** Issue #137 introduced award rates — a secondary billing rate applied automatically on weekends and public holidays. Weekend detection is trivial (`DayOfWeek`). Public holiday detection requires a data source.
+
+**Options considered:**
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **`PublicHoliday` NuGet (MIT)** | Free, open-source, no key, offline, AU + state support, 6.6M downloads, actively maintained | NuGet dependency |
+| `Nager.Date` NuGet | Well-known, AU support | **Rejected** — v2.22 requires a GitHub sponsor license key; throws `LicenseKeyException` at runtime without one. Not free. |
+| Hardcoded DB seed table | Full control, editable | Manual update each year, migration required |
+| Public holiday API | Always current | External dependency, rate limits, potential cost |
+
+**Decision:** Use [`PublicHoliday`](https://github.com/martinjw/holiday) by martinjw (MIT licence, v3.13.0). Holiday resolution is a pure in-process call via `new AustraliaPublicHoliday().IsPublicHoliday(date)` — no network hop, no API key, no DB table to maintain. National AU holidays only for the initial implementation.
+
+**Scope limitation:** Only national Australian public holidays are resolved at launch. State/territory holidays are supported by the library (`AustraliaPublicHoliday` accepts a state enum) but not enabled until the jurisdiction question is resolved — see [TD25](technical-debt.md#business-rules).
+
+**Consequences:**
+- ✅ Zero cost — MIT-licensed, resolves offline
+- ✅ No DB schema or migration for holiday data
+- ✅ Covers the core use case (national AU holidays) immediately
+- ✅ State support is built in — enabling it requires only passing a state enum once TD25 is resolved
+- ❌ State-level holidays not covered until TD25 is resolved
+- ❌ Adds one NuGet dependency to `TimeTracker.Web`

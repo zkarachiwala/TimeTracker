@@ -21,6 +21,10 @@
                          Variant="Variant.Outlined" Class="mb-3" Min="0"
                          HelperText="Optional — pre-fills rate on new projects. Leave blank if none." />
 
+        <MudNumericField T="decimal?" Label="Award rate (AUD)" @bind-Value="awardRate"
+                         Variant="Variant.Outlined" Class="mb-3" Min="0"
+                         HelperText="Optional — applied automatically on weekends and public holidays." />
+
         <MudText Typo="Typo.overline" Class="mb-2 d-block">Primary contact (optional)</MudText>
         <MudTextField Label="Contact name" @bind-Value="contactName" Variant="Variant.Outlined" Class="mb-3" />
         <MudTextField Label="Email" @bind-Value="contactEmail" Variant="Variant.Outlined"
@@ -76,6 +80,7 @@
 
     private string name = string.Empty;
     private decimal? defaultRate;
+    private decimal? awardRate;
     private string contactName = string.Empty;
     private string contactEmail = string.Empty;
     private string contactPhone = string.Empty;
@@ -128,6 +133,7 @@
         {
             name = Client.Name;
             defaultRate = Client.DefaultHourlyRate;
+            awardRate = Client.AwardRate;
             contactName = Client.ContactName ?? string.Empty;
             contactEmail = Client.ContactEmail ?? string.Empty;
             contactPhone = Client.ContactPhone ?? string.Empty;
@@ -136,6 +142,7 @@
         {
             name = string.Empty;
             defaultRate = null;
+            awardRate = null;
             contactName = string.Empty;
             contactEmail = string.Empty;
             contactPhone = string.Empty;
@@ -150,6 +157,7 @@
             {
                 Name = name,
                 DefaultHourlyRate = defaultRate,
+                AwardRate = awardRate,
                 ContactName = contactName,
                 ContactEmail = contactEmail,
                 ContactPhone = contactPhone
@@ -162,6 +170,7 @@
             {
                 Name = name,
                 DefaultHourlyRate = defaultRate,
+                AwardRate = awardRate,
                 ContactName = contactName,
                 ContactEmail = contactEmail,
                 ContactPhone = contactPhone

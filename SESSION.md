@@ -1,40 +1,40 @@
-# Session handoff — 2026-06-17
+# Session handoff — 2026-06-18
 
 ## Current state
-- Branch: `main` — clean, all PRs merged
+- Branch: `feature/issue-137-award-rate` — in progress, all changes committed after this session
+- Plan file: `docs/plans/issue-137-award-rate.md`
 
 ## Completed this session
 - ✅ Playwright failures fixed — 12 tests were failing because Chromium aborted in-flight `api/timeentries/active` fetch when tests navigated away before `LoadData()` completed; added `"Tracking now" or "Start a timer"` visibility wait to three SetUps (PR #131)
 - ✅ CodeQL alert #8 (CWE-359) resolved — removed `result.Status` enum value from auth log message (PR #132)
 - ✅ **#104 Automated database backup** — nightly `.bacpac` export via GitHub Actions to private `TimeTracker-backups` repo (PRs #133, #134, #135)
-  - Dedicated service principal (`timetracker-github-backup`) with OIDC, no stored secrets
-  - Custom Azure RBAC role: firewall rule write/delete only, scoped to SQL server
-  - SQL user: `db_owner` (required for `DBCC SHOW_STATISTICS` and RLS bypass during export)
-  - Backups pushed to private `TimeTracker-backups` repo; files older than 30 days auto-purged
-  - Fully documented in `docs/azure-deployment.md` → "Database Backup Setup" (Steps A–H)
-- ✅ Stale content removed from `docs/azure-deployment.md` (obsolete Playwright auth state section)
-- ✅ `docs/architecture.md` updated with backup row and RLS/audit trail entries
 - ✅ **#32 Trash / soft-delete restore** (PR #140)
-  - `TimeEntry` upgraded from `BaseEntity` to `SoftDeleteableEntity` (EF migration: `AddSoftDeleteToTimeEntry`)
-  - Delete buttons added to `ProjectSheet` and `ClientSheet` (two-step confirmation, `Color.Error`)
-  - Archive guard on `ClientSheet` — blocked if non-archived projects exist
-  - New `/trash` admin page — restores deleted Projects, Clients, and Time Entries
-  - Trash nav link added under Admin `AuthorizeView` in `NavMenu`
-  - 130 tests passing
 - ✅ **D022 documented** — `MigrateAsync()` at startup decision record added to `docs/decisions.md` (PR #141)
+- ✅ **#95 Database-backed user management** (PR #144)
+- ✅ **#137 Award rate** — all phases complete on this branch:
+  - D025 added to `docs/decisions.md` — `PublicHoliday` NuGet chosen (Nager.Date rejected: requires paid license key)
+  - TD25 added to `docs/technical-debt.md` — jurisdiction hardcoded to national AU pending external investigation
+  - `Client` entity: `AwardRate (decimal?)` added + EF migration `AddAwardRateToClient`
+  - `ClientResponse`, `ClientRequest`, `ClientCreateRequest`, `ClientUpdateRequest` in Contracts updated
+  - `ClientService` create/update wired through
+  - `ClientSheet.razor` — "Award rate (AUD)" field added
+  - `MockClientService` and `MockDataStore` seed data updated
+  - `IAwardRateResolver` / `AwardRateResolver` using `PublicHoliday.AustraliaPublicHoliday` (national holidays + weekends)
+  - `TimeEntryResponse` — `EffectiveRate (decimal?)` and `IsAwardRate (bool)` added with defaults
+  - `TimeEntryService` — injects resolver, `.ThenInclude(p => p.Client)`, enriches all returned entries
+  - `EntryRow.razor` — "AW" badge shown when `IsAwardRate == true`
+  - 164/164 tests green
 
 ## Next session
-- **#95** 🟡 Database-backed user management — planned as next target
+- **#138** 🟢 Calendar view
 
 ## Backlog
-- **#95** 🟡 Database-backed user management
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
-- **#137** 🟡 Award rate feature — client-level rate flowing to projects; weekend/public holiday multiplier on time entries
-- **#138** 🟢 Calendar view — monthly calendar showing time entries per day on the entries UI
+- **#138** 🟢 Calendar view — monthly calendar showing time entries per day
 
-## Active tech debt (genuine constraints, no action until paid tier)
+## Active tech debt (genuine constraints)
 | # | Item | ADR |
 |---|------|-----|
 | TD1 | Global WASM rendering | D001, D003 |
@@ -44,6 +44,7 @@
 | TD17 | `unsafe-inline` CSP (MudBlazor) | D002 |
 | TD21 | Cloudflare free plan | D017 |
 | TD23 | No APM / distributed tracing | D019 |
+| TD25 | Award rate jurisdiction hardcoded to national AU | D025 |
 
 ## How to resume
 ```bash
@@ -53,4 +54,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-17. All session work merged. No outstanding code changes.*
+*Updated 2026-06-18. Branch `feature/issue-137-award-rate` ready to PR.*

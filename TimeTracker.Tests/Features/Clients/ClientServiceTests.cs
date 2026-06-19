@@ -146,6 +146,31 @@ public class ClientServiceTests
     }
 
     [Fact]
+    public async Task CreateClient_PersistsAwardRate()
+    {
+        var options = CreateOptions();
+        await CreateService(options).CreateClient(new ClientCreateRequest { Name = "Award Client", DefaultHourlyRate = 100m, AwardRate = 175m });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(175m, context.Clients.Single().AwardRate);
+    }
+
+    [Fact]
+    public async Task UpdateClient_UpdatesAwardRate()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient("Acme", 100m);
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).UpdateClient(client.Id, new ClientUpdateRequest { Name = "Acme", DefaultHourlyRate = 100m, AwardRate = 200m });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(200m, context.Clients.Single().AwardRate);
+    }
+
+    [Fact]
     public async Task UpdateClient_UpdatesNameAndRate()
     {
         var options = CreateOptions();
