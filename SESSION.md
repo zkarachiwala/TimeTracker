@@ -11,7 +11,7 @@
 - ✅ **#32 Trash / soft-delete restore** (PR #140)
 - ✅ **D022 documented** — `MigrateAsync()` at startup decision record added to `docs/decisions.md` (PR #141)
 - ✅ **#95 Database-backed user management** (PR #144)
-- ✅ **#137 Award rate (in progress)** — all phases complete on this branch:
+- ✅ **#137 Award rate** — all phases complete on this branch:
   - D025 added to `docs/decisions.md` — `PublicHoliday` NuGet chosen (Nager.Date rejected: requires paid license key)
   - TD25 added to `docs/technical-debt.md` — jurisdiction hardcoded to national AU pending external investigation
   - `Client` entity: `AwardRate (decimal?)` added + EF migration `AddAwardRateToClient`
@@ -26,7 +26,6 @@
   - 164/164 tests green
 
 ## Next session
-- Raise PR for #137, merge when checks pass
 - **#138** 🟢 Calendar view
 
 ## Backlog
