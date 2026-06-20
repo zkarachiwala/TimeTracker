@@ -56,7 +56,7 @@
     </MudAppBar>
 
     <MudDrawer @bind-Open="drawerOpen" Variant="@(_isMobile ? DrawerVariant.Temporary : DrawerVariant.Mini)"
-               Anchor="Anchor.Left" Elevation="16" ClipMode="DrawerClipMode.Always"
+               Anchor="Anchor.Left" Elevation="16"
                @onmouseenter="OnDrawerMouseEnter" @onmouseleave="OnDrawerMouseLeave">
         <div style="display:flex; flex-direction:column; height:100%">
             <div style="padding:14px 8px; border-bottom:1px solid var(--mud-palette-divider); display:flex; align-items:center; gap:8px; overflow:hidden; @(drawerOpen ? "justify-content:flex-start" : "justify-content:center")">
