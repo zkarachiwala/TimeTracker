@@ -4,6 +4,74 @@ Sources consulted: [Playwright Best Practices](https://playwright.dev/docs/best-
 
 ---
 
+## How local authentication works
+
+Production auth is Google OAuth — there is no username/password. Playwright cannot drive a real Google OAuth flow (it would require browser automation of Google's own pages, which Google actively blocks). Instead, the test suite uses a **dev-only bypass endpoint** that signs in directly via ASP.NET Identity's `SignInManager`, skipping OAuth entirely.
+
+### Prerequisites — things that must be true on the dev machine
+
+1. **`ASPNETCORE_ENVIRONMENT=Development`** — the `https` launch profile in `launchSettings.json` sets this automatically. The dev endpoint is gated behind `app.Environment.IsDevelopment()` in `Program.cs` and is **never compiled into a production build**.
+
+2. **An admin user must exist in the database.** On first run (or after a DB wipe), `Program.cs` reads `Authentication:AdminEmail` from config and seeds a user with the `Admin` role. This value is stored in .NET User Secrets:
+   ```
+   Authentication:AdminEmail = zak@dzk.com.au
+   ```
+   Set it with:
+   ```bash
+   cd TimeTracker.Web
+   dotnet user-secrets set "Authentication:AdminEmail" "your@email.com"
+   ```
+
+3. **DB credentials** must also be in user secrets (`DbUser`, `DbPassword`) — the app needs to reach the database to sign in.
+
+### What GlobalSetup does
+
+`GlobalSetup.cs` runs once before all tests. It:
+
+1. Starts the app on port `7007` using `dotnet run --launch-profile https --urls https://localhost:7007` (a dedicated port so it never collides with a running dev instance on 7006)
+2. Calls `GET /api/dev/login` — this endpoint finds the first `Admin` user in the database and calls `SignInManager.SignInAsync`, which issues an ASP.NET Identity auth cookie
+3. Saves the entire browser storage state (cookies) to `playwright/.auth/user.json` via Playwright's `StorageStateAsync`
+
+### What AuthenticatedPageTest / AuthenticatedDesktopPageTest do
+
+Both base classes pass `StorageStatePath = TestConfig.AuthStatePath` in `ContextOptions()`. Playwright loads `user.json` and injects its cookies into every new browser context — each test starts already authenticated, no login flow required per test.
+
+`TestConfig.AuthStatePath` resolves to `<build-output>/playwright/.auth/user.json`. This file is generated fresh on each test run (GlobalSetup always recreates it) and is not committed to source control.
+
+### The dev login endpoint (`/api/dev/login`)
+
+```csharp
+// TimeTracker.Web/Infrastructure/DevEndpointExtensions.cs
+app.MapGet("/api/dev/login", async (UserManager<User> userManager, SignInManager<User> signInManager) =>
+{
+    var admins = await userManager.GetUsersInRoleAsync("Admin");
+    var user = admins.FirstOrDefault();
+    if (user is null)
+        return Results.Problem("No admin user found. Run /api/dev/seed first.");
+    await signInManager.SignInAsync(user, isPersistent: true);
+    return Results.Content($"<html><body>Signed in as {user.Email}</body></html>", "text/html");
+});
+```
+
+Only registered in `Program.cs` when `IsDevelopment()` is true:
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    app.MapDevEndpoints(); // includes /api/dev/login
+}
+```
+
+### Common failure modes
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Dev login failed (404)` | App not running as `Development` | Use the `https` launch profile; check `ASPNETCORE_ENVIRONMENT` |
+| `No admin user found` | DB empty or `Authentication:AdminEmail` not set | Set the user secret and restart the app so the seed runs |
+| `user.json` missing / auth redirects to `/login` in tests | GlobalSetup didn't run or was skipped | Always run the full test project via `dotnet test`, not individual test classes |
+| App startup timeout (180s exceeded) | DB not running or cold-start pause | Ensure SQL Server container is running; visit the app manually first |
+
+---
+
 ## Core principle
 
 Playwright auto-waits before every action and web-first assertion. The official guidance is:
