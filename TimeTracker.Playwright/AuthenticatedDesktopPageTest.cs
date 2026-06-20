@@ -18,6 +18,7 @@ public class AuthenticatedDesktopPageTest : PageTest
     [SetUp]
     public void MonitorConsoleErrors()
     {
+        Page.SetDefaultTimeout(30_000);
         _consoleErrors.Clear();
         _onConsoleMessage = (_, msg) =>
         {

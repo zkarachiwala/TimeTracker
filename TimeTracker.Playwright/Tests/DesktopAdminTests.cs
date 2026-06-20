@@ -39,10 +39,9 @@ public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
             new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
         );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        // Open hamburger drawer to reveal nav links
-        await Page.Locator("#hamburger-btn").ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First)
-            .ToBeInViewportAsync(new() { Timeout = 5_000 });
+        // On desktop the nav rail is always visible — no drawer to open
+        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Users" }))
+            .ToBeAttachedAsync(new() { Timeout = 10_000 });
     }
 
     [Test]

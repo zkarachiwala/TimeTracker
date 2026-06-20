@@ -201,7 +201,15 @@ html, body, #app {
 /* MudBlazor's built-in selector requires NavMenu as direct child of .mud-drawer-content,
    which our wrapper div breaks — so we apply a permissive override instead */
 .mud-drawer--closed.mud-drawer-mini .mud-nav-link-text {
-    display: none !important;
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
 }
 
 .mud-drawer--closed.mud-drawer-mini .mud-nav-link {
