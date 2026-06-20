@@ -1,4 +1,4 @@
-@page "/entries"
+@page "/entries/{Tab}"
 @attribute [Authorize]
 @inject ITimeEntryService TimeEntryService
 @inject IProjectService ProjectService
@@ -14,7 +14,7 @@
     {
         var i = index;
         <button class="tt-filter-tab @(activeTab == i ? "active" : "")"
-                @onclick="() => activeTab = i">
+                @onclick="() => SwitchTab(label)">
             @label
         </button>
     }
@@ -141,6 +141,8 @@
 @if (sheetOpen) { <EntrySheet @bind-Open="sheetOpen" Entry="sheetEntry" OnSaved="LoadEntries" /> }
 
 @code {
+    [Parameter] public string? Tab { get; set; }
+
     private int activeTab = 0;
     private DateTime cursor = DateTime.Today;
     private int selectedProjectId = 0;
@@ -217,12 +219,30 @@
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            Nav.NavigateTo("login", forceLoad: true);
+            Nav.NavigateTo("login", true);
         }
         catch (HttpRequestException)
         {
             // Request aborted during page teardown — not a real error
         }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(Tab))
+        {
+            Nav.NavigateTo("/entries/day", false, replace: true);
+            return;
+        }
+
+        activeTab = Tab.ToLowerInvariant() switch
+        {
+            "month" => 1,
+            "year" => 2,
+            "project" => 3,
+            "calendar" => 4,
+            _ => 0
+        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -247,7 +267,7 @@
     private async Task HandleDaySelected(DateTime date)
     {
         cursor = date;
-        activeTab = 0;
+        Nav.NavigateTo("/entries/day", false);
         await Task.CompletedTask;
     }
 
@@ -268,9 +288,12 @@
     {
         cursor = args.Date;
         selectedProjectId = args.ProjectId;
-        activeTab = 0;
+        Nav.NavigateTo("/entries/day", false);
         await Task.CompletedTask;
     }
+
+    private void SwitchTab(string label) =>
+        Nav.NavigateTo($"/entries/{label.ToLowerInvariant()}", false);
 
     private async Task StepBack()
     {
