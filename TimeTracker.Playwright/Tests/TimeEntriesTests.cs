@@ -78,7 +78,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
     public async Task CalendarTabHasValueBars()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();
-        var bar = Page.Locator(".mud-cal-total-name").First;
+        var bar = Page.Locator(".mud-cal-total-value").First;
         await Expect(bar).ToBeVisibleAsync(new() { Timeout = 10_000 });
         await Expect(bar).Not.ToBeEmptyAsync();
     }
