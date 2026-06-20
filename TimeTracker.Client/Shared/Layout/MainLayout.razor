@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
-@implements IDisposable
+@inject IBrowserViewportService BrowserViewportService
+@implements IBrowserViewportObserver
+@implements IAsyncDisposable
 
 <MudThemeProvider Theme="@DzkTheme.Instance" />
 <MudPopoverProvider />
@@ -53,8 +55,9 @@
         </AuthorizeView>
     </MudAppBar>
 
-    <MudDrawer @bind-Open="drawerOpen" Variant="DrawerVariant.Mini" Breakpoint="Breakpoint.Md"
-               OpenMiniOnHover="true" Anchor="Anchor.Left" Elevation="16">
+    <MudDrawer @bind-Open="drawerOpen" Variant="@(_isMobile ? DrawerVariant.Persistent : DrawerVariant.Mini)"
+               Anchor="Anchor.Left" Elevation="16"
+               @onmouseenter="OnDrawerMouseEnter" @onmouseleave="OnDrawerMouseLeave">
         <div style="display:flex; flex-direction:column; height:100%">
             <div style="padding:14px 8px; border-bottom:1px solid var(--mud-palette-divider); display:flex; align-items:center; gap:8px; overflow:hidden; @(drawerOpen ? "justify-content:flex-start" : "justify-content:center")">
                 <img src="images/clock-logo.png" alt="TimeTracker"
@@ -85,7 +88,22 @@
 
 @code {
     private bool drawerOpen;
+    private bool _isMobile = true;
+
+    Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
+    MudBlazor.Services.ResizeOptions? IBrowserViewportObserver.ResizeOptions => null;
+
+    async Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
+    {
+        _isMobile = args.Breakpoint is Breakpoint.Xs or Breakpoint.Sm;
+        drawerOpen = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
+
+    private void OnDrawerMouseEnter() { if (!_isMobile) drawerOpen = true; }
+    private void OnDrawerMouseLeave() { if (!_isMobile) drawerOpen = false; }
 
     private static readonly Dictionary<string, string> TitleMap = new()
     {
@@ -113,15 +131,22 @@
         Nav.LocationChanged += OnLocationChanged;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await BrowserViewportService.SubscribeAsync(this, fireImmediately: true);
+    }
+
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         drawerOpen = false;
         InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         Nav.LocationChanged -= OnLocationChanged;
+        await BrowserViewportService.UnsubscribeAsync(this);
     }
 
     private static string GetDisplayName(string? name)
