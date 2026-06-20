@@ -18,7 +18,7 @@ public class AuthenticatedDesktopPageTest : PageTest
     [SetUp]
     public void MonitorConsoleErrors()
     {
-        Page.SetDefaultTimeout(120_000);
+        Page.SetDefaultTimeout(30_000);
         _consoleErrors.Clear();
         _onConsoleMessage = (_, msg) =>
         {
@@ -44,7 +44,7 @@ public class AuthenticatedDesktopPageTest : PageTest
         try
         {
             if (Page is not null)
-                await Page.CloseAsync().ConfigureAwait(false);
+                await Page.CloseAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
         }
         catch { }
     }

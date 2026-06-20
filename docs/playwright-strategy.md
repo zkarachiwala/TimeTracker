@@ -1,6 +1,6 @@
 # Playwright Test Strategy
 
-Sources consulted: [Playwright Best Practices](https://playwright.dev/docs/best-practices), [Playwright .NET Writing Tests](https://playwright.dev/dotnet/docs/writing-tests), [Playwright Network - waitForResponse](https://playwright.dev/docs/network), [BrowserStack waitForResponse guide](https://www.browserstack.com/guide/playwright-waitforresponse), [Checkly waits and timeouts](https://www.checklyhq.com/docs/learn/playwright/waits-and-timeouts/)
+Sources consulted: [Playwright Best Practices](https://playwright.dev/docs/best-practices), [Playwright .NET Writing Tests](https://playwright.dev/dotnet/docs/writing-tests), [Playwright Network - waitForResponse](https://playwright.dev/docs/network), [BrowserStack waitForResponse guide](https://www.browserstack.com/guide/playwright-waitforresponse), [Checkly waits and timeouts](https://www.checklyhq.com/docs/learn/playwright/waits-and-timeouts/), [playwright-dotnet issue #2530](https://github.com/microsoft/playwright-dotnet/issues/2530), [playwright-dotnet BrowserTest source](https://github.com/microsoft/playwright-dotnet/blob/main/src/Playwright.NUnit/BrowserTest.cs)
 
 ---
 
@@ -37,6 +37,8 @@ Production auth is Google OAuth — there is no username/password. Playwright ca
 Both base classes pass `StorageStatePath = TestConfig.AuthStatePath` in `ContextOptions()`. Playwright loads `user.json` and injects its cookies into every new browser context — each test starts already authenticated, no login flow required per test.
 
 `TestConfig.AuthStatePath` resolves to `<build-output>/playwright/.auth/user.json`. This file is generated fresh on each test run (GlobalSetup always recreates it) and is not committed to source control.
+
+Both base classes also set `Page.SetDefaultTimeout(30_000)` in `[SetUp]` and include a `PageTearDownAsync` — see the teardown hang section below.
 
 ### The dev login endpoint (`/api/dev/login`)
 
@@ -267,6 +269,80 @@ These are distinct:
 - **Browser console `"Request failed: <url>"`** — written by Blazor when `HttpRequestException` goes unhandled. This IS caught by `AssertNoConsoleErrors`.
 
 `AuthenticatedPageTest` monitors console errors only. `Page.RequestFailed` is not tracked — teardown aborts that cause Blazor console errors are fixed in the app's catch blocks, not by filtering the console monitor.
+
+---
+
+## Teardown hang — root cause and fix
+
+### Why Playwright hangs indefinitely after a test failure
+
+Playwright NUnit's `BrowserTest.BrowserTearDown()` contains this conditional:
+
+```csharp
+[TearDown]
+public async Task BrowserTearDown()
+{
+    if (TestOk())  // only closes context when test PASSED or was SKIPPED
+    {
+        foreach (var context in _contexts)
+            await context.CloseAsync().ConfigureAwait(false);
+    }
+    _contexts.Clear();
+}
+```
+
+`TestOk()` returns `false` on any failure. When it does, the browser context is **never closed** — it is only removed from the tracking list. Any pending network operations (in-flight API calls, navigations) remain running. The process cannot exit cleanly, causing an indefinite hang that requires Ctrl+C.
+
+This is by design in Playwright (preserves state for failure screenshots/traces) but is the wrong default for a test suite where you just want clean exit on failure.
+
+### The fix — explicit PageTearDownAsync in base classes
+
+Both `AuthenticatedPageTest` and `AuthenticatedDesktopPageTest` include:
+
+```csharp
+[TearDown]
+public async Task PageTearDownAsync()
+{
+    try
+    {
+        if (Page is not null)
+            await Page.CloseAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+    }
+    catch { }
+}
+```
+
+Key points:
+- `Page.CloseAsync()` has no built-in timeout parameter — `WaitAsync(TimeSpan)` is the correct way to add one
+- The 10-second cap ensures teardown never hangs indefinitely even if `CloseAsync` itself stalls
+- The bare `catch { }` is intentional — the page may already be closing or in an unknown state; swallow everything
+- NUnit runs **all** `[TearDown]` methods in the hierarchy even if one throws, so `AssertNoConsoleErrors` and `PageTearDownAsync` both always run
+- `Page.SetDefaultTimeout(30_000)` is set in `[SetUp]` to ensure all Playwright operations timeout within 30s rather than relying on Playwright's internal default
+
+### DefaultTimeout in playwright.runsettings
+
+`<DefaultTimeout>120000</DefaultTimeout>` in `playwright.runsettings` is NUnit's **per-test wall-clock limit** — it is NOT Playwright's action/assertion timeout. These are completely separate systems. Playwright's timeout is controlled by `Page.SetDefaultTimeout()`. Do not confuse the two.
+
+---
+
+## Nav rail — desktop selectors
+
+The desktop layout uses `DrawerVariant.Mini` (always-visible icon rail, expands on hover). Nav link text is hidden visually in collapsed state using the **visually-hidden CSS pattern** (not `display: none`):
+
+```css
+.mud-drawer--closed.mud-drawer-mini .mud-nav-link-text {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+}
+```
+
+**Why this matters for tests:** `display: none` removes text from the accessibility tree, breaking `GetByRole(AriaRole.Link, new() { Name = "Entries" })`. The visually-hidden pattern keeps text in the accessibility tree so role-based locators work in both collapsed and expanded rail states.
+
+On desktop, nav links are always in the DOM — **no drawer opening required** before clicking them. On mobile, the hamburger opens a `DrawerVariant.Temporary` overlay.
 
 ---
 
