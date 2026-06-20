@@ -6,17 +6,11 @@ public class TimerTests : AuthenticatedPageTest
     [SetUp]
     public async Task NavigateToTimer()
     {
-        // WaitForRequestFinishedAsync fires on 'requestfinished' (body fully downloaded), not
-        // 'response' (headers only). Target the last sequential call in LoadData() — if today's
-        // entries have finished, projects and active-timer must also be fully complete.
-        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
-        {
-            Predicate = r => r.Url.Contains("/api/timeentries/today"),
-            Timeout = 15_000
-        });
-        await Page.GotoAsync("/");
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
+        );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        await loadDataDone;
     }
 
     [Test]
