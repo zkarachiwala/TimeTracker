@@ -197,7 +197,13 @@ html, body, #app {
     color: var(--mud-palette-primary) !important;
 }
 
-/* ── Nav rail — centre icons when drawer is in mini/closed state ── */
+/* ── Nav rail — hide text and centre icons in mini/closed state ── */
+/* MudBlazor's built-in selector requires NavMenu as direct child of .mud-drawer-content,
+   which our wrapper div breaks — so we apply a permissive override instead */
+.mud-drawer--closed.mud-drawer-mini .mud-nav-link-text {
+    display: none !important;
+}
+
 .mud-drawer--closed.mud-drawer-mini .mud-nav-link {
     padding-left: 0 !important;
     padding-right: 0 !important;
