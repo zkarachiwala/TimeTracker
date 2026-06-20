@@ -1,39 +1,22 @@
 # Session handoff — 2026-06-20
 
 ## Current state
-- Branch: `feature/issue-34-avatar-dropdown` — committed, ready to push and PR
+- Branch: `feature/issue-146-nav-rail` — ready to test and PR
 
 ## Completed this session
-- ✅ Playwright failures fixed — 12 tests were failing because Chromium aborted in-flight `api/timeentries/active` fetch when tests navigated away before `LoadData()` completed; added `"Tracking now" or "Start a timer"` visibility wait to three SetUps (PR #131)
-- ✅ CodeQL alert #8 (CWE-359) resolved — removed `result.Status` enum value from auth log message (PR #132)
-- ✅ **#104 Automated database backup** — nightly `.bacpac` export via GitHub Actions to private `TimeTracker-backups` repo (PRs #133, #134, #135)
-- ✅ **#32 Trash / soft-delete restore** (PR #140)
-- ✅ **D022 documented** — `MigrateAsync()` at startup decision record added to `docs/decisions.md` (PR #141)
-- ✅ **#95 Database-backed user management** (PR #144)
-- ✅ **#34 App bar avatar dropdown** — `MudMenu` replaces static avatar; shows name/email/sign-out on click (PR pending)
-- ✅ **#137 Award rate** — all phases complete on this branch:
-  - D025 added to `docs/decisions.md` — `PublicHoliday` NuGet chosen (Nager.Date rejected: requires paid license key)
-  - TD25 added to `docs/technical-debt.md` — jurisdiction hardcoded to national AU pending external investigation
-  - `Client` entity: `AwardRate (decimal?)` added + EF migration `AddAwardRateToClient`
-  - `ClientResponse`, `ClientRequest`, `ClientCreateRequest`, `ClientUpdateRequest` in Contracts updated
-  - `ClientService` create/update wired through
-  - `ClientSheet.razor` — "Award rate (AUD)" field added
-  - `MockClientService` and `MockDataStore` seed data updated
-  - `IAwardRateResolver` / `AwardRateResolver` using `PublicHoliday.AustraliaPublicHoliday` (national holidays + weekends)
-  - `TimeEntryResponse` — `EffectiveRate (decimal?)` and `IsAwardRate (bool)` added with defaults
-  - `TimeEntryService` — injects resolver, `.ThenInclude(p => p.Client)`, enriches all returned entries
-  - `EntryRow.razor` — "AW" badge shown when `IsAwardRate == true`
-  - 164/164 tests green
+- ✅ **PR #150 merged** — #138 Calendar view
+- ✅ **#146 Navigation rail** — `DrawerVariant.Mini` on desktop/tablet (always-visible 56px icon rail, expands on hover/click); hamburger hidden on desktop via `MudHidden`; drawer footer removed (logout in avatar dropdown); mobile unchanged; `IBrowserViewportService` drives responsive variant switching; Playwright desktop nav tests updated (no more `OpenDrawer()`)
 
 ## Next session
-- Merge PR for #34 once tested
-- **#138** 🟢 Calendar view
+- Run Playwright suite: `PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal"`
+- PR for #146 once Playwright is green
+- Look at fix/issue-151 (showcase users DI) — has uncommitted changes stashed on main (`git stash pop` when switching to that branch)
 
 ## Backlog
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
-- **#138** 🟢 Calendar view — monthly calendar showing time entries per day
+- **#151** 🔴 Showcase users DI fix
 
 ## Active tech debt (genuine constraints)
 | # | Item | ADR |
@@ -55,4 +38,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-18. Branch `feature/issue-137-award-rate` ready to PR.*
+*Updated 2026-06-20. Branch `feature/issue-146-nav-rail` ready to test.*
