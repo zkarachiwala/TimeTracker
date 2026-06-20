@@ -6,17 +6,11 @@ public class DesktopNavigationTests : AuthenticatedDesktopPageTest
     [SetUp]
     public async Task StartOnTimer()
     {
-        // WaitForRequestFinishedAsync fires on 'requestfinished' (body fully downloaded), not
-        // 'response' (headers only). Target the last sequential call in LoadData() — if today's
-        // entries have finished, projects and active-timer must also be fully complete.
-        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
-        {
-            Predicate = r => r.Url.Contains("/api/timeentries/today"),
-            Timeout = 15_000
-        });
-        await Page.GotoAsync("/");
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
+        );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        await loadDataDone;
     }
 
     private async Task OpenDrawer()
@@ -68,6 +62,14 @@ public class DesktopNavigationTests : AuthenticatedDesktopPageTest
         await Page.GetByRole(AriaRole.Link, new() { Name = "Clients" }).ClickAsync();
         await Expect(Page).ToHaveURLAsync(new Regex("/clients"));
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Clients" }).First).ToBeVisibleAsync(new() { Timeout = 15_000 });
+    }
+
+    [Test]
+    public async Task AvatarDropdownOpensWithSignOut()
+    {
+        await Page.Locator("[title='Account']").ClickAsync();
+        await Expect(Page.GetByText("Sign out"))
+            .ToBeVisibleAsync(new() { Timeout = 5_000 });
     }
 
     [Test]

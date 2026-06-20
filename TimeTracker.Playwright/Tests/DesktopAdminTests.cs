@@ -6,14 +6,11 @@ public class DesktopTimerTests : AuthenticatedDesktopPageTest
     [SetUp]
     public async Task NavigateToTimer()
     {
-        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
-        {
-            Predicate = r => r.Url.Contains("/api/timeentries/today"),
-            Timeout = 15_000
-        });
-        await Page.GotoAsync("/");
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
+        );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        await loadDataDone;
     }
 
     [Test]
@@ -37,14 +34,11 @@ public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
     [SetUp]
     public async Task NavigateToTimer()
     {
-        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
-        {
-            Predicate = r => r.Url.Contains("/api/timeentries/today"),
-            Timeout = 15_000
-        });
-        await Page.GotoAsync("/");
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
+        );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        await loadDataDone;
         // Open hamburger drawer to reveal nav links
         await Page.Locator("#hamburger-btn").ClickAsync();
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First)
