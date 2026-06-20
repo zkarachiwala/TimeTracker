@@ -6,7 +6,10 @@ public class TimeEntriesTests : AuthenticatedPageTest
     [SetUp]
     public async Task NavigateToEntries()
     {
-        await Page.GotoAsync("/entries");
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/entries"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/year"), Timeout = 15_000 }
+        );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
