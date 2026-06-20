@@ -17,6 +17,16 @@ All changes must follow this workflow:
 
 Never merge a PR without explicit user instruction to do so. Confirming checks pass is not approval to merge. After opening a PR, stop and tell the user it's ready.
 
+## Change Authorization
+
+Never modify code without explicit user authorization. Planning, research, and questions are fine — but do not write, edit, or delete files until the user explicitly says to proceed. A conversational lead-in ("go", "let's go", "do it") is not authorization. The user must give a clear instruction like "make the change", "implement this", or "go ahead and build it."
+
+This applies to all modes (planning, building, debugging, etc.). When in planning mode, present the plan and wait for explicit approval before writing any code.
+
+## App Execution
+
+Never run the application (`dotnet run`) or start any long-running process without explicit user instruction. Do not run `dotnet watch`, launch profiles, or any command that binds to ports or starts a server. Build and test commands are allowed, but anything that starts the app is not.
+
 ## Testing
 
 - Run `dotnet test TimeTracker.sln --configuration Release` before every push. Never push with failing tests.

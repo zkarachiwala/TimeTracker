@@ -6,14 +6,17 @@ public class TimeEntriesTests : AuthenticatedPageTest
     [SetUp]
     public async Task NavigateToEntries()
     {
-        await Page.GotoAsync("/entries");
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/entries"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/year"), Timeout = 15_000 }
+        );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
     [Test]
     public async Task FilterTabsAreVisible()
     {
-        foreach (var tab in new[] { "Day", "Month", "Year", "Project" })
+        foreach (var tab in new[] { "Day", "Month", "Year", "Project", "Calendar" })
         {
             await Expect(Page.GetByRole(AriaRole.Button, new() { Name = tab })).ToBeVisibleAsync();
         }
@@ -61,5 +64,35 @@ public class TimeEntriesTests : AuthenticatedPageTest
         await Page.GetByRole(AriaRole.Button, new() { Name = "Project" }).ClickAsync();
         await Expect(Page.Locator("label").Filter(new() { HasText = "Project" }))
             .ToBeVisibleAsync(new() { Timeout = 5_000 });
+    }
+
+    [Test]
+    public async Task CalendarTabRendersMonthGrid()
+    {
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();
+        await Expect(Page.Locator(".mud-cal-month-cell").First)
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+    }
+
+    [Test]
+    public async Task CalendarTabHasValueBars()
+    {
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();
+        var bar = Page.Locator(".mud-cal-total-value").First;
+        await Expect(bar).ToBeVisibleAsync(new() { Timeout = 10_000 });
+        await Expect(bar).Not.ToBeEmptyAsync();
+    }
+
+    [Test]
+    public async Task ClickCalendarDayCellSwitchesToDayTab()
+    {
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();
+        await Expect(Page.Locator(".mud-cal-month-link").First)
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await Page.Locator(".mud-cal-month-link").First.ClickAsync();
+
+        // Day tab should now be active — summary card should be visible
+        await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 }

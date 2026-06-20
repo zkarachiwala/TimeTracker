@@ -4,12 +4,13 @@
 @inject IProjectService ProjectService
 @inject NavigationManager Nav
 @using TimeTracker.Client.Features.TimeEntries.Components
+@using TimeTracker.Client.Features.TimeEntries.Services
 
 <PageTitle>Entries — TimeTracker</PageTitle>
 
 @* ── Filter tabs ── *@
 <div class="tt-filter-tabs">
-    @foreach (var (label, index) in new[] { ("Day", 0), ("Month", 1), ("Year", 2), ("Project", 3) })
+    @foreach (var (label, index) in new[] { ("Day", 0), ("Month", 1), ("Year", 2), ("Project", 3), ("Calendar", 4) })
     {
         var i = index;
         <button class="tt-filter-tab @(activeTab == i ? "active" : "")"
@@ -20,34 +21,61 @@
 </div>
 
 <div class="pa-4">
-    @* ── Range stepper or project picker ── *@
-    @if (activeTab == 3 && _providersReady)
+    @* ── Calendar view ── *@
+    @if (activeTab == 4)
     {
-        <MudSelect T="int" Label="Project" @bind-Value="selectedProjectId"
-                   Variant="Variant.Outlined" Class="mb-4"
-                   AnchorOrigin="Origin.BottomCenter">
-            <MudSelectItem Value="0">All projects</MudSelectItem>
-            @foreach (var p in projects)
-            {
-                <MudSelectItem Value="p.Id">@p.Name</MudSelectItem>
-            }
-        </MudSelect>
+        <CalendarView Totals="_calendarValues"
+                       TooltipLookup="_tooltipLookup"
+                       CurrentMonth="cursor"
+                       CurrentMonthChanged="HandleMonthChanged"
+                       OnDaySelected="HandleDaySelected"
+                       OnProjectClicked="HandleProjectClicked" />
     }
     else
     {
-        <MudCard Class="mb-4" Style="border-radius:10px" Outlined="true">
-            <div class="d-flex align-center justify-space-between pa-1 pl-3">
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="StepBack" />
-                <MudText Typo="Typo.subtitle1" Style="font-weight:500; text-align:center; flex:1">
-                    @RangeLabel
-                </MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="StepForward" />
-            </div>
-        </MudCard>
-    }
+        @* ── Project filter for Day tab ── *@
+        @if (activeTab == 0 && _providersReady)
+        {
+            <MudSelect T="int" Label="Project" @bind-Value="selectedProjectId"
+                       Variant="Variant.Outlined" Class="mb-4"
+                       AnchorOrigin="Origin.BottomCenter"
+                       Clearable="true">
+                <MudSelectItem Value="0">All projects</MudSelectItem>
+                @foreach (var p in projects)
+                {
+                    <MudSelectItem Value="p.Id">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+        }
 
-    @* ── Summary card ── *@
-    <MudCard Class="summary-card mb-4">
+        @* ── Range stepper or project picker ── *@
+        @if (activeTab == 3 && _providersReady)
+        {
+            <MudSelect T="int" Label="Project" @bind-Value="selectedProjectId"
+                       Variant="Variant.Outlined" Class="mb-4"
+                       AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="0">All projects</MudSelectItem>
+                @foreach (var p in projects)
+                {
+                    <MudSelectItem Value="p.Id">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            <MudCard Class="mb-4" Style="border-radius:10px" Outlined="true">
+                <div class="d-flex align-center justify-space-between pa-1 pl-3">
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="StepBack" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500; text-align:center; flex:1">
+                        @RangeLabel
+                    </MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="StepForward" />
+                </div>
+            </MudCard>
+        }
+
+        @* ── Summary card ── *@
+        <MudCard Class="summary-card mb-4">
         <MudCardContent Class="d-flex justify-space-between align-center" Style="padding:14px 18px">
             <div>
                 <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,.7)">Total tracked</MudText>
@@ -99,6 +127,7 @@
             </div>
         }
     }
+    }
 </div>
 
 <div class="bottom-nav-spacer"></div>
@@ -123,7 +152,10 @@
 
     private List<TimeEntryResponse> filteredEntries => activeTab switch
     {
-        0 => allEntries.Where(e => e.Start.Date == cursor.Date).OrderByDescending(e => e.Start).ToList(),
+        0 => allEntries
+            .Where(e => e.Start.Date == cursor.Date)
+            .Where(e => selectedProjectId == 0 || e.Project.Id == selectedProjectId)
+            .OrderByDescending(e => e.Start).ToList(),
         1 => allEntries.Where(e => e.Start.Month == cursor.Month && e.Start.Year == cursor.Year).OrderByDescending(e => e.Start).ToList(),
         2 => allEntries.Where(e => e.Start.Year == cursor.Year).OrderByDescending(e => e.Start).ToList(),
         _ => (selectedProjectId == 0
@@ -199,9 +231,45 @@
         await base.OnAfterRenderAsync(firstRender);
     }
 
+    private List<Value> _calendarValues => CalendarDataTransformer.ToDailyProjectValues(allEntries);
+
+    private Dictionary<(DateTime Date, string ProjectName), ValueTooltipData> _tooltipLookup =>
+        CalendarDataTransformer.ToTooltipLookup(allEntries, _projectClientNames);
+
+    private Dictionary<int, string> _projectClientNames =>
+        projects.ToDictionary(p => p.Id, p => p.ClientName ?? "");
+
     private async Task LoadEntries()
     {
         allEntries = await TimeEntryService.GetAllTimeEntriesByYear(cursor.Year);
+    }
+
+    private async Task HandleDaySelected(DateTime date)
+    {
+        cursor = date;
+        activeTab = 0;
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleMonthChanged(DateTime newMonth)
+    {
+        if (newMonth.Year != cursor.Year)
+        {
+            cursor = newMonth;
+            await LoadEntries();
+        }
+        else
+        {
+            cursor = newMonth;
+        }
+    }
+
+    private async Task HandleProjectClicked((DateTime Date, int ProjectId) args)
+    {
+        cursor = args.Date;
+        selectedProjectId = args.ProjectId;
+        activeTab = 0;
+        await Task.CompletedTask;
     }
 
     private async Task StepBack()
