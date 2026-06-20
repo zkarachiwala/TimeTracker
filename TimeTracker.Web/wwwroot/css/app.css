@@ -197,6 +197,21 @@ html, body, #app {
     color: var(--mud-palette-primary) !important;
 }
 
+/* ── Nav rail — centre icons in mini drawer ── */
+.mud-drawer--mini .mud-nav-link {
+    margin: 2px 4px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    justify-content: center !important;
+}
+
+/* ── Nav rail — hide mini drawer on mobile until JS switches to Persistent ── */
+@media (max-width: 959px) {
+    .mud-drawer--mini {
+        display: none !important;
+    }
+}
+
 /* ── Entry sheet — bottom sheet ── */
 .entry-sheet .mud-drawer-content {
     max-height: 92vh;
