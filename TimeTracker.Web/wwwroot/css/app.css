@@ -197,6 +197,20 @@ html, body, #app {
     color: var(--mud-palette-primary) !important;
 }
 
+/* ── Nav rail — centre icons when drawer is in mini/closed state ── */
+.mud-drawer--closed.mud-drawer-mini .mud-nav-link {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    justify-content: center !important;
+}
+
+/* ── Nav rail — hide mini drawer on mobile to prevent flash before JS sets Persistent variant ── */
+@media (max-width: 959px) {
+    .mud-drawer-mini {
+        display: none !important;
+    }
+}
+
 /* ── Entry sheet — bottom sheet ── */
 .entry-sheet .mud-drawer-content {
     max-height: 92vh;
