@@ -55,7 +55,7 @@
         </AuthorizeView>
     </MudAppBar>
 
-    <MudDrawer @bind-Open="drawerOpen" Variant="@(_isMobile ? DrawerVariant.Persistent : DrawerVariant.Mini)"
+    <MudDrawer @bind-Open="drawerOpen" Variant="@(_isMobile ? DrawerVariant.Temporary : DrawerVariant.Mini)"
                Anchor="Anchor.Left" Elevation="16"
                @onmouseenter="OnDrawerMouseEnter" @onmouseleave="OnDrawerMouseLeave">
         <div style="display:flex; flex-direction:column; height:100%">
