@@ -38,5 +38,14 @@ public class AuthenticatedPageTest : PageTest
             $"Unexpected browser console errors:\n{string.Join("\n", _consoleErrors)}");
     }
 
-
+    [TearDown]
+    public async Task PageTearDownAsync()
+    {
+        try
+        {
+            if (Page is not null)
+                await Page.CloseAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+        }
+        catch { }
+    }
 }
