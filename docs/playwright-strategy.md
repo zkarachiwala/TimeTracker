@@ -323,6 +323,18 @@ Key points:
 
 `<DefaultTimeout>120000</DefaultTimeout>` in `playwright.runsettings` is NUnit's **per-test wall-clock limit** — it is NOT Playwright's action/assertion timeout. These are completely separate systems. Playwright's timeout is controlled by `Page.SetDefaultTimeout()`. Do not confuse the two.
 
+### --blame-hang-timeout 60s — process-level kill switch
+
+`Browser.CloseAsync()` is called by Playwright's internal `WorkerAwareTest.WorkerTeardown` with no timeout. When a CDP action times out and leaves the connection in a stuck state, `Browser.CloseAsync()` hangs indefinitely — our `PageTearDownAsync` WaitAsync cap does not reach this call.
+
+`--blame-hang-timeout 60s` is a dotnet test CLI flag that force-kills the entire test host process (and child processes) if any single test including its teardown exceeds the timeout. Since `SetDefaultTimeout(30_000)` caps each Playwright action at 30s and `PageTearDownAsync` caps at 10s, 60s gives 20s of buffer before the process is killed.
+
+Always include this flag:
+
+```bash
+PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal" --blame-hang-timeout 60s
+```
+
 ---
 
 ## Nav rail — desktop selectors
