@@ -74,6 +74,13 @@ public class MockDataStore
         // 2 days ago
         entries.Add(E(2, today.AddDays(-2).AddHours(10), 120));
 
+        // 3 days ago
+        entries.Add(E(1, today.AddDays(-3).AddHours(8),  180));
+        entries.Add(E(3, today.AddDays(-3).AddHours(13),  90));
+
+        // 4 days ago (weekend — lighter)
+        entries.Add(E(1, today.AddDays(-4).AddHours(10),  60));
+
         // 5 days ago
         entries.Add(E(1, today.AddDays(-5).AddHours(9),  180));
         entries.Add(E(3, today.AddDays(-5).AddHours(14), 120));
@@ -82,9 +89,17 @@ public class MockDataStore
         entries.Add(E(2, today.AddDays(-7).AddHours(10), 150, "INV-2026-005"));
         entries.Add(E(3, today.AddDays(-7).AddHours(14),  90));
 
+        // 8 days ago
+        entries.Add(E(1, today.AddDays(-8).AddHours(9),  120));
+        entries.Add(E(2, today.AddDays(-8).AddHours(14),  60));
+
         // 10 days ago
         entries.Add(E(1, today.AddDays(-10).AddHours(9),  90));
         entries.Add(E(4, today.AddDays(-10).AddHours(11), 60));
+
+        // 12 days ago
+        entries.Add(E(3, today.AddDays(-12).AddHours(9),  180));
+        entries.Add(E(1, today.AddDays(-12).AddHours(14),  90));
 
         // 14 days ago
         entries.Add(E(2, today.AddDays(-14).AddHours(9),  180, "INV-2026-005"));

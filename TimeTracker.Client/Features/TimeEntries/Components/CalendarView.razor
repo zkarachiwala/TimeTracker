@@ -1,0 +1,94 @@
+@using TimeTracker.Client.Features.TimeEntries.Services
+
+<MudTotalCalendar T="TimeEntryCalendarItem"
+                  Values="Totals"
+                  CellClicked="OnCellClicked"
+                  CurrentDay="CurrentMonth"
+                  CurrentDayChanged="OnCurrentDayChanged"
+                  ShowDayTotal="true"
+                  ShowWeekTotal="true"
+                  ShowMonthTotal="true"
+                  ShowToolbar="true"
+                  ShowPrevNextButtons="true"
+                  ShowDatePicker="true"
+                  ShowTodayButton="true"
+                  MonthCellMinHeight="90">
+    <TotalTemplate>
+        <MudTooltip Arrow="true" Placement="Placement.Top">
+            <ChildContent>
+                <div class="mud-cal-total" style="cursor:pointer"
+                     @onclick="() => OnBarClicked(context)" @onclick:stopPropagation="true">
+                    <div class="mud-cal-total-name" style="font-weight:600">@context.Definition.Name</div>
+                    <div class="mud-cal-total-value">@DurationText(context.Amount)</div>
+                </div>
+            </ChildContent>
+            <TooltipContent>
+                <div style="text-align:left; line-height:1.5; min-width:180px">
+                    <div style="font-weight:600; margin-bottom:6px">
+                        @TooltipLabel(context)
+                    </div>
+                    @if (GetTooltipData(context) is { } data)
+                    {
+                        @foreach (var entry in data.Entries)
+                        {
+                            <div style="opacity:.85; display:flex; gap:12px; justify-content:space-between">
+                                <span>@entry.TimeRange</span>
+                                <span style="tabnum">@entry.Duration</span>
+                            </div>
+                        }
+                        <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,.2); font-weight:600; display:flex; gap:12px; justify-content:space-between">
+                            <span>Total</span>
+                            <span style="tabnum">@DurationText(context.Amount)</span>
+                        </div>
+                    }
+                </div>
+            </TooltipContent>
+        </MudTooltip>
+    </TotalTemplate>
+</MudTotalCalendar>
+
+@code {
+    [Parameter] public List<Value> Totals { get; set; } = [];
+    [Parameter] public Dictionary<(DateTime Date, string ProjectName), ValueTooltipData>? TooltipLookup { get; set; }
+    [Parameter] public DateTime CurrentMonth { get; set; } = DateTime.Today;
+    [Parameter] public EventCallback<DateTime> CurrentMonthChanged { get; set; }
+    [Parameter] public EventCallback<DateTime> OnDaySelected { get; set; }
+    [Parameter] public EventCallback<(DateTime Date, int ProjectId)> OnProjectClicked { get; set; }
+
+    private async Task OnCellClicked(DateTime date)
+    {
+        await OnDaySelected.InvokeAsync(date);
+    }
+
+    private async Task OnBarClicked(Value value)
+    {
+        if (TooltipLookup != null &&
+            TooltipLookup.TryGetValue((value.Date, value.Definition.Name), out var data))
+        {
+            await OnProjectClicked.InvokeAsync((value.Date, data.ProjectId));
+        }
+    }
+
+    private async Task OnCurrentDayChanged(DateTime newDay)
+    {
+        await CurrentMonthChanged.InvokeAsync(newDay);
+    }
+
+    private ValueTooltipData? GetTooltipData(Value value)
+    {
+        return TooltipLookup?.GetValueOrDefault((value.Date, value.Definition.Name));
+    }
+
+    private string TooltipLabel(Value value)
+    {
+        var data = GetTooltipData(value);
+        if (data?.ClientName != null)
+            return $"{data.ClientName} — {data.ProjectName}";
+        return data?.ProjectName ?? value.Definition.Name;
+    }
+
+    private static string DurationText(double seconds) =>
+        TimeSpan.FromSeconds(seconds).TotalHours >= 1
+            ? $"{(int)TimeSpan.FromSeconds(seconds).TotalHours}h {TimeSpan.FromSeconds(seconds).Minutes}m"
+            : $"{TimeSpan.FromSeconds(seconds).Minutes}m";
+}
