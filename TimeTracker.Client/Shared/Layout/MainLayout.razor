@@ -88,7 +88,7 @@
 
 @code {
     private bool drawerOpen;
-    private bool _isMobile;
+    private bool _isMobile = true;
 
     Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
     MudBlazor.Services.ResizeOptions? IBrowserViewportObserver.ResizeOptions => null;
