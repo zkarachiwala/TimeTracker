@@ -9,13 +9,13 @@
 
 <div class="pa-4">
     <MudText Typo="Typo.h6" Class="mb-1">Reports</MudText>
-    <div class="d-flex align-center gap-2 mb-4">
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small"
+    <div class="d-flex align-center justify-space-between mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
                        OnClick="@(() => NavigateYear(-1))" aria-label="Previous year" />
-        <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary); min-width:3.5rem; text-align:center">
+        <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary); flex:1; text-align:center">
             @year
         </MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small"
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
                        OnClick="@(() => NavigateYear(1))"
                        Disabled="@(year >= DateTime.Today.Year)"
                        aria-label="Next year" />
