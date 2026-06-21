@@ -1,6 +1,8 @@
 # Playwright Test Strategy
 
-Sources consulted: [Playwright Best Practices](https://playwright.dev/docs/best-practices), [Playwright .NET Writing Tests](https://playwright.dev/dotnet/docs/writing-tests), [Playwright Network - waitForResponse](https://playwright.dev/docs/network), [BrowserStack waitForResponse guide](https://www.browserstack.com/guide/playwright-waitforresponse), [Checkly waits and timeouts](https://www.checklyhq.com/docs/learn/playwright/waits-and-timeouts/), [playwright-dotnet issue #2530](https://github.com/microsoft/playwright-dotnet/issues/2530), [playwright-dotnet BrowserTest source](https://github.com/microsoft/playwright-dotnet/blob/main/src/Playwright.NUnit/BrowserTest.cs)
+Sources consulted: [Playwright Best Practices](https://playwright.dev/docs/best-practices), [Playwright .NET Writing Tests](https://playwright.dev/dotnet/docs/writing-tests), [Playwright Network - waitForResponse](https://playwright.dev/docs/network), [BrowserStack waitForResponse guide](https://www.browserstack.com/guide/playwright-waitforresponse), [Checkly waits and timeouts](https://www.checklyhq.com/docs/learn/playwright/waits-and-timeouts/), [playwright-dotnet issue #2530](https://github.com/microsoft/playwright-dotnet/issues/2530)
+
+**Framework:** `Microsoft.Playwright.Xunit` — migrated from NUnit in issue #155 (see [D026](decisions.md#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer)). Test lifecycle uses xUnit's `IAsyncLifetime` (`InitializeAsync` / `DisposeAsync`) rather than NUnit's `[SetUp]`/`[TearDown]`.
 
 ---
 
@@ -24,13 +26,15 @@ Production auth is Google OAuth — there is no username/password. Playwright ca
 
 3. **DB credentials** must also be in user secrets (`DbUser`, `DbPassword`) — the app needs to reach the database to sign in.
 
-### What GlobalSetup does
+### What AppFixture does
 
-`GlobalSetup.cs` runs once before all tests. It:
+`AppFixture.cs` is an xUnit `ICollectionFixture<AppFixture>` — it runs once before all tests in the `[Collection("App")]` collection. It:
 
 1. Starts the app on port `7007` using `dotnet run --launch-profile https --urls https://localhost:7007` (a dedicated port so it never collides with a running dev instance on 7006)
 2. Calls `GET /api/dev/login` — this endpoint finds the first `Admin` user in the database and calls `SignInManager.SignInAsync`, which issues an ASP.NET Identity auth cookie
 3. Saves the entire browser storage state (cookies) to `playwright/.auth/user.json` via Playwright's `StorageStateAsync`
+
+`AppCollection.cs` declares `[CollectionDefinition("App")]` — all test classes carry `[Collection("App")]` (or inherit it from `AuthenticatedPageTest` / `AuthenticatedDesktopPageTest`) to join the collection and share the `AppFixture`.
 
 ### What AuthenticatedPageTest / AuthenticatedDesktopPageTest do
 
@@ -38,7 +42,7 @@ Both base classes pass `StorageStatePath = TestConfig.AuthStatePath` in `Context
 
 `TestConfig.AuthStatePath` resolves to `<build-output>/playwright/.auth/user.json`. This file is generated fresh on each test run (GlobalSetup always recreates it) and is not committed to source control.
 
-Both base classes also set `Page.SetDefaultTimeout(30_000)` in `[SetUp]` and include a `PageTearDownAsync` — see the teardown hang section below.
+Both base classes also set `Page.SetDefaultTimeout(30_000)` in `InitializeAsync` and call `Page.CloseAsync().WaitAsync(10s)` in `DisposeAsync` — see the teardown hang section below.
 
 ### The dev login endpoint (`/api/dev/login`)
 
@@ -174,14 +178,16 @@ When the test ends, the page tears down. Any in-flight request is aborted by the
 
 ---
 
-## SetUp patterns
+## InitializeAsync patterns
+
+In xUnit, per-test navigation goes in `override InitializeAsync()`. Always call `await base.InitializeAsync()` first so the base class sets up console monitoring before any navigation fires.
 
 ### Timer page (`/`)
 
 ```csharp
-[SetUp]
-public async Task NavigateToTimer()
+public override async Task InitializeAsync()
 {
+    await base.InitializeAsync();
     // RunAndWaitForRequestFinishedAsync fires on 'requestfinished' (body fully downloaded).
     // Target the last sequential call in LoadData() — if today's entries have finished,
     // projects and active-timer must also be fully complete.
@@ -207,9 +213,9 @@ await Expect(Page.Locator(".bottom-nav").GetByText("Clients"))
 Wait for the FAB to be enabled (WASM interactive), then use a page-specific content assertion that only renders after data loads:
 
 ```csharp
-[SetUp]
-public async Task NavigateToProjects()
+public override async Task InitializeAsync()
 {
+    await base.InitializeAsync();
     await Page.GotoAsync("/projects");
     await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     // No extra wait needed — test assertions use Expect() which auto-retries
@@ -274,41 +280,29 @@ These are distinct:
 
 ## Teardown hang — root cause and fix
 
-### Why Playwright hangs indefinitely after a test failure
+### Background (NUnit era)
 
-Playwright NUnit's `BrowserTest.BrowserTearDown()` contains this conditional:
+When the project used NUnit, `BrowserTest.BrowserTearDown()` only closed browser contexts when `TestOk()` returned true (test passed or skipped). On any failure, contexts were left open — in-flight requests kept running and the process could not exit cleanly, causing an indefinite hang.
 
-```csharp
-[TearDown]
-public async Task BrowserTearDown()
-{
-    if (TestOk())  // only closes context when test PASSED or was SKIPPED
-    {
-        foreach (var context in _contexts)
-            await context.CloseAsync().ConfigureAwait(false);
-    }
-    _contexts.Clear();
-}
-```
+The project was migrated to `Microsoft.Playwright.Xunit` (issue #155, [D026](decisions.md#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer)) specifically to eliminate this class of problem. xUnit's `IAsyncLifetime.DisposeAsync()` is always called after each test regardless of pass/fail, with full async support.
 
-`TestOk()` returns `false` on any failure. When it does, the browser context is **never closed** — it is only removed from the tracking list. Any pending network operations (in-flight API calls, navigations) remain running. The process cannot exit cleanly, causing an indefinite hang that requires Ctrl+C.
+### The fix — DisposeAsync in base classes
 
-This is by design in Playwright (preserves state for failure screenshots/traces) but is the wrong default for a test suite where you just want clean exit on failure.
-
-### The fix — explicit PageTearDownAsync in base classes
-
-Both `AuthenticatedPageTest` and `AuthenticatedDesktopPageTest` include:
+Both `AuthenticatedPageTest` and `AuthenticatedDesktopPageTest` override `DisposeAsync`:
 
 ```csharp
-[TearDown]
-public async Task PageTearDownAsync()
+public override async Task DisposeAsync()
 {
+    if (_onConsoleMessage is not null) Page.Console -= _onConsoleMessage;
+    Assert.True(_consoleErrors.Count == 0,
+        $"Unexpected browser console errors:\n{string.Join("\n", _consoleErrors)}");
     try
     {
         if (Page is not null)
             await Page.CloseAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
     }
     catch { }
+    await base.DisposeAsync();
 }
 ```
 
@@ -316,18 +310,14 @@ Key points:
 - `Page.CloseAsync()` has no built-in timeout parameter — `WaitAsync(TimeSpan)` is the correct way to add one
 - The 10-second cap ensures teardown never hangs indefinitely even if `CloseAsync` itself stalls
 - The bare `catch { }` is intentional — the page may already be closing or in an unknown state; swallow everything
-- NUnit runs **all** `[TearDown]` methods in the hierarchy even if one throws, so `AssertNoConsoleErrors` and `PageTearDownAsync` both always run
-- `Page.SetDefaultTimeout(30_000)` is set in `[SetUp]` to ensure all Playwright operations timeout within 30s rather than relying on Playwright's internal default
-
-### DefaultTimeout in playwright.runsettings
-
-`<DefaultTimeout>120000</DefaultTimeout>` in `playwright.runsettings` is NUnit's **per-test wall-clock limit** — it is NOT Playwright's action/assertion timeout. These are completely separate systems. Playwright's timeout is controlled by `Page.SetDefaultTimeout()`. Do not confuse the two.
+- `Page.SetDefaultTimeout(30_000)` is set in `InitializeAsync` to ensure all Playwright operations timeout within 30s
+- Both console error assertion and page close always run — xUnit `DisposeAsync` is always called, unlike NUnit `[TearDown]` which could be skipped
 
 ### --blame-hang-timeout 60s — process-level kill switch
 
-`Browser.CloseAsync()` is called by Playwright's internal `WorkerAwareTest.WorkerTeardown` with no timeout. When a CDP action times out and leaves the connection in a stuck state, `Browser.CloseAsync()` hangs indefinitely — our `PageTearDownAsync` WaitAsync cap does not reach this call.
+`Browser.CloseAsync()` (called by `PageTest.DisposeAsync` in the base framework) has no timeout. When a CDP action times out and leaves the connection in a stuck state, `Browser.CloseAsync()` can hang indefinitely — the `WaitAsync(10s)` cap in our `DisposeAsync` does not reach this framework-level call.
 
-`--blame-hang-timeout 60s` is a dotnet test CLI flag that force-kills the entire test host process (and child processes) if any single test including its teardown exceeds the timeout. Since `SetDefaultTimeout(30_000)` caps each Playwright action at 30s and `PageTearDownAsync` caps at 10s, 60s gives 20s of buffer before the process is killed.
+`--blame-hang-timeout 60s` is a dotnet test CLI flag that force-kills the entire test host process (and child processes) if any single test including its teardown exceeds the timeout. Since `SetDefaultTimeout(30_000)` caps each Playwright action at 30s and our `DisposeAsync` caps page close at 10s, 60s gives 20s of buffer before the process is killed.
 
 Always include this flag:
 
@@ -385,4 +375,60 @@ Avoid XPath. Avoid selectors tied to implementation details that change with ref
 
 - [ ] Wait for `.tt-fab button` enabled (WASM interactive) — or page-specific content if no FAB
 - [ ] If the test triggers an action that fires an API call, use `RunAndWaitForRequestFinishedAsync` (not `WaitForResponseAsync`, not standalone `WaitForRequestFinishedAsync`)
-- [ ] Assertions use `Expect()` (web-first); never use `IsVisibleAsync()` in an `Assert.That`
+- [ ] Assertions use `Expect()` (web-first); never use `IsVisibleAsync()` in a plain `Assert.True`
+
+## Checklist: write tests (mutate data)
+
+- [ ] Mark with `[SkippableFact]` (not `[Fact]`)
+- [ ] First line: `Skip.If(!WriteTestsEnabled, "Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");`
+- [ ] Any additional runtime conditions (e.g. timer already running): `Skip.If(condition, "reason");`
+
+## Checklist: new test class
+
+- [ ] Extend `AuthenticatedPageTest` (mobile) or `AuthenticatedDesktopPageTest` (desktop) — `[Collection("App")]` is inherited
+- [ ] `override InitializeAsync()` — always call `await base.InitializeAsync()` first
+- [ ] No `override DisposeAsync()` needed unless the class adds its own resources — `DisposeAsync` in the base class handles console assertion and page close
+- [ ] For a test that should never run in the normal suite (e.g. diagnostic), use `[Fact(Skip = "reason")]` and document how to run it manually
+
+---
+
+## bUnit component tests — when to use instead of Playwright
+
+`TimeTracker.ComponentTests` (xUnit + bUnit) covers Blazor component rendering and UI logic without a browser. Use it for:
+
+| Scenario | Tool |
+|----------|------|
+| Component renders correct output for given parameters | bUnit |
+| Conditional rendering (e.g. invoice icon only when ref is set) | bUnit |
+| EventCallback fires with correct value on interaction | bUnit |
+| Form validation fires on invalid input | bUnit |
+| Full user journey (navigate → interact → verify result) | Playwright |
+| Real network calls, auth flows, WASM hydration | Playwright |
+| Cross-page state (navigation, session) | Playwright |
+
+### bUnit test structure
+
+All component tests extend `MudBlazorContext` from `TimeTracker.ComponentTests/Fixtures/`. This base class:
+- Calls `Services.AddMudServices()` with zero-transition config
+- Sets `JSInterop.Mode = JSRuntimeMode.Loose` to stub all MudBlazor JS calls
+- Renders `<MudPopoverProvider />` — required for `MudTooltip`, `MudMenu`, `MudSelect` and other popover-based components
+
+```csharp
+public class MyComponentTests : MudBlazorContext
+{
+    [Fact]
+    public void RendersExpectedContent()
+    {
+        var cut = RenderComponent<MyComponent>(p => p
+            .Add(c => c.SomeParam, "value"));
+
+        Assert.Contains("expected text", cut.Markup);
+    }
+}
+```
+
+**Tooltip text** is rendered in the popover portal, not inline in the component's `Markup`. Check it via the component instance:
+```csharp
+var tooltip = cut.FindComponent<MudTooltip>();
+Assert.Equal("expected tooltip text", tooltip.Instance.Text);
+```

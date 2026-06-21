@@ -1,6 +1,6 @@
 namespace TimeTracker.Playwright.Tests;
 
-[TestFixture]
+[Collection("App")]
 public class AuthTests : PageTest
 {
     private readonly List<string> _consoleErrors = [];
@@ -16,9 +16,9 @@ public class AuthTests : PageTest
         IgnoreHTTPSErrors = true,
     };
 
-    [SetUp]
-    public void MonitorConsoleErrors()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _consoleErrors.Clear();
         _failedRequests.Clear();
         _onRequestFailed = (_, req) => _failedRequests.Add($"Request failed: {req.Url}");
@@ -33,56 +33,56 @@ public class AuthTests : PageTest
         Page.Console += _onConsoleMessage;
     }
 
-    [TearDown]
-    public void AssertNoConsoleErrors()
+    public override async Task DisposeAsync()
     {
         if (_onRequestFailed is not null) Page.RequestFailed -= _onRequestFailed;
         if (_onConsoleMessage is not null) Page.Console -= _onConsoleMessage;
         var all = _consoleErrors.Concat(_failedRequests).ToList();
-        Assert.That(all, Is.Empty,
+        Assert.True(all.Count == 0,
             $"Unexpected browser errors:\n{string.Join("\n", all)}");
+        await base.DisposeAsync();
     }
 
     // ── Unauthenticated redirect coverage ─────────────────────────────────────
     // Each WASM page must redirect an anonymous visitor to /login.
     // If any of these fail it means [Authorize] was removed from that page.
 
-    [Test]
+    [Fact]
     public async Task UnauthenticatedRootRedirectsToLogin()
     {
         await Page.GotoAsync("/");
         await Expect(Page).ToHaveURLAsync(new Regex("/login"));
     }
 
-    [Test]
+    [Fact]
     public async Task UnauthenticatedEntriesRedirectsToLogin()
     {
         await Page.GotoAsync("/entries");
         await Expect(Page).ToHaveURLAsync(new Regex("/login"));
     }
 
-    [Test]
+    [Fact]
     public async Task UnauthenticatedProjectPageRedirectsToLogin()
     {
         await Page.GotoAsync("/projects/1");
         await Expect(Page).ToHaveURLAsync(new Regex("/login"));
     }
 
-    [Test]
+    [Fact]
     public async Task UnauthenticatedClientPageRedirectsToLogin()
     {
         await Page.GotoAsync("/clients/1");
         await Expect(Page).ToHaveURLAsync(new Regex("/login"));
     }
 
-    [Test]
+    [Fact]
     public async Task UnauthenticatedReportsRedirectsToLogin()
     {
         await Page.GotoAsync("/reports");
         await Expect(Page).ToHaveURLAsync(new Regex("/login"));
     }
 
-    [Test]
+    [Fact]
     public async Task UnauthenticatedAdminUsersRedirectsToLogin()
     {
         await Page.GotoAsync("/admin/users");
@@ -91,7 +91,7 @@ public class AuthTests : PageTest
 
     // ── Login page UI ──────────────────────────────────────────────────────────
 
-    [Test]
+    [Fact]
     public async Task LoginPageShowsGoogleSignInButton()
     {
         await Page.GotoAsync("/login");
@@ -101,7 +101,7 @@ public class AuthTests : PageTest
             .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task GoogleSignInLinkHasEnhanceNavDisabled()
     {
         // Regression: Blazor's enhanced navigation intercepts <a> clicks and
@@ -115,15 +115,12 @@ public class AuthTests : PageTest
         await Expect(link).ToBeVisibleAsync();
 
         var attr = await link.GetAttributeAsync("data-enhance-nav");
-        Assert.That(attr, Is.EqualTo("false"),
-            "Google sign-in link must have data-enhance-nav=\"false\" — without it Blazor " +
-            "intercepts the click as a fetch, the OAuth redirect to Google violates connect-src 'self', " +
-            "and the sign-in flow is blocked by the CSP.");
+        Assert.Equal("false", attr);
     }
 
     // ── Access denied page ─────────────────────────────────────────────────────
 
-    [Test]
+    [Fact]
     public async Task AccessDeniedPageShowsExpectedContent()
     {
         await Page.GotoAsync("/access-denied");
