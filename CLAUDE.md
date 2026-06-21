@@ -23,15 +23,27 @@ Every GitHub issue created for this repository must be:
 gh project item-add 1 --owner zkarachiwala --url https://github.com/zkarachiwala/TimeTracker/issues/<number>
 ```
 
-## Playwright tests
+## Standard test commands
 
-Run manually after app code changes — do NOT automate via git hooks:
-
+**Before every PR** — run the full solution (service tests + bUnit + Playwright E2E):
 ```bash
-PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal" --blame-hang-timeout 60s
+PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "console;verbosity=normal" --blame-hang-timeout 60s
+```
+Prerequisite: SQL Server running, user secrets set (`DbUser`, `DbPassword`).
+
+**During development** (fast feedback, no DB or browser needed):
+```bash
+dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
 ```
 
-StopOnError and parallelization are configured in `TimeTracker.Playwright/xunit.runner.json` (`stopOnFail: true`, `parallelizeTestCollections: false`).
+**Hang diagnostic only** (not part of normal suite):
+```bash
+PLAYWRIGHT_HANG_DIAGNOSTIC=true BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~HangDiagnosticTests" --blame-hang-timeout 60s
+```
+
+## Playwright tests
+
+`stopOnFail` and `parallelizeTestCollections: false` are configured in `TimeTracker.Playwright/xunit.runner.json` — no extra flags needed.
 
 The pre-push hook (`.githooks/pre-push`) is intentionally disabled. Never re-enable it — it caused repeated background process incidents by blocking `git push` for 2–3 minutes.
 
@@ -131,12 +143,11 @@ All request/response DTOs live in `TimeTracker.Contracts/`. Never define DTOs in
 
 **Unit tests** (`TimeTracker.Tests`): xUnit + EF Core InMemory. Every service-layer change or new feature must include test additions or updates in the same commit. No running database required.
 
-**Playwright E2E tests** (`TimeTracker.Playwright`):
-- Unauthenticated tests extend `PageTest` directly.
-- Authenticated tests extend `AuthenticatedPageTest` (loads stored auth state from `playwright/.auth/user.json`).
-- Write tests (tests that mutate data) must be guarded with:
-  ```csharp
-  if (!WriteTestsEnabled) Assert.Ignore("Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");
-  ```
-  where `WriteTestsEnabled` checks `Environment.GetEnvironmentVariable("PLAYWRIGHT_WRITE_TESTS") == "true"`. Write tests are skipped in CI and run locally only.
+**Component tests** (`TimeTracker.ComponentTests`): xUnit + bUnit. Extend `MudBlazorContext` for components that use MudBlazor. No running database or browser required.
+
+**Playwright E2E tests** (`TimeTracker.Playwright`): xUnit + `Microsoft.Playwright.Xunit`.
+- Unauthenticated tests extend `PageTest` directly with `[Collection("App")]`.
+- Authenticated tests extend `AuthenticatedPageTest` or `AuthenticatedDesktopPageTest` (loads stored auth state from `playwright/.auth/user.json`).
+- One-time app startup is handled by `AppFixture` (`ICollectionFixture<AppFixture>`) via the `[Collection("App")]` attribute.
+- Write tests (tests that mutate data) must be guarded with `[SkippableFact]` + `Skip.If(!WriteTestsEnabled, "...")`. Write tests are skipped in CI and run locally only.
 - Target URL is controlled by `PLAYWRIGHT_BASE_URL` env var (defaults to the Azure deployment).
