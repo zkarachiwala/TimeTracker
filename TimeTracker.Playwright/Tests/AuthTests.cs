@@ -57,7 +57,7 @@ public class AuthTests : PageTest
     [Fact]
     public async Task UnauthenticatedEntriesRedirectsToLogin()
     {
-        await Page.GotoAsync("/entries/week");
+        await Page.GotoAsync("/entries");
         await Expect(Page).ToHaveURLAsync(new Regex("/login"));
     }
 
