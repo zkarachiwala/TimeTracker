@@ -26,10 +26,28 @@
         </MudCard>
         <MudCard Outlined="true">
             <MudCardContent Style="padding:16px">
-                <MudText Typo="Typo.overline">Uninvoiced</MudText>
+                <MudText Typo="Typo.overline">YTD earned</MudText>
+                <MudText Class="tabnum" Color="Color.Secondary"
+                         Style="font-size:1.8rem; font-weight:500">
+                    <span Style="font-size:1rem">$</span>@data?.YtdEarned.ToString("N0")
+                </MudText>
+            </MudCardContent>
+        </MudCard>
+        <MudCard Outlined="true">
+            <MudCardContent Style="padding:16px">
+                <MudText Typo="Typo.overline">Uninvoiced hours</MudText>
                 <MudText Class="tabnum" Color="Color.Primary"
                          Style="font-size:1.8rem; font-weight:500">
                     @data?.UninvoicedTotal<span Style="font-size:1rem">h</span>
+                </MudText>
+            </MudCardContent>
+        </MudCard>
+        <MudCard Outlined="true">
+            <MudCardContent Style="padding:16px">
+                <MudText Typo="Typo.overline">Uninvoiced amount</MudText>
+                <MudText Class="tabnum" Color="Color.Primary"
+                         Style="font-size:1.8rem; font-weight:500">
+                    <span Style="font-size:1rem">$</span>@data?.UninvoicedAmount.ToString("N0")
                 </MudText>
             </MudCardContent>
         </MudCard>
@@ -69,9 +87,17 @@
                                     @(row.Project.ClientName ?? row.Project.Name)
                                 </MudText>
                             </div>
-                            <MudText Typo="Typo.body2" Class="tabnum" Style="font-weight:500">
-                                @row.Hours<span Style="font-size:.75rem">h</span>
-                            </MudText>
+                            <div class="d-flex align-center gap-3">
+                                @if (row.Revenue > 0)
+                                {
+                                    <MudText Typo="Typo.body2" Class="tabnum" Style="color:var(--mud-palette-text-secondary)">
+                                        $@row.Revenue.ToString("N0")
+                                    </MudText>
+                                }
+                                <MudText Typo="Typo.body2" Class="tabnum" Style="font-weight:500">
+                                    @row.Hours<span Style="font-size:.75rem">h</span>
+                                </MudText>
+                            </div>
                         </div>
                         <MudProgressLinear Value="@(data.MaxProjectHours > 0 ? (double)row.Hours / data.MaxProjectHours * 100 : 0)"
                                            Color="Color.Primary"

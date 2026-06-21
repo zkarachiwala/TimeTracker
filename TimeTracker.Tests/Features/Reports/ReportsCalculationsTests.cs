@@ -11,8 +11,8 @@ public class ReportsCalculationsTests
     private static readonly int Year = DateTime.Today.Year;
 
     private static TimeEntryResponse MakeEntry(int projectId, DateTime start, DateTime end,
-        string? invoiceRef = null) =>
-        new(0, new ProjectSummary(projectId, $"Project {projectId}"), start, end, null, invoiceRef, null);
+        string? invoiceRef = null, decimal? effectiveRate = null) =>
+        new(0, new ProjectSummary(projectId, $"Project {projectId}"), start, end, null, invoiceRef, null, effectiveRate);
 
     private static TimeEntryResponse MakeRunning(int projectId) =>
         new(0, new ProjectSummary(projectId, $"Project {projectId}"), DateTime.Now, null, null, null, null);
@@ -158,5 +158,127 @@ public class ReportsCalculationsTests
         var result = ReportsCalculations.Compute(entries, projects);
 
         Assert.Equal(5, result.MaxProjectHours);
+    }
+
+    // --- Revenue ---
+
+    [Fact]
+    public void YtdEarned_IsHoursTimesHourlyRate()
+    {
+        var entries = new List<TimeEntryResponse>
+        {
+            MakeEntry(1, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)), // 2h × $100
+            MakeEntry(1, new DateTime(Year, 2, 1, 9, 0, 0), new DateTime(Year, 2, 1, 10, 30, 0)), // 1.5h × $100
+        };
+        var projects = new List<ProjectResponse> { MakeProject(1, hourlyRate: 100) };
+
+        var result = ReportsCalculations.Compute(entries, projects);
+
+        Assert.Equal(350m, result.YtdEarned);
+    }
+
+    [Fact]
+    public void YtdEarned_ExcludesNonBillableEntries()
+    {
+        var entries = new List<TimeEntryResponse>
+        {
+            MakeEntry(1, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)), // billable
+            MakeEntry(2, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)), // non-billable
+        };
+        var projects = new List<ProjectResponse>
+        {
+            MakeProject(1, hourlyRate: 100),
+            MakeProject(2, hourlyRate: null),
+        };
+
+        var result = ReportsCalculations.Compute(entries, projects);
+
+        Assert.Equal(200m, result.YtdEarned);
+    }
+
+    [Fact]
+    public void YtdEarned_UsesEffectiveRateOverHourlyRate()
+    {
+        var entries = new List<TimeEntryResponse>
+        {
+            MakeEntry(1, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0), effectiveRate: 150m), // 2h × $150 award rate
+        };
+        var projects = new List<ProjectResponse> { MakeProject(1, hourlyRate: 100) };
+
+        var result = ReportsCalculations.Compute(entries, projects);
+
+        Assert.Equal(300m, result.YtdEarned);
+    }
+
+    [Fact]
+    public void UninvoicedAmount_OnlyCountsEntriesWithNoInvoiceRef()
+    {
+        var entries = new List<TimeEntryResponse>
+        {
+            MakeEntry(1, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)),                      // 2h uninvoiced
+            MakeEntry(1, new DateTime(Year, 1, 2, 9, 0, 0), new DateTime(Year, 1, 2, 11, 0, 0), invoiceRef: "INV-1"), // 2h invoiced
+        };
+        var projects = new List<ProjectResponse> { MakeProject(1, hourlyRate: 100) };
+
+        var result = ReportsCalculations.Compute(entries, projects);
+
+        Assert.Equal(200m, result.UninvoicedAmount);
+    }
+
+    [Fact]
+    public void UninvoicedAmount_ExcludesNonBillableEntries()
+    {
+        var entries = new List<TimeEntryResponse>
+        {
+            MakeEntry(1, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)), // billable, no invoice
+            MakeEntry(2, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)), // non-billable, no invoice
+        };
+        var projects = new List<ProjectResponse>
+        {
+            MakeProject(1, hourlyRate: 100),
+            MakeProject(2, hourlyRate: null),
+        };
+
+        var result = ReportsCalculations.Compute(entries, projects);
+
+        Assert.Equal(200m, result.UninvoicedAmount);
+    }
+
+    [Fact]
+    public void ProjectRow_Revenue_IsHoursTimesRate()
+    {
+        var entries = new List<TimeEntryResponse>
+        {
+            MakeEntry(1, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)), // 2h × $75
+            MakeEntry(1, new DateTime(Year, 1, 2, 9, 0, 0), new DateTime(Year, 1, 2, 10, 0, 0)), // 1h × $75
+        };
+        var projects = new List<ProjectResponse> { MakeProject(1, hourlyRate: 75) };
+
+        var result = ReportsCalculations.Compute(entries, projects);
+
+        Assert.Equal(225m, result.ProjectRows[0].Revenue);
+    }
+
+    [Fact]
+    public void ProjectRow_Revenue_IsZeroForNonBillableProject()
+    {
+        var entries = new List<TimeEntryResponse>
+        {
+            MakeEntry(1, new DateTime(Year, 1, 1, 9, 0, 0), new DateTime(Year, 1, 1, 11, 0, 0)),
+        };
+        var projects = new List<ProjectResponse> { MakeProject(1, hourlyRate: null) };
+
+        var result = ReportsCalculations.Compute(entries, projects);
+
+        Assert.Equal(0m, result.ProjectRows[0].Revenue);
+    }
+
+    [Fact]
+    public void EmptyEntries_ReturnsZeroRevenue()
+    {
+        var result = ReportsCalculations.Compute([], []);
+
+        Assert.Equal(0m, result.YtdEarned);
+        Assert.Equal(0m, result.UninvoicedAmount);
     }
 }
