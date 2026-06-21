@@ -1,6 +1,6 @@
 namespace TimeTracker.Playwright;
 
-[Category("Authenticated")]
+[Collection("App")]
 public class AuthenticatedDesktopPageTest : PageTest
 {
     private readonly List<string> _consoleErrors = [];
@@ -15,9 +15,10 @@ public class AuthenticatedDesktopPageTest : PageTest
         IgnoreHTTPSErrors = true,
     };
 
-    [SetUp]
-    public void MonitorConsoleErrors()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
+        Page.SetDefaultTimeout(30_000);
         _consoleErrors.Clear();
         _onConsoleMessage = (_, msg) =>
         {
@@ -29,11 +30,17 @@ public class AuthenticatedDesktopPageTest : PageTest
         Page.Console += _onConsoleMessage;
     }
 
-    [TearDown]
-    public void AssertNoConsoleErrors()
+    public override async Task DisposeAsync()
     {
         if (_onConsoleMessage is not null) Page.Console -= _onConsoleMessage;
-        Assert.That(_consoleErrors, Is.Empty,
+        Assert.True(_consoleErrors.Count == 0,
             $"Unexpected browser console errors:\n{string.Join("\n", _consoleErrors)}");
+        try
+        {
+            if (Page is not null)
+                await Page.CloseAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+        }
+        catch { }
+        await base.DisposeAsync();
     }
 }

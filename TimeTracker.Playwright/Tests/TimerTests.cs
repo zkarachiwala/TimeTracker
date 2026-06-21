@@ -1,25 +1,21 @@
 namespace TimeTracker.Playwright.Tests;
 
-[TestFixture]
 public class TimerTests : AuthenticatedPageTest
 {
-    [SetUp]
-    public async Task NavigateToTimer()
+    private static bool WriteTestsEnabled =>
+        Environment.GetEnvironmentVariable("PLAYWRIGHT_WRITE_TESTS") == "true";
+
+    public override async Task InitializeAsync()
     {
-        // WaitForRequestFinishedAsync fires on 'requestfinished' (body fully downloaded), not
-        // 'response' (headers only). Target the last sequential call in LoadData() — if today's
-        // entries have finished, projects and active-timer must also be fully complete.
-        var loadDataDone = Page.WaitForRequestFinishedAsync(new()
-        {
-            Predicate = r => r.Url.Contains("/api/timeentries/today"),
-            Timeout = 15_000
-        });
-        await Page.GotoAsync("/");
+        await base.InitializeAsync();
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
+        );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        await loadDataDone;
     }
 
-    [Test]
+    [Fact]
     public async Task StartTimerCardOrRunningCardIsVisible()
     {
         // Verifies the page actually rendered its content — catches component crashes (e.g. JsonException
@@ -29,33 +25,29 @@ public class TimerTests : AuthenticatedPageTest
         await Expect(running.Or(idle)).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task TodaySectionIsVisible()
     {
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Today" })).ToBeVisibleAsync();
     }
 
     // Write tests — skipped in CI, run locally with PLAYWRIGHT_WRITE_TESTS=true
-    private static bool WriteTestsEnabled =>
-        Environment.GetEnvironmentVariable("PLAYWRIGHT_WRITE_TESTS") == "true";
 
-    [Test]
+    [SkippableFact]
     public async Task LogFixedBlockCreatesEntry()
     {
-        if (!WriteTestsEnabled) Assert.Ignore("Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");
-        if (await Page.GetByText("Tracking now").IsVisibleAsync())
-            Assert.Ignore("Timer already running — skipping block test");
+        Skip.If(!WriteTestsEnabled, "Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");
+        Skip.If(await Page.GetByText("Tracking now").IsVisibleAsync(), "Timer already running — skipping block test");
 
         await Page.GetByRole(AriaRole.Button, new() { Name = "30m" }).ClickAsync();
         await Expect(Page.GetByText("30m logged")).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
-    [Test]
+    [SkippableFact]
     public async Task StartAndStopTimerCreatesEntry()
     {
-        if (!WriteTestsEnabled) Assert.Ignore("Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");
-        if (await Page.GetByText("Tracking now").IsVisibleAsync())
-            Assert.Ignore("Timer already running — skipping start/stop test");
+        Skip.If(!WriteTestsEnabled, "Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");
+        Skip.If(await Page.GetByText("Tracking now").IsVisibleAsync(), "Timer already running — skipping start/stop test");
 
         await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start timer" })).ToBeVisibleAsync();
         await Page.GetByRole(AriaRole.Button, new() { Name = "Start timer" }).ClickAsync();

@@ -1,28 +1,27 @@
 namespace TimeTracker.Playwright.Tests;
 
-[TestFixture]
 public class ProjectsTests : AuthenticatedPageTest
 {
-    [SetUp]
-    public async Task NavigateToProjects()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.GotoAsync("/projects");
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task ProjectsHeadingIsVisible()
     {
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Projects" }).First).ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task ActiveCountChipIsVisible()
     {
         await Expect(Page.GetByText(new Regex(@"\d+ active"))).ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task AddProjectOpensSheet()
     {
         await Page.Locator(".tt-fab button").ClickAsync();

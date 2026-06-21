@@ -6,6 +6,7 @@ using TimeTracker.Client.Features.Auth;
 using TimeTracker.Client.Features.Clients;
 using TimeTracker.Client.Features.Projects;
 using TimeTracker.Client.Features.TimeEntries;
+using TimeTracker.Contracts.Features.Admin;
 using TimeTracker.Contracts.Features.Clients;
 using TimeTracker.Contracts.Features.Projects;
 using TimeTracker.Contracts.Features.TimeEntries;
@@ -25,6 +26,7 @@ builder.Services.AddSingleton<TimeTracker.Client.Mock.MockDataStore>();
 builder.Services.AddScoped<ITimeEntryService, TimeTracker.Client.Mock.MockTimeEntryService>();
 builder.Services.AddScoped<IProjectService, TimeTracker.Client.Mock.MockProjectService>();
 builder.Services.AddScoped<IClientService, TimeTracker.Client.Mock.MockClientService>();
+builder.Services.AddScoped<IUserManagementService, TimeTracker.Client.Mock.MockUserManagementService>();
 #else
 builder.Services.AddScoped<AuthenticationStateProvider, CookieAuthenticationStateProvider>();
 builder.Services.AddScoped(sp =>

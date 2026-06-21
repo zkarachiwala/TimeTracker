@@ -197,6 +197,34 @@ html, body, #app {
     color: var(--mud-palette-primary) !important;
 }
 
+/* ── Nav rail — hide text and centre icons in mini/closed state ── */
+/* MudBlazor's built-in selector requires NavMenu as direct child of .mud-drawer-content,
+   which our wrapper div breaks — so we apply a permissive override instead */
+.mud-drawer--closed.mud-drawer-mini .mud-nav-link-text {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+.mud-drawer--closed.mud-drawer-mini .mud-nav-link {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    justify-content: center !important;
+}
+
+/* ── Nav rail — hide mini drawer on mobile to prevent flash before JS sets Persistent variant ── */
+@media (max-width: 959px) {
+    .mud-drawer-mini {
+        display: none !important;
+    }
+}
+
 /* ── Entry sheet — bottom sheet ── */
 .entry-sheet .mud-drawer-content {
     max-height: 92vh;
@@ -263,4 +291,27 @@ label.mud-input-label.mud-input-label-animated.mud-input-label-inputcontrol {
 .rate-chip-cyan {
     background: rgba(31,172,242,0.14) !important;
     color: #0a6ea3 !important;
+}
+
+/* ── Calendar: prevent day-number link from consuming full cell height ── */
+.mud-cal-month-link {
+    height: auto !important;
+}
+
+/* ── Calendar: value bars stack below day number ── */
+.mud-cal-month-cell-header {
+    padding: 2px 4px;
+}
+
+/* ── Calendar: hide totals column on mobile ── */
+@media (max-width: 768px) {
+    .mud-cal-total-cell {
+        display: none !important;
+    }
+    .mud-cal-month-grid-header .mud-cal-month-header:last-child {
+        display: none !important;
+    }
+    .mud-cal-month-cell:not(.mud-cal-total-cell) {
+        width: calc(100% / 7) !important;
+    }
 }

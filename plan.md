@@ -130,6 +130,225 @@ base64 -w 0 playwright/.auth/user.json | xclip -selection clipboard
 
 ---
 
+---
+
+## Phase 12 — Test framework migration (Issue #155)
+
+**Goal:** Migrate `TimeTracker.Playwright` from NUnit to xUnit; add a bUnit Blazor component test layer.
+
+**Branch:** `feature/issue-155-test-framework-migration`
+
+**Plan file:** this section
+
+---
+
+### Background
+
+The NUnit teardown hang (root cause: `Browser.CloseAsync()` has no timeout in `WorkerAwareTest.WorkerTeardown`) surfaced during issue #146 nav rail work. xUnit is the dominant .NET test framework (used by Microsoft for ASP.NET Core, EF Core) with better async lifecycle support via `IAsyncLifetime`.
+
+---
+
+### Target architecture
+
+| Layer | Project | Framework |
+|-------|---------|-----------|
+| Service unit tests | `TimeTracker.Tests` | xUnit + EF Core InMemory (existing) |
+| Component tests | `TimeTracker.ComponentTests` (new) | xUnit + bUnit |
+| E2E tests | `TimeTracker.Playwright` | xUnit + Microsoft.Playwright.Xunit |
+
+---
+
+### Phase 12a — Playwright NUnit → xUnit migration
+
+#### Step 1: Update `TimeTracker.Playwright.csproj`
+
+Remove packages:
+- `Microsoft.Playwright.NUnit`
+- `NUnit`, `NUnit.Analyzers`, `NUnit3TestAdapter`
+
+Add packages:
+- `Microsoft.Playwright.Xunit` (same version as current Playwright — 1.52.0)
+- `xunit`, `xunit.runner.visualstudio`
+- `Xunit.SkippableFact` — replaces NUnit's `Assert.Ignore()` for write-test guards
+
+Update global usings: swap `NUnit.Framework` / `Microsoft.Playwright.NUnit` for `Microsoft.Playwright.Xunit`.
+
+#### Step 2: Replace `GlobalSetup.cs` with a collection fixture
+
+**Current (NUnit):** `[SetUpFixture]` with `[OneTimeSetUp]` / `[OneTimeTearDown]`
+
+**xUnit replacement:**
+
+```csharp
+// AppFixture.cs — implements IAsyncLifetime
+public sealed class AppFixture : IAsyncLifetime
+{
+    public async Task InitializeAsync()  // replaces [OneTimeSetUp]
+    {
+        Environment.SetEnvironmentVariable("BROWSER", null);
+        Environment.SetEnvironmentVariable("PLAYWRIGHT_BASE_URL", TestConfig.BaseUrl);
+        _appProcess = await StartAppAsync();
+        await AuthenticateAsync();
+    }
+
+    public async Task DisposeAsync()  // replaces [OneTimeTearDown]
+    {
+        // same kill logic as current TearDown()
+    }
+}
+
+// AppCollection.cs
+[CollectionDefinition("App")]
+public class AppCollection : ICollectionFixture<AppFixture> { }
+```
+
+All test classes share one `AppFixture` instance via `[Collection("App")]`.
+
+#### Step 3: Rewrite base classes
+
+`AuthenticatedPageTest` and `AuthenticatedDesktopPageTest`:
+- Drop NUnit attributes (`[Category]`, `[SetUp]`, `[TearDown]`)
+- Add `[Collection("App")]`
+- `MonitorConsoleErrors` ([SetUp]) → `InitializeAsync()`
+- `AssertNoConsoleErrors` + `PageTearDownAsync` ([TearDown]) → `DisposeAsync()`
+- xUnit's `PageTest` keeps the same `Page`, `Context`, `Browser` properties and `ContextOptions()` override
+
+#### Step 4: Convert all 10 test files
+
+Mechanical per-file changes:
+- Drop `[TestFixture]`
+- `[Test]` → `[Fact]`
+- `[SetUp]` method → `IAsyncLifetime.InitializeAsync()`
+- `[TearDown]` method → `IAsyncLifetime.DisposeAsync()`
+- Write-test guard: `Assert.Ignore("...")` → `Skip.If(!WriteTestsEnabled, "...")` (from `Xunit.SkippableFact`); change `[Fact]` → `[SkippableFact]` on those tests
+
+Files: `AdminTests`, `AuthTests`, `ClientsTests`, `DesktopAdminTests`, `DesktopNavigationTests`, `NavigationTests`, `ProjectsTests`, `ReportsTests`, `TimeEntriesTests`, `TimerTests`.
+
+#### Step 5: Replace NUnit parallelism settings
+
+**Current `playwright.runsettings` `<NUnit>` section:**
+```xml
+<NUnit>
+  <StopOnError>true</StopOnError>
+  <NumberOfTestWorkers>1</NumberOfTestWorkers>
+  <DefaultTimeout>120000</DefaultTimeout>
+</NUnit>
+```
+
+**xUnit equivalent — new `xunit.runner.json` alongside `.csproj`:**
+```json
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "parallelizeTestCollections": false,
+  "stopOnFail": true
+}
+```
+
+Wire into csproj with `<EmbeddedResource Include="xunit.runner.json" />` and `<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>`. Remove the `<RunSettingsFilePath>` from the csproj (or leave the `.runsettings` file — its `<NUnit>` section is harmless but irrelevant).
+
+Note: `DefaultTimeout` is per-action, set via `Page.SetDefaultTimeout(30_000)` in `InitializeAsync()` — already done in base classes. `--blame-hang-timeout 60s` CLI flag is unchanged.
+
+---
+
+### Phase 12b — bUnit component tests (new project)
+
+#### New project: `TimeTracker.ComponentTests`
+
+```
+TimeTracker.ComponentTests/
+  TimeTracker.ComponentTests.csproj
+  GlobalUsings.cs
+  Fixtures/
+    MudBlazorContext.cs         ← shared TestContext subclass wiring MudBlazor services
+  Features/
+    TimeEntries/
+      EntryRowTests.cs
+      EntrySheetTests.cs
+    Projects/
+      ProjectCardTests.cs
+      ProjectSheetTests.cs
+```
+
+#### Packages
+
+```xml
+<PackageReference Include="bunit" />                   <!-- Blazor in-memory component testing -->
+<PackageReference Include="xunit" Version="2.9.x" />
+<PackageReference Include="xunit.runner.visualstudio" />
+<PackageReference Include="Microsoft.NET.Test.Sdk" />
+<PackageReference Include="MudBlazor" />               <!-- same version as app -->
+```
+
+Project references: `TimeTracker.Client` (components), `TimeTracker.Contracts` (DTOs).
+
+#### Shared MudBlazor test context
+
+```csharp
+public abstract class MudBlazorTestContext : TestContext
+{
+    protected MudBlazorTestContext()
+    {
+        Services.AddMudServices(cfg => cfg.SnackbarConfiguration.ShowTransitionDuration = 0);
+        // Stub MudBlazor JS interop calls that would otherwise throw in bUnit
+        JSInterop.SetupVoid("mudKeyInterceptor.connect", _ => true);
+        JSInterop.SetupVoid("mudPopover.initialize", _ => true);
+        // Add further stubs as components under test require them
+    }
+}
+```
+
+#### Initial test targets
+
+**`EntryRow` — pure display, no HTTP:**
+- Renders duration correctly for various `TimeSpan` values
+- Shows project colour chip when project assigned; "—" when none
+
+**`ProjectCard` — display with colour:**
+- Renders project name
+- Applies correct colour from `ProjectColors`
+
+**`EntrySheet` / `ProjectSheet` — forms:**
+- Required field validation fires on empty submit
+- Time format rejects invalid input
+- Submit raises expected callback with correct DTO
+
+These establish the bUnit pattern. Expand per-feature going forward.
+
+---
+
+### Phase 12c — Documentation updates (mandatory, same PR)
+
+These files all reference NUnit-specific implementation details and must be updated in the same PR:
+
+| File | What changes |
+|------|-------------|
+| `docs/playwright-strategy.md` | Rewrite framework-specific sections: `[SetUp]`/`[TearDown]`/`[SetUpFixture]`/`[OneTimeSetUp]` → xUnit equivalents; teardown hang section (references `BrowserTearDown`/`TestOk()` from NUnit internals) → xUnit `DisposeAsync` pattern; `playwright.runsettings` DefaultTimeout note → `xunit.runner.json`; checklist items mentioning NUnit. Keep wait strategy, auth strategy, failure triage, and selector guidance unchanged. Add section on bUnit for component-layer tests. |
+| `docs/architecture.md` | Testing section: update project descriptions (add `TimeTracker.ComponentTests`; change Playwright line from "NUnit" to "xUnit"); add change-log row for issue #155. |
+| `docs/decisions.md` | Add **D017**: NUnit → xUnit migration — decision, context, consequences. Update D010/D016 where they reference `[SetUpFixture]`, `[OneTimeSetUp]`, `Assert.Ignore()` (annotate as deprecated patterns replaced in D017). Update index table. |
+| `docs/roadmap.md` | Add Phase 12 entry under Completed (once done) or In Progress. Update Phase 9 description from "NUnit project" to reflect migration. |
+| `docs/technical-debt.md` | No new debt created; may annotate TD6 to note the NUnit→xUnit fix closed the teardown-hang risk. |
+| `CLAUDE.md` | Update Playwright section: run command unchanged; note `[Test]` → `[Fact]`, `Assert.Ignore` → `Skip.If`; update `playwright.runsettings` note to reflect `xunit.runner.json` for parallelism. |
+
+---
+
+### Sequencing
+
+1. Phase 12a (Playwright migration) — all inside `TimeTracker.Playwright`, no app code changes
+2. Phase 12b (bUnit) — additive new project, no changes to existing projects
+3. Phase 12c (docs) — in same commit as the code, not a separate PR
+
+Both code phases can be done sequentially in one branch. Single PR for the whole issue.
+
+### Validation
+
+- `dotnet test TimeTracker.Playwright` — all tests pass
+- `dotnet test TimeTracker.ComponentTests` — new component tests pass
+- `dotnet test TimeTracker.Tests` — unchanged, still green
+- `dotnet test TimeTracker.sln` — full suite green
+- Verify `stopOnFail` and `parallelizeTestCollections: false` behave correctly (run one test that fails intentionally, confirm suite stops)
+
+---
+
 ## Deployment pipeline (current)
 
 ```
