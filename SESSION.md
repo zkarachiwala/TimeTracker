@@ -1,20 +1,28 @@
 # Session handoff — 2026-06-21
 
 ## Current state
-- Branch: `feature/issue-155-test-framework-migration` — ready for PR
+- Branch: `feature/issue-155-test-framework-migration` — PR #158 raised, all 247 tests green (1 skipped — hang diagnostic)
 
 ## Completed this session
-- ✅ **#155 Test framework migration** — fully implemented and committed:
+- ✅ **#155 Test framework migration** — fully implemented, tested, PR #158 raised:
   - Playwright NUnit → xUnit (`Microsoft.Playwright.Xunit`); `ICollectionFixture<AppFixture>`; `IAsyncLifetime`; `[Fact]`; `Xunit.SkippableFact`
   - New `TimeTracker.ComponentTests` project (xUnit + bUnit); `MudBlazorContext` base class; 22 component tests for `EntryRow` and `ProjectCard`
   - All docs updated: `playwright-strategy.md`, `architecture.md`, `decisions.md` (D026), `roadmap.md`, `CLAUDE.md`
-  - 164 service tests + 22 component tests — all green
-- ✅ **Plan updated** — Phase 12 added to `plan.md`
-- ✅ **Global CLAUDE.md** — xUnit preference for all new .NET projects added
+  - `HangDiagnosticTests` gated by `PLAYWRIGHT_HANG_DIAGNOSTIC=true` — no code change needed to run
+- ✅ **#156 route fix** (opencode) — `@page "/entries"` added to TimeEntriesPage; merged to main
 
 ## Next session
-- User to run Playwright suite to confirm E2E tests work under xUnit: `PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal" --blame-hang-timeout 60s`
-- If Playwright green → raise PR for #155
+- Merge PR #158 when checks pass
+
+## Standard test commands
+**Before every PR:**
+```bash
+PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "console;verbosity=normal" --blame-hang-timeout 60s
+```
+**During development (fast):**
+```bash
+dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
+```
 
 ## Backlog
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
@@ -42,4 +50,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-21. #155 implementation complete, awaiting Playwright E2E run before PR.*
+*Updated 2026-06-21. PR #158 raised for #155, awaiting merge.*
