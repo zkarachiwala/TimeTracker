@@ -51,12 +51,43 @@ jobs:
         id: export
         run: |
           FILE="backup-$(date +%Y-%m-%d).bacpac"
-          sqlpackage \
-            /Action:Export \
-            /TargetFile:"$FILE" \
-            /SourceServerName:"${{ vars.BACKUP_SQL_SERVER }}.database.windows.net" \
-            /SourceDatabaseName:"${{ vars.BACKUP_SQL_DATABASE }}" \
-            /AccessToken:"${{ steps.token.outputs.value }}"
+          RETRY_COUNT=0
+          MAX_RETRIES=3
+          RETRY_DELAY=30
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            OUTPUT=$(sqlpackage \
+              /Action:Export \
+              /TargetFile:"$FILE" \
+              /SourceServerName:"${{ vars.BACKUP_SQL_SERVER }}.database.windows.net" \
+              /SourceDatabaseName:"${{ vars.BACKUP_SQL_DATABASE }}" \
+              /AccessToken:"${{ steps.token.outputs.value }}" 2>&1)
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "Export successful"
+              break
+            fi
+            
+            # Check if error is timeout-related (cold start)
+            if echo "$OUTPUT" | grep -qiE "(timeout|connection.*refused|unable to connect|The server was not found|sql.database.windows.net)"; then
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "Timeout detected (cold start). Retry $RETRY_COUNT/$MAX_RETRIES in ${RETRY_DELAY}s..."
+                sleep $RETRY_DELAY
+              else
+                echo "Export failed after $MAX_RETRIES timeout attempts"
+                echo "$OUTPUT"
+                exit 1
+              fi
+            else
+              # Non-timeout error - fail immediately
+              echo "Non-timeout error detected. Failing immediately to avoid wasting compute hours."
+              echo "$OUTPUT"
+              exit 1
+            fi
+          done
+          
           echo "file=$FILE" >> $GITHUB_OUTPUT
 
       - name: Push to private backup repo
