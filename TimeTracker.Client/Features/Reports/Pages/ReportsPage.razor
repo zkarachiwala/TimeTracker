@@ -9,9 +9,17 @@
 
 <div class="pa-4">
     <MudText Typo="Typo.h6" Class="mb-1">Reports</MudText>
-    <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)" Class="mb-4">
-        Year overview · @year
-    </MudText>
+    <div class="d-flex align-center gap-2 mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small"
+                       OnClick="@(() => NavigateYear(-1))" aria-label="Previous year" />
+        <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary); min-width:3.5rem; text-align:center">
+            @year
+        </MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small"
+                       OnClick="@(() => NavigateYear(1))"
+                       Disabled="@(year >= DateTime.Today.Year)"
+                       aria-label="Next year" />
+    </div>
 
     @* ── KPI cards ── *@
     <div class="kpi-grid mb-4">
@@ -112,7 +120,7 @@
 <div class="bottom-nav-spacer"></div>
 
 @code {
-    private readonly int year = DateTime.Today.Year;
+    private int year = DateTime.Today.Year;
     private ReportsCalculations.ReportsData? data;
 
     private readonly string[] monthLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -122,7 +130,15 @@
         ChartPalette = ["#9e9e9e", "#2e7d32", "#0068CD"]
     };
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => LoadDataAsync();
+
+    private async Task NavigateYear(int delta)
+    {
+        year += delta;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
     {
         try
         {
