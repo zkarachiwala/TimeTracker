@@ -10,6 +10,7 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 
 | Date | Change | PR/Branch |
 |------|--------|-----------|
+| 2026-06 | **Claude Code remote session hook** — `.claude/hooks/session-start.sh` installs .NET 10 via apt and builds the solution; enables fast tests (`TimeTracker.Tests` + `TimeTracker.ComponentTests`) in remote web sessions without manual setup | `claude/testcontainers-discussion-dzkqcm` |
 | 2026-06 | **Test framework migration** — `TimeTracker.Playwright` migrated NUnit → xUnit (`ICollectionFixture`, `IAsyncLifetime`); `TimeTracker.ComponentTests` added (bUnit + xUnit) for Blazor component layer | #155 |
 | 2026-06 | **Nightly database backup** — GitHub Actions `.bacpac` export via dedicated OIDC SP (custom role: firewall rule write/delete only); pushed to private `TimeTracker-backups` repo with 30-day rolling retention | #104 |
 | 2026-06 | **SQL Server Row-Level Security + audit trail** — `UserSessionContextInterceptor` sets `SESSION_CONTEXT(N'UserId')` before every EF Core command; predicate functions filter per-user; `CreatedBy`/`UpdatedBy`/`DeletedBy` audit columns | #130 |
@@ -238,7 +239,8 @@ Application Insights is not included (pay-as-you-go, no free monthly allowance o
 | CI/CD | GitHub Actions — OIDC push-to-deploy | Free |
 | Structured logging | Serilog → stdout (Azure App Service log stream) | Free |
 | Uptime monitoring | UptimeRobot free tier → `/health` endpoint | Free |
-| Tests | 110 service integration tests (EF InMemory) | — |
+| Tests | 186 tests: 164 service integration (EF InMemory) + 22 bUnit component tests | — |
+| Remote development | Claude Code on the web — `.claude/hooks/session-start.sh` installs .NET 10 + builds on session start | Free |
 
 ---
 

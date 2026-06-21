@@ -23,18 +23,25 @@ Every GitHub issue created for this repository must be:
 gh project item-add 1 --owner zkarachiwala --url https://github.com/zkarachiwala/TimeTracker/issues/<number>
 ```
 
+## Remote sessions (Claude Code on the web)
+
+`.claude/hooks/session-start.sh` installs .NET 10 via apt, restores NuGet packages, and builds the solution automatically at the start of every remote session. This means the fast test suite works in remote sessions without any manual setup.
+
+The hook only runs when `CLAUDE_CODE_REMOTE=true` — it is a no-op locally.
+
 ## Standard test commands
 
 **Before every PR** — run the full solution (service tests + bUnit + Playwright E2E):
 ```bash
 PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "console;verbosity=normal" --blame-hang-timeout 60s
 ```
-Prerequisite: SQL Server running, user secrets set (`DbUser`, `DbPassword`).
+Prerequisite: SQL Server running, user secrets set (`DbUser`, `DbPassword`). **Local only — not available in remote sessions.**
 
 **During development** (fast feedback, no DB or browser needed):
 ```bash
 dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
 ```
+Works in remote sessions (no SQL Server or browser required).
 
 **Hang diagnostic only** (not part of normal suite):
 ```bash
