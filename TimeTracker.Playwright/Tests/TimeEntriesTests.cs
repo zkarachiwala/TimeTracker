@@ -1,11 +1,10 @@
 namespace TimeTracker.Playwright.Tests;
 
-[TestFixture]
 public class TimeEntriesTests : AuthenticatedPageTest
 {
-    [SetUp]
-    public async Task NavigateToEntries()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.RunAndWaitForRequestFinishedAsync(
             async () => await Page.GotoAsync("/entries"),
             new() { Predicate = r => r.Url.Contains("/api/timeentries/year"), Timeout = 15_000 }
@@ -13,7 +12,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task FilterTabsAreVisible()
     {
         foreach (var tab in new[] { "Day", "Month", "Year", "Project", "Calendar" })
@@ -22,20 +21,20 @@ public class TimeEntriesTests : AuthenticatedPageTest
         }
     }
 
-    [Test]
+    [Fact]
     public async Task SummaryCardIsVisible()
     {
         await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task DateStepperIsVisible()
     {
         var label = Page.GetByText(new Regex(@"Today|Yesterday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday"));
         await Expect(label.Locator("..").Locator(".mud-icon-button").First).ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task StepBackChangesDateLabel()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Month" }).ClickAsync();
@@ -50,7 +49,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
         await Expect(label).Not.ToHaveTextAsync(initialText, new() { Timeout = 5_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task MonthTabShowsMonthLabel()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Month" }).ClickAsync();
@@ -58,7 +57,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
             .ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task ProjectTabShowsProjectDropdown()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Project" }).ClickAsync();
@@ -66,7 +65,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
             .ToBeVisibleAsync(new() { Timeout = 5_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task CalendarTabRendersMonthGrid()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();
@@ -74,7 +73,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
             .ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task CalendarTabHasValueBars()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();
@@ -83,7 +82,7 @@ public class TimeEntriesTests : AuthenticatedPageTest
         await Expect(bar).Not.ToBeEmptyAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task ClickCalendarDayCellSwitchesToDayTab()
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();

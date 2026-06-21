@@ -27,6 +27,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D021](#d021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
 | [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Accepted |
 | [D025](#d025-publicholiday-for-au-public-holiday-resolution) | `PublicHoliday` for AU public holiday resolution | 2026-06 | Accepted |
+| [D026](#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer) | xUnit over NUnit for Playwright + new bUnit component layer | 2026-06 | Accepted |
 
 ---
 
@@ -655,3 +656,32 @@ This pattern — showing a disabled placeholder for the current value when the r
 - ✅ State support is built in — enabling it requires only passing a state enum once TD25 is resolved
 - ❌ State-level holidays not covered until TD25 is resolved
 - ❌ Adds one NuGet dependency to `TimeTracker.Web`
+
+---
+
+## D026: xUnit over NUnit for Playwright + new bUnit component layer
+
+**Date:** 2026-06 — **Status:** Accepted — **Issue:** [#155](https://github.com/zkarachiwala/TimeTracker/issues/155)
+
+**Context:** `TimeTracker.Playwright` was written in NUnit (the original Phase 9 choice). During the #146 nav rail work, a teardown hang was diagnosed: Playwright NUnit's `WorkerAwareTest.WorkerTeardown` calls `Browser.CloseAsync()` with no timeout. When a CDP operation leaves the connection in a stuck state, the whole test process hangs indefinitely. The fix — per-test `Page.CloseAsync().WaitAsync(10s)` in the base class — worked around the immediate symptom, but the root cause (synchronous NUnit teardown fighting async Playwright transport) remained.
+
+Separately, the service layer tests in `TimeTracker.Tests` already use xUnit — the industry-standard for .NET (used by Microsoft for ASP.NET Core, EF Core, and their own libraries). Having NUnit only in the Playwright project created a two-framework inconsistency.
+
+**Decision:** Migrate `TimeTracker.Playwright` from NUnit to xUnit (`Microsoft.Playwright.Xunit`). Add a new `TimeTracker.ComponentTests` project using xUnit + bUnit for Blazor component-layer tests.
+
+**Changes:**
+- `[SetUpFixture]` / `[OneTimeSetUp]` / `[OneTimeTearDown]` → xUnit `ICollectionFixture<AppFixture>` with `[CollectionDefinition("App")]`
+- `[SetUp]` / `[TearDown]` → `override InitializeAsync()` / `override DisposeAsync()` via xUnit's `IAsyncLifetime`
+- `[Test]` → `[Fact]`; `[TestFixture]` removed; `[Explicit]` → `[Fact(Skip = "...")]`
+- `Assert.Ignore()` for conditional skips → `[SkippableFact]` + `Skip.If()` (`Xunit.SkippableFact` package)
+- `NUnit.RunSettings` `<NUnit>` section → `xunit.runner.json` (`stopOnFail`, `parallelizeTestCollections: false`)
+- New `TimeTracker.ComponentTests` project: xUnit + bUnit; `MudBlazorContext` base class wires MudBlazor services + `MudPopoverProvider`; initial tests for `EntryRow` (10 tests) and `ProjectCard` (11 tests)
+
+**Consequences:**
+- ✅ Consistent xUnit across all three test layers
+- ✅ `IAsyncLifetime` lifecycle has no synchronous teardown — eliminates the NUnit/Playwright async mismatch
+- ✅ `ICollectionFixture` is the idiomatic xUnit pattern for shared one-time setup (app start + auth)
+- ✅ bUnit component tests cover UI state and rendering logic without a browser — fast, deterministic
+- ❌ bUnit cannot test full user journeys or network behaviour — Playwright E2E remains necessary for those
+
+**Note on D010/D016:** Both decisions reference NUnit-specific implementation details (`[SetUpFixture]`, `[OneTimeSetUp]`, `Assert.Ignore()`). Those patterns are now superseded by the xUnit equivalents described above. The architectural decisions in D010/D016 (CI auth strategy, smoke test only in CI) are unchanged.

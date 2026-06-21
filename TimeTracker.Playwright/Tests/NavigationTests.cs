@@ -1,11 +1,10 @@
 namespace TimeTracker.Playwright.Tests;
 
-[TestFixture]
 public class NavigationTests : AuthenticatedPageTest
 {
-    [SetUp]
-    public async Task StartOnTimer()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.RunAndWaitForRequestFinishedAsync(
             async () => await Page.GotoAsync("/"),
             new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
@@ -15,7 +14,7 @@ public class NavigationTests : AuthenticatedPageTest
         await Expect(Page.Locator(".bottom-nav").GetByText("Clients")).ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task BottomNavEntriesNavigatesToEntries()
     {
         await Page.Locator(".bottom-nav a[href='entries']").ClickAsync();
@@ -23,7 +22,7 @@ public class NavigationTests : AuthenticatedPageTest
         await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task BottomNavReportsNavigatesToReports()
     {
         await Page.Locator(".bottom-nav a[href='reports']").ClickAsync();
@@ -31,7 +30,7 @@ public class NavigationTests : AuthenticatedPageTest
         await Expect(Page.GetByText("YTD hours")).ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task BottomNavProjectsNavigatesToProjects()
     {
         await Page.Locator(".bottom-nav a[href='projects']").ClickAsync();
@@ -39,7 +38,7 @@ public class NavigationTests : AuthenticatedPageTest
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Projects" }).First).ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task BottomNavClientsNavigatesToClients()
     {
         await Page.Locator(".bottom-nav a[href='clients']").ClickAsync();
@@ -47,7 +46,7 @@ public class NavigationTests : AuthenticatedPageTest
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Clients" }).First).ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task BottomNavTimerNavigatesBackToTimer()
     {
         await Page.Locator(".bottom-nav a[href='entries']").ClickAsync();

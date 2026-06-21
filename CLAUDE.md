@@ -31,7 +31,7 @@ Run manually after app code changes — do NOT automate via git hooks:
 PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal" --blame-hang-timeout 60s
 ```
 
-StopOnError and NumberOfTestWorkers are configured in `TimeTracker.Playwright/playwright.runsettings`, wired into the project via `<RunSettingsFilePath>` in the `.csproj` — no `--settings` flag needed.
+StopOnError and parallelization are configured in `TimeTracker.Playwright/xunit.runner.json` (`stopOnFail: true`, `parallelizeTestCollections: false`).
 
 The pre-push hook (`.githooks/pre-push`) is intentionally disabled. Never re-enable it — it caused repeated background process incidents by blocking `git push` for 2–3 minutes.
 
@@ -43,7 +43,7 @@ When a Playwright test fails, answer these two questions FIRST. Do not touch any
 - `AssertNoConsoleErrors` failure with `"Request failed: <url>"` → this is a **browser console message** written by Blazor when an `HttpRequestException` goes unhandled. Fix is in the **app** (`LoadData()` catch block), not in the test.
 - `AssertNoConsoleErrors` failure with other text → a real Blazor/JS console error. Fix in the app.
 - `WaitForRequestFinishedAsync` timeout → the API call never completed. Check the server.
-- Element not found / assertion failed → SetUp navigation or wait is wrong.
+- Element not found / assertion failed → `InitializeAsync` navigation or wait is wrong.
 
 **2. Is this teardown or mid-test?**
 - If the failed URL is from the timer page (`/api/timeentries/active`, `/api/timeentries/today`) and the test doesn't interact with the timer, it's almost certainly a **teardown abort** — the page closed while a request was still in-flight.

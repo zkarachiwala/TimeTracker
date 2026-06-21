@@ -10,6 +10,7 @@ TimeTracker is a personal timesheeting application for tracking time entries aga
 
 | Date | Change | PR/Branch |
 |------|--------|-----------|
+| 2026-06 | **Test framework migration** — `TimeTracker.Playwright` migrated NUnit → xUnit (`ICollectionFixture`, `IAsyncLifetime`); `TimeTracker.ComponentTests` added (bUnit + xUnit) for Blazor component layer | #155 |
 | 2026-06 | **Nightly database backup** — GitHub Actions `.bacpac` export via dedicated OIDC SP (custom role: firewall rule write/delete only); pushed to private `TimeTracker-backups` repo with 30-day rolling retention | #104 |
 | 2026-06 | **SQL Server Row-Level Security + audit trail** — `UserSessionContextInterceptor` sets `SESSION_CONTEXT(N'UserId')` before every EF Core command; predicate functions filter per-user; `CreatedBy`/`UpdatedBy`/`DeletedBy` audit columns | #130 |
 | 2026-06 | **Global InteractiveWebAssembly** — abandoned SSR+WASM islands hybrid; MudBlazor #9743 prevents interactive layouts in SSR | `feature/wasm-islands` |
@@ -40,8 +41,9 @@ TimeTracker.sln
 ├── TimeTracker.Client      — Blazor WASM client: all routed pages, layouts, HTTP services
 ├── TimeTracker.Contracts   — Shared DTOs and interfaces (referenced by both Web and Client)
 ├── TimeTracker.Shared      — EF Core entities only (referenced by Web only)
-├── TimeTracker.Tests       — xUnit unit tests (EF InMemory, no running DB required)
-└── TimeTracker.Playwright  — End-to-end Playwright browser tests
+├── TimeTracker.Tests            — xUnit unit tests (EF InMemory, no running DB required)
+├── TimeTracker.ComponentTests   — xUnit + bUnit Blazor component tests (in-memory renderer, no browser)
+└── TimeTracker.Playwright       — xUnit + Playwright E2E browser tests
 ```
 
 ```

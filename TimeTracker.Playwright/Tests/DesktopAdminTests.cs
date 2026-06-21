@@ -1,11 +1,10 @@
 namespace TimeTracker.Playwright.Tests;
 
-[TestFixture]
 public class DesktopTimerTests : AuthenticatedDesktopPageTest
 {
-    [SetUp]
-    public async Task NavigateToTimer()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.RunAndWaitForRequestFinishedAsync(
             async () => await Page.GotoAsync("/"),
             new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
@@ -13,7 +12,7 @@ public class DesktopTimerTests : AuthenticatedDesktopPageTest
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task StartTimerCardOrRunningCardIsVisible()
     {
         var running = Page.GetByText("Tracking now");
@@ -21,7 +20,7 @@ public class DesktopTimerTests : AuthenticatedDesktopPageTest
         await Expect(running.Or(idle)).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task TodaySectionIsVisible()
     {
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Today" })).ToBeVisibleAsync();
@@ -29,17 +28,16 @@ public class DesktopTimerTests : AuthenticatedDesktopPageTest
 }
 
 /// <summary>
-/// Explicit hang-diagnostic fixture — NOT part of the normal test run.
+/// Hang-diagnostic fixture — NOT part of the normal test run.
 /// Run manually to verify teardown hang behaviour after a deliberate Playwright timeout.
-/// Target with: dotnet test --filter FullyQualifiedName~HangDiagnosticTests
+/// To run: temporarily remove Skip from [Fact(Skip = "...")] and target with:
+/// dotnet test --filter FullyQualifiedName~HangDiagnosticTests
 /// </summary>
-[TestFixture]
-[Explicit("Hang diagnostic only — clicks a non-existent element to force a timeout and observe teardown behaviour")]
 public class HangDiagnosticTests : AuthenticatedDesktopPageTest
 {
-    [SetUp]
-    public async Task NavigateToTimer()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.RunAndWaitForRequestFinishedAsync(
             async () => await Page.GotoAsync("/"),
             new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
@@ -50,18 +48,17 @@ public class HangDiagnosticTests : AuthenticatedDesktopPageTest
         await Page.Locator("#hamburger-btn").ClickAsync();
     }
 
-    [Test]
+    [Fact(Skip = "Hang diagnostic only — remove Skip to run manually")]
     public async Task HangDiagnostic_WillAlwaysFail() =>
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First)
             .ToBeInViewportAsync(new() { Timeout = 5_000 });
 }
 
-[TestFixture]
 public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
 {
-    [SetUp]
-    public async Task NavigateToTimer()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.RunAndWaitForRequestFinishedAsync(
             async () => await Page.GotoAsync("/"),
             new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
@@ -72,14 +69,14 @@ public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
             .ToBeAttachedAsync(new() { Timeout = 10_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task UsersNavLinkIsVisibleForAdmin()
     {
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Users" }))
             .ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task UsersNavLinkNavigatesToAdminPage()
     {
         await Page.GetByRole(AriaRole.Link, new() { Name = "Users" }).ClickAsync();
@@ -89,78 +86,76 @@ public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
     }
 }
 
-[TestFixture]
 public class DesktopAdminTests : AuthenticatedDesktopPageTest
 {
     private static bool WriteTestsEnabled =>
         Environment.GetEnvironmentVariable("PLAYWRIGHT_WRITE_TESTS") == "true";
 
-    [SetUp]
-    public async Task NavigateToAdminUsers()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.GotoAsync("/admin/users");
         await Expect(Page.GetByPlaceholder("Email address"))
             .ToBeEnabledAsync(new() { Timeout = 30_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task UsersHeadingIsVisible()
     {
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Users" }).First)
             .ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task AddUserFormIsVisible()
     {
         await Expect(Page.GetByPlaceholder("Email address")).ToBeVisibleAsync();
         await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Add" })).ToBeVisibleAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task UserListShowsAtLeastOneEntry()
     {
         var userRows = Page.Locator(".mud-paper .mud-border-b");
         await Expect(userRows.First).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task CurrentUserIsMarkedAdmin()
     {
         await Expect(Page.GetByText("Admin").First).ToBeVisibleAsync();
     }
 
-    [Test]
+    [SkippableFact]
     public async Task LastAdminRevokeButtonIsDisabled()
     {
         var adminCount = await Page.GetByText("Admin", new() { Exact = true }).CountAsync();
-        if (adminCount > 1) Assert.Ignore("Multiple admins present — last-admin guard not testable here.");
+        Skip.If(adminCount > 1, "Multiple admins present — last-admin guard not testable here.");
 
         var revokeButton = Page.GetByRole(AriaRole.Button, new() { Name = "Revoke Admin" });
         await Expect(revokeButton).ToBeDisabledAsync();
     }
 }
 
-[TestFixture]
 public class DesktopProjectDetailAdminTests : AuthenticatedDesktopPageTest
 {
-    [SetUp]
-    public async Task NavigateToFirstProject()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await Page.GotoAsync("/projects");
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
         await Page.Locator(".mud-card").First.ClickAsync();
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 15_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task UsersHeadingIsVisibleOnProjectDetail()
     {
         await Expect(Page.GetByText("Users", new() { Exact = true }).First)
             .ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
-    [Test]
+    [Fact]
     public async Task AddUserPickerIsVisibleOnProjectDetail()
     {
         await Expect(Page.GetByLabel("Add user")).ToBeVisibleAsync(new() { Timeout = 10_000 });
