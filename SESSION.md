@@ -1,22 +1,29 @@
-# Session handoff — 2026-06-20
+# Session handoff — 2026-06-21
 
 ## Current state
-- Branch: `feature/issue-146-nav-rail` — ready to test and PR
+- Branch: `feature/issue-146-nav-rail` — PR raised, all 61 Playwright tests green
 
 ## Completed this session
-- ✅ **PR #150 merged** — #138 Calendar view
-- ✅ **#146 Navigation rail** — `DrawerVariant.Mini` on desktop/tablet (always-visible 56px icon rail, expands on hover/click); hamburger hidden on desktop via `MudHidden`; drawer footer removed (logout in avatar dropdown); mobile unchanged; `IBrowserViewportService` drives responsive variant switching; Playwright desktop nav tests updated (no more `OpenDrawer()`)
+- ✅ **#146 Navigation rail** — Playwright suite green; PR raised
+- ✅ **Playwright hang investigation** — root causes identified and fixed:
+  - `GlobalSetup.TearDown`: added `CancelOutputRead/Error` before `Kill(entireProcessTree:true)` to prevent pipe-buffer deadlock
+  - `GlobalSetup.AuthenticateAsync`: explicit disposal scope (request before playwright driver)
+  - `SetDefaultTimeout(30_000)` in both base classes
+  - `PageTearDownAsync` with `WaitAsync(10s)` cap in both base classes
+  - `--blame-hang-timeout 60s` added to run command as process-level safety net
+  - `HangDiagnosticTests` fixture preserved as `[Explicit]` for future teardown testing
+- ✅ **xUnit migration issue raised** — covers Playwright NUnit → xUnit + bUnit component tests
 
 ## Next session
-- Run Playwright suite: `PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal"`
-- PR for #146 once Playwright is green
-- Look at fix/issue-151 (showcase users DI) — has uncommitted changes stashed on main (`git stash pop` when switching to that branch)
+- Merge PR #146 when checks pass
+- Fix/issue-151 (showcase users DI) — stashed changes on main (`git stash pop` when switching)
 
 ## Backlog
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
 - **#151** 🔴 Showcase users DI fix
+- **xUnit migration** 🟢 Playwright NUnit → Microsoft.Playwright.Xunit + bUnit component tests
 
 ## Active tech debt (genuine constraints)
 | # | Item | ADR |
@@ -38,4 +45,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-20. Branch `feature/issue-146-nav-rail` ready to test.*
+*Updated 2026-06-21. PR for #146 raised.*
