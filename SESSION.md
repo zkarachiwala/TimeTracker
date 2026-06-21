@@ -1,28 +1,39 @@
 # Session handoff — 2026-06-21
 
 ## Current state
-- Branch: `feature/issue-155-test-framework-migration` — PR #158 raised, all 247 tests green (1 skipped — hang diagnostic)
+- Branch: `feature/issue-159-showcase-css-sync` — ready to commit and raise PR
 
 ## Completed this session
-- ✅ **#155 Test framework migration** — fully implemented, tested, PR #158 raised:
-  - Playwright NUnit → xUnit (`Microsoft.Playwright.Xunit`); `ICollectionFixture<AppFixture>`; `IAsyncLifetime`; `[Fact]`; `Xunit.SkippableFact`
-  - New `TimeTracker.ComponentTests` project (xUnit + bUnit); `MudBlazorContext` base class; 22 component tests for `EntryRow` and `ProjectCard`
-  - All docs updated: `playwright-strategy.md`, `architecture.md`, `decisions.md` (D026), `roadmap.md`, `CLAUDE.md`
-  - `HangDiagnosticTests` gated by `PLAYWRIGHT_HANG_DIAGNOSTIC=true` — no code change needed to run
-- ✅ **#156 route fix** (opencode) — `@page "/entries"` added to TimeEntriesPage; merged to main
-
-## Next session
-- Merge PR #158 when checks pass
+- ✅ **#158 merged** (PR for #155 test framework migration)
+- ✅ **#159 Showcase CSS sync + regression tests** — fully implemented:
+  - Deleted `wwwroot-showcase/css/showcase-app.css`; MSBuild now copies `TimeTracker.Web/wwwroot/css/app.css` into showcase output (`TargetPath="wwwroot/css/app.css"`)
+  - `wwwroot-showcase/index.html` updated to reference `css/app.css`
+  - `ShowcaseFixture.cs` — publishes showcase via `dotnet publish -p:Showcase=true`, serves on port 7008 with `UsePathBase("/TimeTracker")`
+  - `ShowcaseCollection.cs` — `[CollectionDefinition("Showcase")]`
+  - `ShowcaseTests.cs` — 7 smoke tests covering all routed pages (timer, entries day, entries calendar, reports, projects, clients, admin users)
+  - `<FrameworkReference Include="Microsoft.AspNetCore.App" />` added to `TimeTracker.Playwright.csproj` (needed for `WebApplication`)
+  - `docs/playwright-strategy.md` renamed → `docs/testing-strategy.md` with 3 parts: Playwright E2E, Showcase, bUnit
+  - `docs/decisions.md` — D027 added (showcase CSS unified via MSBuild)
+  - `docs/roadmap.md` — Phase 13 added, dependency chain updated
+  - `CLAUDE.md` updated — reference to `testing-strategy.md`, showcase test run command, Showcase Playwright section in Testing
 
 ## Standard test commands
 **Before every PR:**
 ```bash
 PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "console;verbosity=normal" --blame-hang-timeout 60s
 ```
+**Showcase tests only:**
+```bash
+BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~ShowcaseTests" --logger "console;verbosity=normal" --blame-hang-timeout 60s
+```
 **During development (fast):**
 ```bash
 dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
 ```
+
+## Next session
+- Run the full test suite (user runs it) to verify showcase tests pass
+- Merge PR for #159
 
 ## Backlog
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
@@ -50,4 +61,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-21. PR #158 raised for #155, awaiting merge.*
+*Updated 2026-06-21. Feature/issue-159-showcase-css-sync ready to commit and raise PR.*

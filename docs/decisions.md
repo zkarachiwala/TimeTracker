@@ -685,3 +685,21 @@ Separately, the service layer tests in `TimeTracker.Tests` already use xUnit —
 - ❌ bUnit cannot test full user journeys or network behaviour — Playwright E2E remains necessary for those
 
 **Note on D010/D016:** Both decisions reference NUnit-specific implementation details (`[SetUpFixture]`, `[OneTimeSetUp]`, `Assert.Ignore()`). Those patterns are now superseded by the xUnit equivalents described above. The architectural decisions in D010/D016 (CI auth strategy, smoke test only in CI) are unchanged.
+
+---
+
+## D027: Showcase CSS unified via MSBuild
+
+**Date:** 2026-06 — **Status:** Accepted — **Issue:** [#159](https://github.com/zkarachiwala/TimeTracker/issues/159)
+
+**Context:** The showcase app (GitHub Pages) maintained a separate `wwwroot-showcase/css/showcase-app.css` copied manually from `TimeTracker.Web/wwwroot/css/app.css`. Between June 9 and June 21, `app.css` gained 51 lines of CSS (nav rail mini/closed state, mobile flash fix, calendar styles) that were never copied to `showcase-app.css`. The result: nav rail icon centering and calendar layout were broken in the showcase.
+
+The structural problem: two files with no automated link. Every CSS change required a manual copy that could be — and was — forgotten.
+
+**Decision:** Delete `showcase-app.css`. Have MSBuild copy `TimeTracker.Web/wwwroot/css/app.css` into the showcase publish output as `wwwroot/css/app.css` using a conditional `<Content>` ItemGroup gated on `-p:Showcase=true`. Update `wwwroot-showcase/index.html` to reference `css/app.css`. Add `ShowcaseFixture` + `ShowcaseTests` to `TimeTracker.Playwright` to catch regressions in showcase routing and rendering.
+
+**Consequences:**
+- ✅ Single CSS file to maintain — `app.css` changes automatically apply to the showcase with no extra steps
+- ✅ MSBuild cross-project file reference is standard and supported; no custom build targets needed
+- ✅ Showcase smoke tests (Part 2 of `docs/testing-strategy.md`) catch broken routing and rendering regressions
+- ❌ Showcase always gets all CSS even if a feature is hidden behind `#if SHOWCASE`; acceptable trade-off (unused CSS has zero visible effect)
