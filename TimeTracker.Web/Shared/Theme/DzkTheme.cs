@@ -38,6 +38,7 @@ public static class DzkTheme
         {
             DefaultBorderRadius = "6px",
             DrawerWidthLeft = "256px",
+            DrawerMiniWidthLeft = "56px",
         }
     };
 }

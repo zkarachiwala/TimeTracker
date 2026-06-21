@@ -28,6 +28,34 @@ public class DesktopTimerTests : AuthenticatedDesktopPageTest
     }
 }
 
+/// <summary>
+/// Explicit hang-diagnostic fixture — NOT part of the normal test run.
+/// Run manually to verify teardown hang behaviour after a deliberate Playwright timeout.
+/// Target with: dotnet test --filter FullyQualifiedName~HangDiagnosticTests
+/// </summary>
+[TestFixture]
+[Explicit("Hang diagnostic only — clicks a non-existent element to force a timeout and observe teardown behaviour")]
+public class HangDiagnosticTests : AuthenticatedDesktopPageTest
+{
+    [SetUp]
+    public async Task NavigateToTimer()
+    {
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GotoAsync("/"),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
+        );
+        await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
+        // Intentionally clicks a button that does not exist on desktop (nav rail replaced the hamburger).
+        // This forces a 30s Playwright timeout to exercise teardown hang behaviour.
+        await Page.Locator("#hamburger-btn").ClickAsync();
+    }
+
+    [Test]
+    public async Task HangDiagnostic_WillAlwaysFail() =>
+        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First)
+            .ToBeInViewportAsync(new() { Timeout = 5_000 });
+}
+
 [TestFixture]
 public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
 {
@@ -39,10 +67,9 @@ public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
             new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
         );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        // Open hamburger drawer to reveal nav links
-        await Page.Locator("#hamburger-btn").ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First)
-            .ToBeInViewportAsync(new() { Timeout = 5_000 });
+        // On desktop the nav rail is always visible — no drawer to open
+        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Users" }))
+            .ToBeAttachedAsync(new() { Timeout = 10_000 });
     }
 
     [Test]

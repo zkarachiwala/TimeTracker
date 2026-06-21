@@ -18,6 +18,7 @@ public class AuthenticatedPageTest : PageTest
     [SetUp]
     public void MonitorConsoleErrors()
     {
+        Page.SetDefaultTimeout(30_000);
         _consoleErrors.Clear();
         _onConsoleMessage = (_, msg) =>
         {
@@ -35,5 +36,16 @@ public class AuthenticatedPageTest : PageTest
         if (_onConsoleMessage is not null) Page.Console -= _onConsoleMessage;
         Assert.That(_consoleErrors, Is.Empty,
             $"Unexpected browser console errors:\n{string.Join("\n", _consoleErrors)}");
+    }
+
+    [TearDown]
+    public async Task PageTearDownAsync()
+    {
+        try
+        {
+            if (Page is not null)
+                await Page.CloseAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+        }
+        catch { }
     }
 }
