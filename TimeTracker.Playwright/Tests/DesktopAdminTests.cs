@@ -29,12 +29,15 @@ public class DesktopTimerTests : AuthenticatedDesktopPageTest
 
 /// <summary>
 /// Hang-diagnostic fixture — NOT part of the normal test run.
-/// Run manually to verify teardown hang behaviour after a deliberate Playwright timeout.
-/// To run: temporarily remove Skip from [Fact(Skip = "...")] and target with:
-/// dotnet test --filter FullyQualifiedName~HangDiagnosticTests
+/// Exercises teardown behaviour after a deliberate Playwright timeout.
+/// Run with: PLAYWRIGHT_HANG_DIAGNOSTIC=true BROWSER= dotnet test TimeTracker.Playwright
+///           --filter "FullyQualifiedName~HangDiagnosticTests" --blame-hang-timeout 60s
 /// </summary>
 public class HangDiagnosticTests : AuthenticatedDesktopPageTest
 {
+    private static bool HangDiagnosticEnabled =>
+        Environment.GetEnvironmentVariable("PLAYWRIGHT_HANG_DIAGNOSTIC") == "true";
+
     public override async Task InitializeAsync()
     {
         await base.InitializeAsync();
@@ -43,15 +46,19 @@ public class HangDiagnosticTests : AuthenticatedDesktopPageTest
             new() { Predicate = r => r.Url.Contains("/api/timeentries/today"), Timeout = 15_000 }
         );
         await Expect(Page.Locator(".tt-fab button")).ToBeEnabledAsync(new() { Timeout = 30_000 });
-        // Intentionally clicks a button that does not exist on desktop (nav rail replaced the hamburger).
-        // This forces a 30s Playwright timeout to exercise teardown hang behaviour.
-        await Page.Locator("#hamburger-btn").ClickAsync();
+        // Only attempt the intentional timeout when the diagnostic is explicitly enabled —
+        // otherwise setup would hang for 30s even though the test is skipped.
+        if (HangDiagnosticEnabled)
+            await Page.Locator("#hamburger-btn").ClickAsync();
     }
 
-    [Fact(Skip = "Hang diagnostic only — remove Skip to run manually")]
-    public async Task HangDiagnostic_WillAlwaysFail() =>
+    [SkippableFact]
+    public async Task HangDiagnostic_WillAlwaysFail()
+    {
+        Skip.If(!HangDiagnosticEnabled, "Hang diagnostic — set PLAYWRIGHT_HANG_DIAGNOSTIC=true to run");
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First)
             .ToBeInViewportAsync(new() { Timeout = 5_000 });
+    }
 }
 
 public class DesktopAdminNavTests : AuthenticatedDesktopPageTest
