@@ -15,9 +15,12 @@ public class DesktopNavigationTests : AuthenticatedDesktopPageTest
     [Fact]
     public async Task RailNavEntriesNavigatesToEntries()
     {
-        await Page.GetByRole(AriaRole.Link, new() { Name = "Entries" }).ClickAsync();
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GetByRole(AriaRole.Link, new() { Name = "Entries" }).ClickAsync(),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries"), Timeout = 15_000 }
+        );
         await Expect(Page).ToHaveURLAsync(new Regex("/entries"));
-        await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
     [Fact]
@@ -55,9 +58,12 @@ public class DesktopNavigationTests : AuthenticatedDesktopPageTest
     [Fact]
     public async Task RailNavTimerNavigatesBackToTimer()
     {
-        await Page.GetByRole(AriaRole.Link, new() { Name = "Entries" }).ClickAsync();
+        await Page.RunAndWaitForRequestFinishedAsync(
+            async () => await Page.GetByRole(AriaRole.Link, new() { Name = "Entries" }).ClickAsync(),
+            new() { Predicate = r => r.Url.Contains("/api/timeentries"), Timeout = 15_000 }
+        );
         await Expect(Page).ToHaveURLAsync(new Regex("/entries"));
-        await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 10_000 });
 
         await Page.GetByRole(AriaRole.Link, new() { Name = "Timer" }).First.ClickAsync();
         await Expect(Page).ToHaveURLAsync(new Regex("/$|/\\?"));
