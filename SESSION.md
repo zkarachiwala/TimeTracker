@@ -1,39 +1,29 @@
-# Session handoff — 2026-06-20
+# Session handoff — 2026-06-21
 
 ## Current state
-- Branch: `feature/issue-34-avatar-dropdown` — committed, ready to push and PR
+- Branch: `feature/issue-146-nav-rail` — PR raised, all 61 Playwright tests green
 
 ## Completed this session
-- ✅ Playwright failures fixed — 12 tests were failing because Chromium aborted in-flight `api/timeentries/active` fetch when tests navigated away before `LoadData()` completed; added `"Tracking now" or "Start a timer"` visibility wait to three SetUps (PR #131)
-- ✅ CodeQL alert #8 (CWE-359) resolved — removed `result.Status` enum value from auth log message (PR #132)
-- ✅ **#104 Automated database backup** — nightly `.bacpac` export via GitHub Actions to private `TimeTracker-backups` repo (PRs #133, #134, #135)
-- ✅ **#32 Trash / soft-delete restore** (PR #140)
-- ✅ **D022 documented** — `MigrateAsync()` at startup decision record added to `docs/decisions.md` (PR #141)
-- ✅ **#95 Database-backed user management** (PR #144)
-- ✅ **#34 App bar avatar dropdown** — `MudMenu` replaces static avatar; shows name/email/sign-out on click (PR pending)
-- ✅ **#137 Award rate** — all phases complete on this branch:
-  - D025 added to `docs/decisions.md` — `PublicHoliday` NuGet chosen (Nager.Date rejected: requires paid license key)
-  - TD25 added to `docs/technical-debt.md` — jurisdiction hardcoded to national AU pending external investigation
-  - `Client` entity: `AwardRate (decimal?)` added + EF migration `AddAwardRateToClient`
-  - `ClientResponse`, `ClientRequest`, `ClientCreateRequest`, `ClientUpdateRequest` in Contracts updated
-  - `ClientService` create/update wired through
-  - `ClientSheet.razor` — "Award rate (AUD)" field added
-  - `MockClientService` and `MockDataStore` seed data updated
-  - `IAwardRateResolver` / `AwardRateResolver` using `PublicHoliday.AustraliaPublicHoliday` (national holidays + weekends)
-  - `TimeEntryResponse` — `EffectiveRate (decimal?)` and `IsAwardRate (bool)` added with defaults
-  - `TimeEntryService` — injects resolver, `.ThenInclude(p => p.Client)`, enriches all returned entries
-  - `EntryRow.razor` — "AW" badge shown when `IsAwardRate == true`
-  - 164/164 tests green
+- ✅ **#146 Navigation rail** — Playwright suite green; PR raised
+- ✅ **Playwright hang investigation** — root causes identified and fixed:
+  - `GlobalSetup.TearDown`: added `CancelOutputRead/Error` before `Kill(entireProcessTree:true)` to prevent pipe-buffer deadlock
+  - `GlobalSetup.AuthenticateAsync`: explicit disposal scope (request before playwright driver)
+  - `SetDefaultTimeout(30_000)` in both base classes
+  - `PageTearDownAsync` with `WaitAsync(10s)` cap in both base classes
+  - `--blame-hang-timeout 60s` added to run command as process-level safety net
+  - `HangDiagnosticTests` fixture preserved as `[Explicit]` for future teardown testing
+- ✅ **xUnit migration issue raised** — covers Playwright NUnit → xUnit + bUnit component tests
 
 ## Next session
-- Merge PR for #34 once tested
-- **#138** 🟢 Calendar view
+- Merge PR #146 when checks pass
+- Fix/issue-151 (showcase users DI) — stashed changes on main (`git stash pop` when switching)
 
 ## Backlog
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
-- **#138** 🟢 Calendar view — monthly calendar showing time entries per day
+- **#151** 🔴 Showcase users DI fix
+- **xUnit migration** 🟢 Playwright NUnit → Microsoft.Playwright.Xunit + bUnit component tests
 
 ## Active tech debt (genuine constraints)
 | # | Item | ADR |
@@ -55,4 +45,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-18. Branch `feature/issue-137-award-rate` ready to PR.*
+*Updated 2026-06-21. PR for #146 raised.*

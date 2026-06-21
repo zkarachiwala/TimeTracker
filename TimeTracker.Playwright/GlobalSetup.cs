@@ -25,15 +25,25 @@ public class GlobalSetup
     [OneTimeTearDown]
     public void TearDown()
     {
+        if (_appProcess == null || _appProcess.HasExited)
+        {
+            _appProcess?.Dispose();
+            return;
+        }
         try
         {
-            _appProcess?.Kill(entireProcessTree: true);
-            _appProcess?.WaitForExit(5000);
+            // Cancel async reads before kill — prevents the pipe-buffer deadlock where
+            // Kill(entireProcessTree:true) freezes waiting for I/O handles that never
+            // receive EOF because a zombie child has them open.
+            _appProcess.CancelOutputRead();
+            _appProcess.CancelErrorRead();
+            _appProcess.Kill(entireProcessTree: true);
+            _appProcess.WaitForExit(3000);
         }
         catch { }
         finally
         {
-            _appProcess?.Dispose();
+            _appProcess.Dispose();
         }
     }
 
@@ -66,19 +76,23 @@ public class GlobalSetup
     private static async Task AuthenticateAsync()
     {
         using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
-        await using var request = await playwright.APIRequest.NewContextAsync(new()
         {
-            BaseURL = TestBaseUrl,
-            IgnoreHTTPSErrors = true,
-        });
+            // Inner scope ensures request.DisposeAsync() is called before playwright.Dispose(),
+            // guaranteeing the Node.js driver does not outlive its API context.
+            await using var request = await playwright.APIRequest.NewContextAsync(new()
+            {
+                BaseURL = TestBaseUrl,
+                IgnoreHTTPSErrors = true,
+            });
 
-        var response = await request.GetAsync("/api/dev/login");
-        if (!response.Ok)
-            throw new Exception(
-                $"Dev login failed ({response.Status}). App must run with ASPNETCORE_ENVIRONMENT=Development.");
+            var response = await request.GetAsync("/api/dev/login");
+            if (!response.Ok)
+                throw new Exception(
+                    $"Dev login failed ({response.Status}). App must run with ASPNETCORE_ENVIRONMENT=Development.");
 
-        Directory.CreateDirectory(Path.GetDirectoryName(TestConfig.AuthStatePath)!);
-        await request.StorageStateAsync(new() { Path = TestConfig.AuthStatePath });
+            Directory.CreateDirectory(Path.GetDirectoryName(TestConfig.AuthStatePath)!);
+            await request.StorageStateAsync(new() { Path = TestConfig.AuthStatePath });
+        }
     }
 
     private static async Task WaitForAppAsync(int timeoutSeconds)

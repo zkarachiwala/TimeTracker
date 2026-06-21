@@ -28,7 +28,7 @@ gh project item-add 1 --owner zkarachiwala --url https://github.com/zkarachiwala
 Run manually after app code changes — do NOT automate via git hooks:
 
 ```bash
-PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal"
+PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal" --blame-hang-timeout 60s
 ```
 
 StopOnError and NumberOfTestWorkers are configured in `TimeTracker.Playwright/playwright.runsettings`, wired into the project via `<RunSettingsFilePath>` in the `.csproj` — no `--settings` flag needed.
