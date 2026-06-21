@@ -13,6 +13,8 @@ All changes must follow this workflow:
 5. Merge via PR only — never push directly to `main`
 6. When a PR is merged: pull `main`, delete the local feature branch
 
+**All work MUST be done in a `git worktree`.** Never run `git checkout`, `git reset`, or any branch-switching command in the main repository directory — it disrupts other agents (e.g. Claude Code) that may be working in the same repo. Use `git worktree add ../TimeTracker-issue-<N> -b feature/issue-<N>-<description>` to create an isolated working directory for every task.
+
 ## PR Merge Policy
 
 Never merge a PR without explicit user instruction to do so. Confirming checks pass is not approval to merge. After opening a PR, stop and tell the user it's ready.
