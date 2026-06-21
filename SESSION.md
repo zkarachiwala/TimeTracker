@@ -1,29 +1,26 @@
 # Session handoff — 2026-06-21
 
 ## Current state
-- Branch: `feature/issue-146-nav-rail` — PR raised, all 61 Playwright tests green
+- Branch: `feature/issue-155-test-framework-migration` — ready for PR
 
 ## Completed this session
-- ✅ **#146 Navigation rail** — Playwright suite green; PR raised
-- ✅ **Playwright hang investigation** — root causes identified and fixed:
-  - `GlobalSetup.TearDown`: added `CancelOutputRead/Error` before `Kill(entireProcessTree:true)` to prevent pipe-buffer deadlock
-  - `GlobalSetup.AuthenticateAsync`: explicit disposal scope (request before playwright driver)
-  - `SetDefaultTimeout(30_000)` in both base classes
-  - `PageTearDownAsync` with `WaitAsync(10s)` cap in both base classes
-  - `--blame-hang-timeout 60s` added to run command as process-level safety net
-  - `HangDiagnosticTests` fixture preserved as `[Explicit]` for future teardown testing
-- ✅ **xUnit migration issue raised** — covers Playwright NUnit → xUnit + bUnit component tests
+- ✅ **#155 Test framework migration** — fully implemented and committed:
+  - Playwright NUnit → xUnit (`Microsoft.Playwright.Xunit`); `ICollectionFixture<AppFixture>`; `IAsyncLifetime`; `[Fact]`; `Xunit.SkippableFact`
+  - New `TimeTracker.ComponentTests` project (xUnit + bUnit); `MudBlazorContext` base class; 22 component tests for `EntryRow` and `ProjectCard`
+  - All docs updated: `playwright-strategy.md`, `architecture.md`, `decisions.md` (D026), `roadmap.md`, `CLAUDE.md`
+  - 164 service tests + 22 component tests — all green
+- ✅ **Plan updated** — Phase 12 added to `plan.md`
+- ✅ **Global CLAUDE.md** — xUnit preference for all new .NET projects added
 
 ## Next session
-- Merge PR #146 when checks pass
-- Fix/issue-151 (showcase users DI) — stashed changes on main (`git stash pop` when switching)
+- User to run Playwright suite to confirm E2E tests work under xUnit: `PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.Playwright --logger "console;verbosity=normal" --blame-hang-timeout 60s`
+- If Playwright green → raise PR for #155
 
 ## Backlog
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
 - **#151** 🔴 Showcase users DI fix
-- **xUnit migration** 🟢 Playwright NUnit → Microsoft.Playwright.Xunit + bUnit component tests
 
 ## Active tech debt (genuine constraints)
 | # | Item | ADR |
@@ -45,4 +42,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-21. PR for #146 raised.*
+*Updated 2026-06-21. #155 implementation complete, awaiting Playwright E2E run before PR.*
