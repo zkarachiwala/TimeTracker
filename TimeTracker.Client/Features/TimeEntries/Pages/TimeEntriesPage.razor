@@ -232,7 +232,7 @@
     {
         if (string.IsNullOrEmpty(Tab))
         {
-            Nav.NavigateTo("/entries/day", false, replace: true);
+            Nav.NavigateTo("entries/day", false, replace: true);
             return;
         }
 
@@ -268,7 +268,7 @@
     private async Task HandleDaySelected(DateTime date)
     {
         cursor = date;
-        Nav.NavigateTo("/entries/day", false);
+        Nav.NavigateTo("entries/day", false);
         await Task.CompletedTask;
     }
 
@@ -289,12 +289,12 @@
     {
         cursor = args.Date;
         selectedProjectId = args.ProjectId;
-        Nav.NavigateTo("/entries/day", false);
+        Nav.NavigateTo("entries/day", false);
         await Task.CompletedTask;
     }
 
     private void SwitchTab(string label) =>
-        Nav.NavigateTo($"/entries/{label.ToLowerInvariant()}", false);
+        Nav.NavigateTo($"entries/{label.ToLowerInvariant()}", false);
 
     private async Task StepBack()
     {
