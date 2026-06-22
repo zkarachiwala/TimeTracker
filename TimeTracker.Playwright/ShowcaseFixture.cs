@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 
 namespace TimeTracker.Playwright;
@@ -69,6 +70,40 @@ public sealed class ShowcaseFixture : IAsyncLifetime
         builder.Logging.ClearProviders();
         _host = builder.Build();
         _host.UsePathBase("/TimeTracker");
+
+        // Release publish only includes compressed variants (.br, .gz) of large framework
+        // assets like icudt.dat — the uncompressed file doesn't exist in the output.
+        // This middleware serves the compressed variant transparently so the WASM runtime
+        // can load ICU data without 404s. Mirrors what UseBlazorFrameworkFiles() does in
+        // a hosted Blazor project.
+        var contentTypes = new FileExtensionContentTypeProvider();
+        _host.Use(async (ctx, next) =>
+        {
+            var requestPath = ctx.Request.Path.Value ?? "";
+            var physicalPath = Path.Combine(wwwroot, requestPath.TrimStart('/'));
+            if (!File.Exists(physicalPath))
+            {
+                var accept = ctx.Request.Headers.AcceptEncoding.ToString();
+                var (compressed, encoding) =
+                    accept.Contains("br") && File.Exists(physicalPath + ".br")
+                        ? (physicalPath + ".br", "br")
+                        : accept.Contains("gzip") && File.Exists(physicalPath + ".gz")
+                            ? (physicalPath + ".gz", "gzip")
+                            : (null, null);
+                if (compressed != null)
+                {
+                    ctx.Response.Headers.ContentEncoding = encoding;
+                    if (contentTypes.TryGetContentType(physicalPath, out var ct))
+                        ctx.Response.ContentType = ct;
+                    ctx.Response.ContentLength = new FileInfo(compressed).Length;
+                    await using var fs = File.OpenRead(compressed);
+                    await fs.CopyToAsync(ctx.Response.Body);
+                    return;
+                }
+            }
+            await next(ctx);
+        });
+
         _host.UseStaticFiles();
         _host.MapFallbackToFile("index.html");
         await _host.StartAsync();
