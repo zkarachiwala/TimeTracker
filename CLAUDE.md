@@ -72,6 +72,27 @@ When a Playwright test fails, answer these two questions FIRST. Do not touch any
 
 Full strategy and wait patterns: `docs/playwright-strategy.md`.
 
+## Dependency management
+
+### Dependabot
+
+Dependabot runs weekly (Monday) for NuGet and GitHub Actions packages.
+
+**EF Core packages must always be upgraded together.** They have a tight lock-step version requirement: upgrading only one package causes `NU1605` (package downgrade as error) because the upgraded package pulls in a newer `Microsoft.EntityFrameworkCore.Relational`, which then requires a newer `Microsoft.EntityFrameworkCore` than what the other projects still pin. A Dependabot `group` named `entity-framework-core` in `.github/dependabot.yml` ensures all EF Core packages are bundled into one PR automatically. If you ever need to upgrade EF Core manually, update all of these in one commit across all three projects (Web, Tests, Shared):
+- `Microsoft.EntityFrameworkCore`
+- `Microsoft.EntityFrameworkCore.SqlServer`
+- `Microsoft.EntityFrameworkCore.Design`
+- `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+- `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`
+- `Microsoft.EntityFrameworkCore.InMemory` (Tests only)
+
+### bUnit upgrades
+
+bUnit follows semantic versioning strictly. Major version bumps (e.g. 1.x → 2.x) are breaking. Known breaking changes when upgrading to bUnit 2.x:
+- `RenderComponent<T>()` → `Render<T>()` (all call sites in test files and `MudBlazorContext`)
+- `TestContext` → `BunitContext` (kept as `[Obsolete]` shim in 2.x)
+- `MudBlazorContext` must implement `IAsyncLifetime` so xUnit uses async teardown — MudBlazor services (`PopoverService`, `KeyInterceptorService`) are `IAsyncDisposable`-only and throw if synchronously disposed. See `TimeTracker.ComponentTests/Fixtures/MudBlazorContext.cs` for the pattern.
+
 ## Git discipline
 
 NEVER blow away uncommitted changes. Always commit or stash before switching branches, pulling, or doing any operation that might overwrite local changes. If you find yourself with a large pile of uncommitted changes, stop and deal with that first before writing new code.

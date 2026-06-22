@@ -3,7 +3,13 @@ using MudBlazor;
 
 namespace TimeTracker.ComponentTests.Fixtures;
 
-public abstract class MudBlazorContext : TestContext
+// IAsyncLifetime tells xUnit to call DisposeAsync() (async teardown) rather than Dispose()
+// (sync teardown). This is required because MudBlazor services (PopoverService,
+// KeyInterceptorService) moved to IAsyncDisposable-only in MudBlazor 9.x, and bunit's sync
+// Dispose() path throws InvalidOperationException when it encounters them. DisposeAsync()
+// disposes the DI container async-safely; the subsequent sync Dispose() call that xUnit also
+// makes is then a no-op (the container is already marked disposed).
+public abstract class MudBlazorContext : BunitContext, IAsyncLifetime
 {
     protected MudBlazorContext()
     {
@@ -19,6 +25,10 @@ public abstract class MudBlazorContext : TestContext
 
         // MudTooltip, MudMenu, and other popover-based components require MudPopoverProvider
         // to be present in the render tree before they can render.
-        RenderComponent<MudPopoverProvider>();
+        Render<MudPopoverProvider>();
     }
+
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public new async Task DisposeAsync() => await ((IAsyncDisposable)this).DisposeAsync();
 }
