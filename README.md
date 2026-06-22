@@ -75,10 +75,16 @@ API docs (dev only): `https://localhost:7006/scalar/v1`
 
 ## Testing
 
-### Unit tests
+### Unit tests (fast — no Docker needed)
 
 ```bash
-dotnet test TimeTracker.Tests
+dotnet test TimeTracker.Tests --filter "Category!=Container" && dotnet test TimeTracker.ComponentTests
+```
+
+### Container tests (RLS + migration smoke — requires Docker)
+
+```bash
+dotnet test TimeTracker.Tests --filter "Category=Container"
 ```
 
 ### Playwright E2E tests

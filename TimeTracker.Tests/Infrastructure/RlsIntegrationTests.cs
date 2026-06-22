@@ -10,49 +10,32 @@ namespace TimeTracker.Tests.Infrastructure;
 /// Verifies that SQL Server Row-Level Security filter predicates enforce data isolation
 /// even when the application service layer is bypassed entirely (raw DbContext queries).
 ///
-/// These tests connect as a dedicated low-privilege SQL login that holds only
+/// These tests use a Testcontainers SQL Server instance (started once per session by
+/// SqlServerFixture) so they run in CI and locally without any manual DB setup.
+///
+/// Tests connect as a dedicated low-privilege SQL login that holds only
 /// db_datareader + db_datawriter — the same role as the production Managed Identity.
-/// 'sa' / db_owner users are exempt from RLS by SQL Server design; these tests would
-/// trivially pass for them, which is why they use a separate unprivileged connection.
-///
-/// HOW TO RUN LOCALLY:
-///   1. Ensure the app is configured with a running local SQL Server and migrations applied.
-///   2. Set these environment variables:
-///        SQL_SERVER_RLS_TESTS=true
-///        SQL_SERVER_ADMIN_CONNECTION=Server=localhost,1435;Database=TimeTrackerDb;User Id=sa;Password=<pwd>;TrustServerCertificate=true
-///        SQL_SERVER_APP_CONNECTION=Server=localhost,1435;Database=TimeTrackerDb;TrustServerCertificate=true
-///      (The admin connection is used only for setup/teardown of the test login.)
-///   3. dotnet test --filter "FullyQualifiedName~RlsIntegrationTests"
-///
-/// These tests are always skipped in CI — they are local validation that RLS policies
-/// are correctly applied in a real SQL Server environment.
+/// SA / db_owner users are exempt from RLS by SQL Server design; using a separate
+/// unprivileged connection ensures the policy is actually exercised.
 /// </summary>
-[Collection("RlsIntegration")]
-public class RlsIntegrationTests
+[Collection("SqlServer")]
+[Trait("Category", "Container")]
+public class RlsIntegrationTests(SqlServerFixture fixture)
 {
     private const string TestLoginName = "timetracker_rls_test";
     private const string TestLoginPassword = "Rls_T3st!Pw#2026";
     private const string UserA = "user-rls-A";
     private const string UserB = "user-rls-B";
 
-    private static bool RlsTestsEnabled =>
-        Environment.GetEnvironmentVariable("SQL_SERVER_RLS_TESTS") == "true";
-
-    private static string? AdminConnection =>
-        Environment.GetEnvironmentVariable("SQL_SERVER_ADMIN_CONNECTION");
-
-    private static string? AppConnectionTemplate =>
-        Environment.GetEnvironmentVariable("SQL_SERVER_APP_CONNECTION");
-
-    private static string AppConnectionAsTestUser =>
-        new SqlConnectionStringBuilder(AppConnectionTemplate)
+    private string AppConnectionAsTestUser =>
+        new SqlConnectionStringBuilder(fixture.AdminConnectionString)
         {
             UserID = TestLoginName,
             Password = TestLoginPassword,
             IntegratedSecurity = false,
         }.ConnectionString;
 
-    private static DbContextOptions<TimeTrackerDataContext> OptionsForTestUser() =>
+    private DbContextOptions<TimeTrackerDataContext> OptionsForTestUser() =>
         new DbContextOptionsBuilder<TimeTrackerDataContext>()
             .UseSqlServer(AppConnectionAsTestUser)
             .Options;
@@ -60,8 +43,6 @@ public class RlsIntegrationTests
     [Fact]
     public async Task TimeEntries_UserA_CannotSeeUserB_Entries()
     {
-        if (!RlsTestsEnabled) return; // opt-in only — set SQL_SERVER_RLS_TESTS=true to run locally
-
         await using var setup = await SetupAsync();
 
         await using var ctx = new TimeTrackerDataContext(OptionsForTestUser());
@@ -76,8 +57,6 @@ public class RlsIntegrationTests
     [Fact]
     public async Task Projects_UserA_CannotSeeUserB_Projects()
     {
-        if (!RlsTestsEnabled) return; // opt-in only — set SQL_SERVER_RLS_TESTS=true to run locally
-
         await using var setup = await SetupAsync();
 
         await using var ctx = new TimeTrackerDataContext(OptionsForTestUser());
@@ -95,8 +74,6 @@ public class RlsIntegrationTests
     [Fact]
     public async Task ProjectUsers_UserA_CannotSeeUserB_Memberships()
     {
-        if (!RlsTestsEnabled) return; // opt-in only — set SQL_SERVER_RLS_TESTS=true to run locally
-
         await using var setup = await SetupAsync();
 
         await using var ctx = new TimeTrackerDataContext(OptionsForTestUser());
@@ -108,10 +85,10 @@ public class RlsIntegrationTests
         Assert.DoesNotContain(visible, pu => pu.UserId == UserB);
     }
 
-    // Seeds test data as admin (sa bypasses RLS) and creates the unprivileged test login.
-    private static async Task<RlsTestSetup> SetupAsync()
+    // Seeds test data as SA (bypasses RLS) and creates the unprivileged test login.
+    private async Task<RlsTestSetup> SetupAsync()
     {
-        await using var adminConn = new SqlConnection(AdminConnection);
+        await using var adminConn = new SqlConnection(fixture.AdminConnectionString);
         await adminConn.OpenAsync();
 
         // Create the low-privilege test login if it doesn't already exist.
@@ -128,7 +105,7 @@ public class RlsIntegrationTests
 
         // Seed data using admin connection (bypasses RLS — intentional).
         var adminOptions = new DbContextOptionsBuilder<TimeTrackerDataContext>()
-            .UseSqlServer(AdminConnection)
+            .UseSqlServer(fixture.AdminConnectionString)
             .Options;
 
         await using var ctx = new TimeTrackerDataContext(adminOptions);
@@ -177,7 +154,18 @@ public class RlsIntegrationTests
                 await ctx.TimeEntries.Where(e => e.UserId == UserA || e.UserId == UserB).ToListAsync());
             ctx.ProjectUsers.RemoveRange(
                 await ctx.ProjectUsers.Where(pu => pu.UserId == UserA || pu.UserId == UserB).ToListAsync());
-            ctx.Projects.RemoveRange(ProjectA, ProjectB);
+
+            // Re-query projects fresh rather than using the stale entity references from SetupAsync.
+            // The stale objects carry their ProjectUsers navigation collection; attaching them would cause
+            // EF to generate cascade-delete commands for ProjectUsers that are already gone (deleted above),
+            // resulting in DbUpdateConcurrencyException (0 rows affected).
+            // IgnoreAutoIncludes() prevents EF loading the navigation; IgnoreQueryFilters() bypasses soft-delete.
+            var projects = await ctx.Projects
+                .IgnoreAutoIncludes()
+                .IgnoreQueryFilters()
+                .Where(p => p.Id == ProjectA.Id || p.Id == ProjectB.Id)
+                .ToListAsync();
+            ctx.Projects.RemoveRange(projects);
             await ctx.SaveChangesAsync();
         }
     }
