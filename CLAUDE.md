@@ -37,11 +37,21 @@ PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "conso
 ```
 Prerequisite: SQL Server running, user secrets set (`DbUser`, `DbPassword`). **Local only — not available in remote sessions.**
 
-**During development** (fast feedback, no DB or browser needed):
+**During development** (fast feedback, no DB or Docker needed):
+```bash
+dotnet test TimeTracker.Tests --filter "Category!=Container" && dotnet test TimeTracker.ComponentTests
+```
+Works in remote sessions. The `Category!=Container` filter excludes Testcontainers-based tests (RLS + migration smoke tests), which require Docker.
+
+**Container tests only** (requires Docker locally or CI):
+```bash
+dotnet test TimeTracker.Tests --filter "Category=Container"
+```
+
+**All unit + container tests** (requires Docker):
 ```bash
 dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
 ```
-Works in remote sessions (no SQL Server or browser required).
 
 **Hang diagnostic only** (not part of normal suite):
 ```bash

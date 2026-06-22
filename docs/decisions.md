@@ -28,6 +28,8 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Accepted |
 | [D025](#d025-publicholiday-for-au-public-holiday-resolution) | `PublicHoliday` for AU public holiday resolution | 2026-06 | Accepted |
 | [D026](#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer) | xUnit over NUnit for Playwright + new bUnit component layer | 2026-06 | Accepted |
+| [D027](#d027-showcase-css-unified-via-msbuild) | Showcase CSS unified via MSBuild | 2026-06 | Accepted |
+| [D028](#d028-testcontainers-for-rls-and-migration-smoke-tests) | Testcontainers for RLS and migration smoke tests | 2026-06 | Accepted |
 
 ---
 
@@ -703,3 +705,28 @@ The structural problem: two files with no automated link. Every CSS change requi
 - ✅ MSBuild cross-project file reference is standard and supported; no custom build targets needed
 - ✅ Showcase smoke tests (Part 2 of `docs/testing-strategy.md`) catch broken routing and rendering regressions
 - ❌ Showcase always gets all CSS even if a feature is hidden behind `#if SHOWCASE`; acceptable trade-off (unused CSS has zero visible effect)
+
+---
+
+## D028: Testcontainers for RLS and migration smoke tests
+
+**Date:** 2026-06 — **Status:** Accepted — **Issue:** [#161](https://github.com/zkarachiwala/TimeTracker/issues/161)
+
+**Context:** `RlsIntegrationTests` required three environment variables and silently passed (via early return) in CI and remote sessions — RLS policy correctness was never automatically verified. There was also no automated check that EF Core migrations applied cleanly; a broken migration would only fail at production deploy time.
+
+Both problems share the same root cause: the tests needed a real SQL Server instance but had no portable way to get one. Testcontainers is also a widely-used industry pattern for database-integration testing, and learning it here is a direct transferable skill — an additional reason to adopt it even on a personal app where the coverage gap could have been tolerated.
+
+**Decision:** Add `Testcontainers.MsSql` to `TimeTracker.Tests`. A `SqlServerFixture` (`ICollectionFixture<SqlServerFixture>`) starts one SQL Server container per test session, applies both EF migrations (setup for RLS tests), and exposes the admin connection string. Container-dependent tests are tagged `[Trait("Category", "Container")]` so the fast development loop remains Docker-free. CI (`ubuntu-latest`) has Docker — container tests run there without any infrastructure changes.
+
+**Alternatives considered:**
+- **Env var opt-in (status quo):** Silent green in CI; no real coverage guarantee.
+- **Separate `TimeTracker.ContainerTests` project:** Cleaner isolation, but more project setup overhead and a third test command to maintain. Not worth it for five tests.
+- **Accept Docker in the fast loop:** Simpler (no trait filter), but breaks fast feedback in remote Claude Code sessions where Docker is unavailable.
+
+**Consequences:**
+- ✅ RLS policy correctness is verified in CI on every PR — no silent skips
+- ✅ Both EF migration chains (`TimeTrackerDataContext` + `IdentityDataContext`) are smoke-tested from scratch
+- ✅ Fast dev loop (`--filter "Category!=Container"`) remains Docker-free for remote sessions
+- ✅ `[Trait("Category", "Container")]` is idiomatic xUnit and scales to any future Docker-dependent tests
+- ❌ First CI run pulls the SQL Server 2022 Docker image (~1.5 GB); cached on subsequent runs
+- ❌ Container startup adds ~10–20 s to the full test run (not the filtered fast run)

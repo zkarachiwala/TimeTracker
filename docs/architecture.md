@@ -42,7 +42,7 @@ TimeTracker.sln
 ├── TimeTracker.Client      — Blazor WASM client: all routed pages, layouts, HTTP services
 ├── TimeTracker.Contracts   — Shared DTOs and interfaces (referenced by both Web and Client)
 ├── TimeTracker.Shared      — EF Core entities only (referenced by Web only)
-├── TimeTracker.Tests            — xUnit unit tests (EF InMemory, no running DB required)
+├── TimeTracker.Tests            — xUnit unit tests: fast/InMemory + container category (Testcontainers SQL Server, requires Docker)
 ├── TimeTracker.ComponentTests   — xUnit + bUnit Blazor component tests (in-memory renderer, no browser)
 └── TimeTracker.Playwright       — xUnit + Playwright E2E browser tests
 ```
@@ -239,7 +239,7 @@ Application Insights is not included (pay-as-you-go, no free monthly allowance o
 | CI/CD | GitHub Actions — OIDC push-to-deploy | Free |
 | Structured logging | Serilog → stdout (Azure App Service log stream) | Free |
 | Uptime monitoring | UptimeRobot free tier → `/health` endpoint | Free |
-| Tests | 186 tests: 164 service integration (EF InMemory) + 22 bUnit component tests | — |
+| Tests | 196 tests: 169 service (EF InMemory fast) + 5 Testcontainers container (RLS + migration smoke) + 22 bUnit component | — |
 | Remote development | Claude Code on the web — `.claude/hooks/session-start.sh` installs .NET 10 + builds on session start | Free |
 
 ---
