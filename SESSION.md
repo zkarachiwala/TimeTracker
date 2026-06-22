@@ -12,6 +12,9 @@
   - `ShowcaseFixture` + `ShowcaseTests` — 7 smoke tests, all passing
   - Root cause of `.dat` 404: `UseStaticFiles` silently refuses unknown MIME types; fixed with `ServeUnknownFileTypes = true`
   - `docs/playwright-strategy.md` → `docs/testing-strategy.md` (3 parts: E2E, Showcase, bUnit)
+- ✅ **#190 Showcase entries routing** (issue #189):
+  - `Nav.NavigateTo("/entries/...")` absolute paths → relative — fixes GitHub Pages base-href routing
+  - Blazor resolves relative URIs against `NavigationManager.BaseUri`; works correctly in both prod and showcase
 
 ## Standard test commands
 **Before every PR:**
@@ -52,4 +55,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-22. Both PRs merged. Main is clean.*
+*Updated 2026-06-22. Main is clean. Showcase CSS, routing and smoke tests all shipped.*
