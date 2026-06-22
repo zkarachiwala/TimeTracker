@@ -30,6 +30,8 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D026](#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer) | xUnit over NUnit for Playwright + new bUnit component layer | 2026-06 | Accepted |
 | [D027](#d027-showcase-css-unified-via-msbuild) | Showcase CSS unified via MSBuild | 2026-06 | Accepted |
 | [D028](#d028-testcontainers-for-rls-and-migration-smoke-tests) | Testcontainers for RLS and migration smoke tests | 2026-06 | Accepted |
+| [D029](#d029-dev-container--docker-compose-despite-single-user-app-scope) | Dev container + Docker Compose despite single-user app scope | 2026-06 | Accepted |
+| [D030](#d030-http-only-inside-the-dev-container) | HTTP-only inside the dev container | 2026-06 | Accepted |
 
 ---
 
@@ -730,3 +732,53 @@ Both problems share the same root cause: the tests needed a real SQL Server inst
 - ✅ `[Trait("Category", "Container")]` is idiomatic xUnit and scales to any future Docker-dependent tests
 - ❌ First CI run pulls the SQL Server 2022 Docker image (~1.5 GB); cached on subsequent runs
 - ❌ Container startup adds ~10–20 s to the full test run (not the filtered fast run)
+
+---
+
+## D029: Dev container + Docker Compose despite single-user app scope
+
+**Date:** 2026-06 — **Status:** Accepted — **Issue:** [#162](https://github.com/zkarachiwala/TimeTracker/issues/162)
+
+**Context:** For a single-user timetracking app, a dev container and Docker Compose are objectively unnecessary. The app runs fine with a local SQL Server and `dotnet run`. The only person onboarding is the developer who built it. There is no "works on my machine" problem to solve.
+
+However, this project has two equally weighted goals: building a practical app and developing transferable skills. Dev containers and Docker Compose are industry-standard — they appear on every non-trivial professional .NET project. Understanding container networking, service dependencies, health checks, named volumes, and environment variable injection are skills that cannot be learned without hands-on use.
+
+**Decision:** Implement a VS Code dev container backed by Docker Compose (SQL Server + app services). This becomes the primary development environment, not a secondary option left unused. The implementation is documented as a reusable skill file (`~/.claude/skills/dotnet-devcontainer.md`) so the patterns transfer to future projects.
+
+This results in three SQL Server instances across the project lifecycle:
+- Local SQL Server — legacy local dev outside the container
+- Dev container SQL Server — primary dev environment going forward
+- Testcontainers SQL Server — container tests only (D028)
+
+**Alternatives considered:**
+- **Keep local-only dev:** Simpler, zero overhead, adequate for a personal app. Rejected because it offers no learning on industry-standard tooling.
+- **Use Codespaces as primary:** The `.devcontainer` spec works in Codespaces, but Google OAuth redirect URIs change per codespace instance and the free tier (120 core-hours/month) is likely insufficient for daily use. Local dev container avoids both constraints.
+
+**Consequences:**
+- ✅ Hands-on learning of Docker Compose, container networking, health checks, named volumes, and env var injection
+- ✅ The devcontainer spec doubles as Codespaces support for free — no extra work
+- ✅ Patterns extracted into a reusable skill file applicable to any future .NET project
+- ❌ Three SQL Server instances in a single-developer project — acknowledged overhead, justified by distinct educational purpose of each
+
+---
+
+## D030: HTTP-only inside the dev container
+
+**Date:** 2026-06 — **Status:** Accepted — **Issue:** [#162](https://github.com/zkarachiwala/TimeTracker/issues/162)
+
+**Context:** .NET dev certificates (`dotnet dev-certs https`) are machine-scoped and stored in the local certificate store. They do not exist inside a container, so HTTPS does not work out of the box. The alternatives are: run HTTP only, or generate and trust a certificate inside the container as part of `postCreateCommand`.
+
+**Decision:** Run HTTP only inside the dev container (`ASPNETCORE_URLS=http://+:5019`). Do not generate a dev certificate inside the container.
+
+The correct production mental model is: **containers expose HTTP, TLS terminates at the infrastructure edge** (load balancer, reverse proxy, CDN). This is how Azure App Service, Azure Container Apps, nginx, and virtually every production container deployment works. Teaching yourself HTTPS inside a container teaches a workaround for a dev environment quirk — not a transferable pattern.
+
+Google OAuth is not affected: Google explicitly whitelists `http://localhost` (any port) as a valid redirect URI for development. The `http://localhost:5019/signin-google` redirect URI must be registered in Google Cloud Console alongside the production HTTPS URI.
+
+**Alternatives considered:**
+- **Generate and trust a dev cert inside the container:** Possible, but involves exporting a `.pfx`, trusting it in the container OS, and configuring Kestrel to use it. This teaches a dev-only workaround and produces a false impression that containers normally handle TLS themselves.
+
+**Consequences:**
+- ✅ Teaches the production-correct pattern: HTTP inside containers, TLS at the edge
+- ✅ No certificate management in `postCreateCommand` — simpler, less to break
+- ✅ Google OAuth works without modification — `http://localhost` is whitelisted
+- ❌ App runs on HTTP inside the container — acceptable given this is a local dev environment on a trusted machine

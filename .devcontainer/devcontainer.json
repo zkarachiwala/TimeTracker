@@ -1,0 +1,16 @@
+{
+  "name": "TimeTracker Dev Container",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [5019],
+  "postCreateCommand": "dotnet restore TimeTracker.sln && dotnet ef database update --project TimeTracker.Web --context TimeTrackerDataContext && dotnet ef database update --project TimeTracker.Web --context IdentityDataContext",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

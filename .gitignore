@@ -358,3 +358,6 @@ MigrationBackup/
 
 # Local showcase publish output
 .showcase-local/
+
+# Dev container secrets — copy from .env.example and fill in values
+.env

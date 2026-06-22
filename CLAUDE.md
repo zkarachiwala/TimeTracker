@@ -29,6 +29,37 @@ gh project item-add 1 --owner zkarachiwala --url https://github.com/zkarachiwala
 
 The hook only runs when `CLAUDE_CODE_REMOTE=true` — it is a no-op locally.
 
+## Dev container (primary dev environment)
+
+The project includes a VS Code dev container backed by Docker Compose. This is the preferred development environment — see `docs/devcontainer-guide.md` for full explanation of the concepts.
+
+**First-time setup:**
+1. Copy `.env.example` to `.env` and fill in `SA_PASSWORD`, `DB_USER`, `DB_PASSWORD`
+2. Open the repo in VS Code — it will offer to reopen in the container
+3. `postCreateCommand` runs automatically: restores packages and applies EF migrations
+
+**Running the app inside the container:**
+```bash
+cd TimeTracker.Web && dotnet run --launch-profile http
+```
+App is available at `http://localhost:5019` (forwarded from the container).
+
+**Google OAuth:** Add `http://localhost:5019/signin-google` to Authorized Redirect URIs in Google Cloud Console alongside the production URI. Google explicitly allows `http://localhost` — see `docs/google-oauth-setup.md`.
+
+**Useful Docker Compose commands (run from host):**
+```bash
+docker compose up -d          # Start all services
+docker compose down           # Stop (data preserved)
+docker compose down -v        # Stop and wipe volumes (clean slate)
+docker compose logs db        # SQL Server logs
+docker compose logs app       # App container logs
+```
+
+**Three SQL Server instances in this project** — they serve different purposes and never all run simultaneously:
+- Local SQL Server (existing) — local dev outside the container
+- Dev container SQL Server — inside the dev container (Docker)
+- Testcontainers SQL Server — spun up only during `Category=Container` tests
+
 ## Standard test commands
 
 **Before every PR** — run the full solution (service tests + bUnit + Playwright E2E):

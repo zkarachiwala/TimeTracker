@@ -1,7 +1,7 @@
 # Session handoff — 2026-06-23
 
 ## Completed this session
-- ✅ **#161 Testcontainers for RLS and migration tests** — `SqlServerFixture` collection fixture starts one SQL Server container per session; `RlsIntegrationTests` rewritten (env var guards removed, runs in CI); `MigrationSmokeTests` added for both EF contexts; `[Trait("Category", "Container")]` filter keeps fast loop Docker-free. **PR not yet raised.**
+- ✅ **#161 Testcontainers for RLS and migration tests** — `SqlServerFixture` collection fixture starts one SQL Server container per session; `RlsIntegrationTests` rewritten (env var guards removed, runs in CI); `MigrationSmokeTests` added for both EF contexts; `[Trait("Category", "Container")]` filter keeps fast loop Docker-free. **Merged as PR #192.**
 
 ## Standard test commands
 **Before every PR:**
@@ -26,7 +26,7 @@ BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~Showcas
 ### 🟡 Medium
 | # | Title |
 |---|-------|
-| #161 | Add Testcontainers for RLS and migration tests ← **done, PR pending** |
+| ~~#161~~ | ~~Add Testcontainers for RLS and migration tests~~ ← **merged PR #192** |
 | #162 | Add dev container and Docker Compose for local development |
 | #166 | CSV export for time entries |
 | #167 | Project budget tracking |
