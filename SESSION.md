@@ -1,36 +1,48 @@
-# Session handoff — 2026-06-22
+# Session handoff — 2026-06-23
 
 ## Completed this session
-- ✅ **#187 Dependabot batch** — consolidated 5 conflicting Dependabot PRs into one:
-  - `Microsoft.NET.Test.Sdk` 17.14.0 → 18.6.0
-  - `Microsoft.Playwright.Xunit` 1.52.0 → 1.60.0
-  - `xunit.runner.visualstudio` 2.8.2 → 3.1.5
-  - `Xunit.SkippableFact` 1.4.13 → 1.5.61
-  - `Scalar.AspNetCore` 2.5.3 → 2.16.4
-- ✅ **#188 Showcase CSS sync + smoke tests** (issue #159):
-  - Deleted `showcase-app.css`; MSBuild now copies `app.css` from `TimeTracker.Web` directly
-  - `ShowcaseFixture` + `ShowcaseTests` — 7 smoke tests, all passing
-  - Root cause of `.dat` 404: `UseStaticFiles` silently refuses unknown MIME types; fixed with `ServeUnknownFileTypes = true`
-  - `docs/playwright-strategy.md` → `docs/testing-strategy.md` (3 parts: E2E, Showcase, bUnit)
+- ✅ **#161 Testcontainers for RLS and migration tests** — `SqlServerFixture` collection fixture starts one SQL Server container per session; `RlsIntegrationTests` rewritten (env var guards removed, runs in CI); `MigrationSmokeTests` added for both EF contexts; `[Trait("Category", "Container")]` filter keeps fast loop Docker-free. **PR not yet raised.**
 
 ## Standard test commands
 **Before every PR:**
 ```bash
 PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "console;verbosity=normal" --blame-hang-timeout 60s
 ```
-**Showcase tests only:**
+**Fast (no Docker or browser):**
+```bash
+dotnet test TimeTracker.Tests --filter "Category!=Container" && dotnet test TimeTracker.ComponentTests
+```
+**Container tests only (requires Docker):**
+```bash
+dotnet test TimeTracker.Tests --filter "Category=Container"
+```
+**Showcase smoke tests:**
 ```bash
 BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~ShowcaseTests" --logger "console;verbosity=normal" --blame-hang-timeout 60s
 ```
-**During development (fast):**
-```bash
-dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
-```
 
-## Backlog
-- **#96** 🟢 Staging environment (requires paid tier upgrade)
-- **#102** 🟢 Email/password fallback + TOTP MFA
-- **#121** 🟢 OpenTelemetry → Grafana Cloud APM
+## Backlog (from GitHub project board)
+
+### 🟡 Medium
+| # | Title |
+|---|-------|
+| #161 | Add Testcontainers for RLS and migration tests ← **done, PR pending** |
+| #162 | Add dev container and Docker Compose for local development |
+| #166 | CSV export for time entries |
+| #167 | Project budget tracking |
+| #121 | Add distributed tracing and APM via OpenTelemetry and Grafana Cloud |
+
+### 🟢 Low
+| # | Title |
+|---|-------|
+| #168 | Duplicate time entry |
+| #169 | Tags for time entries |
+| #170 | Time rounding rules |
+| #36  | Invoice export — uninvoiced entries per client for Zoho Books |
+| #108 | Run Lighthouse audit and address findings |
+| #163 | Define Azure infrastructure as code with Bicep |
+| #102 | Add email/password login fallback and TOTP MFA |
+| #96  | Add staging environment (requires paid tier upgrade) |
 
 ## Active tech debt
 | # | Item | ADR |
@@ -52,4 +64,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-22. Both PRs merged. Main is clean.*
+*Updated 2026-06-23. Branch `feature/161-testcontainers-rls-migration` committed, PR not yet raised.*
