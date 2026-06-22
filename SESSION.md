@@ -1,21 +1,17 @@
-# Session handoff — 2026-06-21
-
-## Current state
-- Branch: `feature/issue-159-showcase-css-sync` — ready to commit and raise PR
+# Session handoff — 2026-06-22
 
 ## Completed this session
-- ✅ **#158 merged** (PR for #155 test framework migration)
-- ✅ **#159 Showcase CSS sync + regression tests** — fully implemented:
-  - Deleted `wwwroot-showcase/css/showcase-app.css`; MSBuild now copies `TimeTracker.Web/wwwroot/css/app.css` into showcase output (`TargetPath="wwwroot/css/app.css"`)
-  - `wwwroot-showcase/index.html` updated to reference `css/app.css`
-  - `ShowcaseFixture.cs` — publishes showcase via `dotnet publish -p:Showcase=true`, serves on port 7008 with `UsePathBase("/TimeTracker")`
-  - `ShowcaseCollection.cs` — `[CollectionDefinition("Showcase")]`
-  - `ShowcaseTests.cs` — 7 smoke tests covering all routed pages (timer, entries day, entries calendar, reports, projects, clients, admin users)
-  - `<FrameworkReference Include="Microsoft.AspNetCore.App" />` added to `TimeTracker.Playwright.csproj` (needed for `WebApplication`)
-  - `docs/playwright-strategy.md` renamed → `docs/testing-strategy.md` with 3 parts: Playwright E2E, Showcase, bUnit
-  - `docs/decisions.md` — D027 added (showcase CSS unified via MSBuild)
-  - `docs/roadmap.md` — Phase 13 added, dependency chain updated
-  - `CLAUDE.md` updated — reference to `testing-strategy.md`, showcase test run command, Showcase Playwright section in Testing
+- ✅ **#187 Dependabot batch** — consolidated 5 conflicting Dependabot PRs into one:
+  - `Microsoft.NET.Test.Sdk` 17.14.0 → 18.6.0
+  - `Microsoft.Playwright.Xunit` 1.52.0 → 1.60.0
+  - `xunit.runner.visualstudio` 2.8.2 → 3.1.5
+  - `Xunit.SkippableFact` 1.4.13 → 1.5.61
+  - `Scalar.AspNetCore` 2.5.3 → 2.16.4
+- ✅ **#188 Showcase CSS sync + smoke tests** (issue #159):
+  - Deleted `showcase-app.css`; MSBuild now copies `app.css` from `TimeTracker.Web` directly
+  - `ShowcaseFixture` + `ShowcaseTests` — 7 smoke tests, all passing
+  - Root cause of `.dat` 404: `UseStaticFiles` silently refuses unknown MIME types; fixed with `ServeUnknownFileTypes = true`
+  - `docs/playwright-strategy.md` → `docs/testing-strategy.md` (3 parts: E2E, Showcase, bUnit)
 
 ## Standard test commands
 **Before every PR:**
@@ -31,17 +27,13 @@ BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~Showcas
 dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
 ```
 
-## Next session
-- Run the full test suite (user runs it) to verify showcase tests pass
-- Merge PR for #159
-
 ## Backlog
+- **#151** 🔴 Showcase users DI fix (routing/display issues in showcase)
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
-- **#151** 🔴 Showcase users DI fix
 
-## Active tech debt (genuine constraints)
+## Active tech debt
 | # | Item | ADR |
 |---|------|-----|
 | TD1 | Global WASM rendering | D001, D003 |
@@ -61,4 +53,4 @@ cat SESSION.md
 ```
 
 ---
-*Updated 2026-06-21. Feature/issue-159-showcase-css-sync ready to commit and raise PR.*
+*Updated 2026-06-22. Both PRs merged. Main is clean.*
