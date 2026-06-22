@@ -28,7 +28,6 @@ dotnet test TimeTracker.Tests && dotnet test TimeTracker.ComponentTests
 ```
 
 ## Backlog
-- **#151** 🔴 Showcase users DI fix (routing/display issues in showcase)
 - **#96** 🟢 Staging environment (requires paid tier upgrade)
 - **#102** 🟢 Email/password fallback + TOTP MFA
 - **#121** 🟢 OpenTelemetry → Grafana Cloud APM
