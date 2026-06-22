@@ -26,7 +26,7 @@ public class EntryRowTests : MudBlazorContext
     public void RendersProjectName_WhenShowProjectIsTrue()
     {
         var entry = MakeEntry(projectName: "Acme Corp");
-        var cut = RenderComponent<EntryRow>(p => p
+        var cut = Render<EntryRow>(p => p
             .Add(e => e.Entry, entry)
             .Add(e => e.ShowProject, true));
 
@@ -37,7 +37,7 @@ public class EntryRowTests : MudBlazorContext
     public void RendersNote_WhenShowProjectIsFalse()
     {
         var entry = MakeEntry(note: "Design review");
-        var cut = RenderComponent<EntryRow>(p => p
+        var cut = Render<EntryRow>(p => p
             .Add(e => e.Entry, entry)
             .Add(e => e.ShowProject, false));
 
@@ -48,7 +48,7 @@ public class EntryRowTests : MudBlazorContext
     public void RendersFallback_WhenShowProjectIsFalseAndNoteIsEmpty()
     {
         var entry = MakeEntry(note: null);
-        var cut = RenderComponent<EntryRow>(p => p
+        var cut = Render<EntryRow>(p => p
             .Add(e => e.Entry, entry)
             .Add(e => e.ShowProject, false));
 
@@ -61,7 +61,7 @@ public class EntryRowTests : MudBlazorContext
         var start = new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2026, 1, 1, 10, 30, 0, DateTimeKind.Utc);
         var entry = MakeEntry(start: start, end: end);
-        var cut = RenderComponent<EntryRow>(p => p.Add(e => e.Entry, entry));
+        var cut = Render<EntryRow>(p => p.Add(e => e.Entry, entry));
 
         Assert.Contains("1h 30m", cut.Markup);
     }
@@ -72,7 +72,7 @@ public class EntryRowTests : MudBlazorContext
         var start = new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2026, 1, 1, 9, 45, 0, DateTimeKind.Utc);
         var entry = MakeEntry(start: start, end: end);
-        var cut = RenderComponent<EntryRow>(p => p.Add(e => e.Entry, entry));
+        var cut = Render<EntryRow>(p => p.Add(e => e.Entry, entry));
 
         // Check the duration text element specifically — checking cut.Markup would match
         // SVG path data (e.g. d="M0 0h24v24H0z") which also contains "h" substrings.
@@ -84,7 +84,7 @@ public class EntryRowTests : MudBlazorContext
     public void RendersInvoiceIcon_WhenInvoiceReferenceIsSet()
     {
         var entry = MakeEntry(invoiceRef: "INV-2026-001");
-        var cut = RenderComponent<EntryRow>(p => p.Add(e => e.Entry, entry));
+        var cut = Render<EntryRow>(p => p.Add(e => e.Entry, entry));
 
         // MudTooltip renders its text in the popover portal, not inline in the component —
         // check the component instance's Text parameter instead.
@@ -96,7 +96,7 @@ public class EntryRowTests : MudBlazorContext
     public void DoesNotRenderInvoiceIcon_WhenNoInvoiceReference()
     {
         var entry = MakeEntry(invoiceRef: null, isAwardRate: false);
-        var cut = RenderComponent<EntryRow>(p => p.Add(e => e.Entry, entry));
+        var cut = Render<EntryRow>(p => p.Add(e => e.Entry, entry));
 
         // No tooltips should be rendered when neither invoice ref nor award rate is set
         Assert.Empty(cut.FindComponents<MudTooltip>());
@@ -106,7 +106,7 @@ public class EntryRowTests : MudBlazorContext
     public void RendersAwardRateChip_WhenIsAwardRateIsTrue()
     {
         var entry = MakeEntry(isAwardRate: true);
-        var cut = RenderComponent<EntryRow>(p => p.Add(e => e.Entry, entry));
+        var cut = Render<EntryRow>(p => p.Add(e => e.Entry, entry));
 
         Assert.Contains("AW", cut.Markup);
     }
@@ -115,7 +115,7 @@ public class EntryRowTests : MudBlazorContext
     public void DoesNotRenderAwardRateChip_WhenIsAwardRateIsFalse()
     {
         var entry = MakeEntry(isAwardRate: false);
-        var cut = RenderComponent<EntryRow>(p => p.Add(e => e.Entry, entry));
+        var cut = Render<EntryRow>(p => p.Add(e => e.Entry, entry));
 
         Assert.DoesNotContain("AW", cut.Markup);
     }
@@ -124,7 +124,7 @@ public class EntryRowTests : MudBlazorContext
     public void AppliesProjectColour_FromProjectId()
     {
         var entry = MakeEntry(projectId: 1);
-        var cut = RenderComponent<EntryRow>(p => p.Add(e => e.Entry, entry));
+        var cut = Render<EntryRow>(p => p.Add(e => e.Entry, entry));
 
         var expectedColour = ProjectColors.ForProject(1);
         Assert.Contains(expectedColour, cut.Markup);
@@ -135,7 +135,7 @@ public class EntryRowTests : MudBlazorContext
     {
         TimeEntryResponse? received = null;
         var entry = MakeEntry();
-        var cut = RenderComponent<EntryRow>(p => p
+        var cut = Render<EntryRow>(p => p
             .Add(e => e.Entry, entry)
             .Add(e => e.OnEdit, EventCallback.Factory.Create<TimeEntryResponse>(this, r => received = r)));
 

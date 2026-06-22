@@ -19,7 +19,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersProjectName()
     {
         var project = MakeProject(name: "Acme Website");
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("Acme Website", cut.Markup);
     }
@@ -28,7 +28,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersClientName_WhenSet()
     {
         var project = MakeProject(clientName: "Acme Corp");
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("Acme Corp", cut.Markup);
     }
@@ -37,7 +37,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersNoClient_WhenClientNameIsNull()
     {
         var project = MakeProject(clientName: null);
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("No client", cut.Markup);
     }
@@ -46,7 +46,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersHourlyRateChip_WhenRateIsSet()
     {
         var project = MakeProject(hourlyRate: 150m);
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("150", cut.Markup);
         Assert.Contains("/h", cut.Markup);
@@ -56,7 +56,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersInternalChip_WhenRateIsNull()
     {
         var project = MakeProject(hourlyRate: null);
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("internal", cut.Markup);
     }
@@ -65,7 +65,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersInternalChip_WhenRateIsZero()
     {
         var project = MakeProject(hourlyRate: 0m);
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("internal", cut.Markup);
     }
@@ -74,7 +74,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersStartDate_WhenSet()
     {
         var project = MakeProject(startDate: new DateTime(2025, 3, 1));
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("Mar 2025", cut.Markup);
     }
@@ -83,7 +83,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersDashPlaceholder_WhenStartDateIsNull()
     {
         var project = MakeProject(startDate: null);
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         Assert.Contains("since —", cut.Markup);
     }
@@ -92,7 +92,7 @@ public class ProjectCardTests : MudBlazorContext
     public void AppliesProjectColour_FromProjectId()
     {
         var project = MakeProject(id: 3);
-        var cut = RenderComponent<ProjectCard>(p => p.Add(c => c.Project, project));
+        var cut = Render<ProjectCard>(p => p.Add(c => c.Project, project));
 
         var expectedColour = ProjectColors.ForProject(3);
         Assert.Contains(expectedColour, cut.Markup);
@@ -102,7 +102,7 @@ public class ProjectCardTests : MudBlazorContext
     public void RendersYtdHours_WhenProvided()
     {
         var project = MakeProject();
-        var cut = RenderComponent<ProjectCard>(p => p
+        var cut = Render<ProjectCard>(p => p
             .Add(c => c.Project, project)
             .Add(c => c.YtdHours, 42));
 
@@ -114,7 +114,7 @@ public class ProjectCardTests : MudBlazorContext
     {
         int? receivedId = null;
         var project = MakeProject(id: 7);
-        var cut = RenderComponent<ProjectCard>(p => p
+        var cut = Render<ProjectCard>(p => p
             .Add(c => c.Project, project)
             .Add(c => c.OnOpen, EventCallback.Factory.Create<int>(this, id => receivedId = id)));
 
