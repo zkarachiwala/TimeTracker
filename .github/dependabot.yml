@@ -11,3 +11,16 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    groups:
+      # EF Core packages must be upgraded together because they share a tight version
+      # coupling through transitive dependencies. Upgrading only one package (e.g.
+      # Microsoft.EntityFrameworkCore.Design) causes NU1605 "package downgrade" errors:
+      # the upgraded package pulls in a newer Microsoft.EntityFrameworkCore.Relational,
+      # which then requires a newer Microsoft.EntityFrameworkCore than what's pinned in
+      # the other projects. Grouping ensures Dependabot raises one PR that bumps all of
+      # them simultaneously, keeping the lock-step version requirement satisfied.
+      entity-framework-core:
+        patterns:
+          - "Microsoft.EntityFrameworkCore*"
+          - "Microsoft.AspNetCore.Identity.EntityFrameworkCore"
+          - "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"
