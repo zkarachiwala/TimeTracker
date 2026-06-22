@@ -3,14 +3,32 @@
   "dockerComposeFile": ["../docker-compose.yml"],
   "service": "app",
   "workspaceFolder": "/workspace",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:latest": {}
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.microsoft/usersecrets,target=/home/vscode/.microsoft/usersecrets,type=bind,consistency=cached,readonly"
+  ],
   "forwardPorts": [5019],
-  "postCreateCommand": "dotnet restore TimeTracker.sln && dotnet ef database update --project TimeTracker.Web --context TimeTrackerDataContext && dotnet ef database update --project TimeTracker.Web --context IdentityDataContext",
+  "portsAttributes": {
+    "5019": {
+      "label": "TimeTracker App",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "dotnet tool install --global dotnet-ef && dotnet restore TimeTracker.sln && dotnet ef database update --project TimeTracker.Web --context TimeTrackerDataContext && dotnet ef database update --project TimeTracker.Web --context IdentityDataContext",
+  "postStartCommand": "cd TimeTracker.Web && dotnet run --launch-profile container",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-dotnettools.csdevkit",
-        "ms-azuretools.vscode-docker"
-      ]
+        "ms-azuretools.vscode-docker",
+        "ms-mssql.mssql"
+      ],
+      "settings": {
+        "editor.formatOnSave": true
+      }
     }
-  }
+  },
+  "remoteUser": "vscode"
 }

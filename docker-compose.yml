@@ -19,9 +19,7 @@ services:
       start_period: 30s
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: mcr.microsoft.com/devcontainers/dotnet:dev-10.0-noble
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5019
@@ -32,8 +30,9 @@ services:
     ports:
       - "5019:5019"
     volumes:
-      - .:/workspace
+      - .:/workspace:cached
     working_dir: /workspace
+    command: sleep infinity
     depends_on:
       db:
         condition: service_healthy

@@ -38,21 +38,27 @@ The project includes a VS Code dev container backed by Docker Compose. This is t
 2. Open the repo in VS Code — it will offer to reopen in the container
 3. `postCreateCommand` runs automatically: restores packages and applies EF migrations
 
+**First-time setup:**
+1. Copy `.env.example` to `.env` and fill in `SA_PASSWORD`, `DB_USER`, `DB_PASSWORD`
+2. Open the repo in VS Code — it will offer to reopen in the container
+3. `postCreateCommand` runs automatically: installs EF tools, restores packages, applies migrations
+4. `postStartCommand` runs automatically: starts the app on `http://localhost:5019`
+
 **Running the app inside the container:**
-```bash
-cd TimeTracker.Web && dotnet run --launch-profile http
-```
-App is available at `http://localhost:5019` (forwarded from the container).
 
-**Google OAuth:** Add `http://localhost:5019/signin-google` to Authorized Redirect URIs in Google Cloud Console alongside the production URI. Google explicitly allows `http://localhost` — see `docs/google-oauth-setup.md`.
+The app starts automatically via `postStartCommand` on container start. To restart manually:
+- `Ctrl+Shift+P` → **Tasks: Run Task** → **run**, or press `F5` to launch with debugger attached
 
-**Useful Docker Compose commands (run from host):**
+Do NOT use `--launch-profile https` or `--launch-profile http` inside the container — they bind to `localhost` only (unreachable from outside). The `container` profile uses `http://+:5019` (all interfaces).
+
+**Google OAuth:** Add `http://localhost:5019/signin-google` to Authorized Redirect URIs in Google Cloud Console alongside the production URI. Google credentials come from .NET User Secrets — no `.env` entry needed.
+
+**Useful Docker Compose commands (run from host or container terminal):**
 ```bash
 docker compose up -d          # Start all services
 docker compose down           # Stop (data preserved)
 docker compose down -v        # Stop and wipe volumes (clean slate)
 docker compose logs db        # SQL Server logs
-docker compose logs app       # App container logs
 ```
 
 **Three SQL Server instances in this project** — they serve different purposes and never all run simultaneously:
