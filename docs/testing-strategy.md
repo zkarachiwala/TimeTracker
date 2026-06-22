@@ -1,6 +1,12 @@
-# Playwright Test Strategy
+# Testing Strategy
+
+This document covers all three test layers in the TimeTracker test suite.
 
 Sources consulted: [Playwright Best Practices](https://playwright.dev/docs/best-practices), [Playwright .NET Writing Tests](https://playwright.dev/dotnet/docs/writing-tests), [Playwright Network - waitForResponse](https://playwright.dev/docs/network), [BrowserStack waitForResponse guide](https://www.browserstack.com/guide/playwright-waitforresponse), [Checkly waits and timeouts](https://www.checklyhq.com/docs/learn/playwright/waits-and-timeouts/), [playwright-dotnet issue #2530](https://github.com/microsoft/playwright-dotnet/issues/2530)
+
+---
+
+# Part 1 — Playwright E2E tests (`TimeTracker.Playwright`)
 
 **Framework:** `Microsoft.Playwright.Xunit` — migrated from NUnit in issue #155 (see [D026](decisions.md#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer)). Test lifecycle uses xUnit's `IAsyncLifetime` (`InitializeAsync` / `DisposeAsync`) rather than NUnit's `[SetUp]`/`[TearDown]`.
 
@@ -392,7 +398,64 @@ Avoid XPath. Avoid selectors tied to implementation details that change with ref
 
 ---
 
-## bUnit component tests — when to use instead of Playwright
+# Part 2 — Showcase Playwright tests (`TimeTracker.Playwright`)
+
+The showcase app (GitHub Pages) uses synchronous in-memory mock services — no ASP.NET Core backend, no real database. A separate `[Collection("Showcase")]` collection builds and serves the showcase locally then smoke-tests every routed page.
+
+## Why showcase tests exist
+
+The showcase runs the same Blazor components as the main app (nav rail, calendar, all pages) with `MockAuthenticationStateProvider` always returning an Admin user. Without tests, two failure modes go undetected:
+
+1. **Broken routing** — a new `@page` directive added to the main app without a matching entry in the showcase mock services leaves the page blank or crashing.
+2. **CSS drift** — the showcase previously maintained a separate `showcase-app.css` that fell 51 lines behind `app.css`, breaking nav rail icon positioning. The CSS is now unified via MSBuild (see [D027](decisions.md#d027-showcase-css-unified-via-msbuild)), but smoke tests catch any future regression.
+
+## How `ShowcaseFixture` works
+
+`ShowcaseFixture` is an xUnit `ICollectionFixture<ShowcaseFixture>` — it runs once per test collection. It:
+
+1. Runs `dotnet publish TimeTracker.Client -p:Showcase=true -c Release` to a temp directory
+2. Starts an ASP.NET Core static file server on `http://localhost:7008` pointing at the publish output
+3. Serves with `UsePathBase("/TimeTracker")` to match `<base href="/TimeTracker/" />` in `index.html`
+4. `MapFallbackToFile("index.html")` handles SPA client-side routing
+
+Because showcase services are synchronous (no real HTTP), there is no auth state file needed. Tests navigate directly to each page without a login flow.
+
+## Wait strategy for showcase tests
+
+Showcase tests cannot use `RunAndWaitForRequestFinishedAsync` — there are no API calls to wait for. Instead:
+
+```csharp
+await Page.GotoAsync($"/TimeTracker{path}");
+// NetworkIdle is correct here: mock services are synchronous — no polling or API calls
+// after WASM loads. The only network activity is downloading WASM/JS assets.
+await Page.WaitForLoadStateAsync(LoadState.NetworkIdle, new() { Timeout = 60_000 });
+```
+
+`Page.SetDefaultTimeout(60_000)` in `InitializeAsync` covers the WASM cold-load (first context creation downloads ~10MB WASM binary; subsequent contexts may be faster if the browser caches it).
+
+## Running showcase tests
+
+```bash
+# Showcase tests only
+BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~ShowcaseTests" --logger "console;verbosity=normal" --blame-hang-timeout 60s
+
+# Full suite (App + Showcase)
+PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "console;verbosity=normal" --blame-hang-timeout 60s
+```
+
+**Note:** Showcase tests run slower than the App collection because each test creates a fresh browser context that re-downloads WASM assets. This is normal — smoke tests don't need sub-second speed.
+
+## Checklist: new showcase page
+
+When a new routed page is added to the main app and exposed in the showcase:
+
+- [ ] Add a mock service method (if the page has data) to the relevant `Mock*.cs`
+- [ ] Add a `[Fact]` in `ShowcaseTests.cs` verifying the page loads
+- [ ] Verify the new route is listed in `MockDataStore` seed data if it shows list items
+
+---
+
+# Part 3 — bUnit component tests (`TimeTracker.ComponentTests`)
 
 `TimeTracker.ComponentTests` (xUnit + bUnit) covers Blazor component rendering and UI logic without a browser. Use it for:
 
@@ -406,7 +469,7 @@ Avoid XPath. Avoid selectors tied to implementation details that change with ref
 | Real network calls, auth flows, WASM hydration | Playwright |
 | Cross-page state (navigation, session) | Playwright |
 
-### bUnit test structure
+## bUnit test structure
 
 All component tests extend `MudBlazorContext` from `TimeTracker.ComponentTests/Fixtures/`. This base class:
 - Calls `Services.AddMudServices()` with zero-transition config

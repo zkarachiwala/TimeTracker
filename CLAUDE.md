@@ -70,7 +70,9 @@ When a Playwright test fails, answer these two questions FIRST. Do not touch any
 
 **Never change a test to make a failing test pass. Fix the app or the SetUp.**
 
-Full strategy and wait patterns: `docs/playwright-strategy.md`.
+Full strategy and wait patterns: `docs/testing-strategy.md` (Part 1).
+
+Showcase smoke tests run against a locally-served static build: `BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~ShowcaseTests" --blame-hang-timeout 60s`
 
 ## Dependency management
 
@@ -179,3 +181,5 @@ All request/response DTOs live in `TimeTracker.Contracts/`. Never define DTOs in
 - One-time app startup is handled by `AppFixture` (`ICollectionFixture<AppFixture>`) via the `[Collection("App")]` attribute.
 - Write tests (tests that mutate data) must be guarded with `[SkippableFact]` + `Skip.If(!WriteTestsEnabled, "...")`. Write tests are skipped in CI and run locally only.
 - Target URL is controlled by `PLAYWRIGHT_BASE_URL` env var (defaults to the Azure deployment).
+
+**Showcase Playwright tests** (`TimeTracker.Playwright`, `[Collection("Showcase")]`): smoke-test every routed page of the GitHub Pages showcase. `ShowcaseFixture` publishes the showcase and serves it via ASP.NET Core static files on port 7008. No auth state needed — `MockAuthenticationStateProvider` always returns Admin. Run with `--filter "FullyQualifiedName~ShowcaseTests"`.

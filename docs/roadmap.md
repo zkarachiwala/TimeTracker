@@ -119,6 +119,14 @@ Migrated `TimeTracker.Playwright` from NUnit to xUnit; added `TimeTracker.Compon
 - `playwright.runsettings` NUnit section → `xunit.runner.json` (`stopOnFail`, `parallelizeTestCollections: false`)
 - New `TimeTracker.ComponentTests` project: xUnit + bUnit; `MudBlazorContext` base class; initial tests for `EntryRow` and `ProjectCard`
 
+### Phase 13 — Showcase CSS sync + regression tests ✅
+Eliminated `showcase-app.css` drift by unifying CSS via MSBuild; added `ShowcaseFixture` + `ShowcaseTests` to smoke-test every showcase page. See [D027](decisions.md#d027-showcase-css-unified-via-msbuild).
+
+- `wwwroot-showcase/css/showcase-app.css` deleted; `TimeTracker.Client.csproj` now copies `TimeTracker.Web/wwwroot/css/app.css` as `wwwroot/css/app.css` when `-p:Showcase=true`
+- `ShowcaseFixture` publishes showcase via `dotnet publish`, serves via ASP.NET Core static files on port 7008 with `UsePathBase("/TimeTracker")`
+- 7 smoke tests in `ShowcaseTests` cover every routed page; `[Collection("Showcase")]` runs independently from `[Collection("App")]`
+- `docs/playwright-strategy.md` renamed to `docs/testing-strategy.md` with three parts: Playwright E2E, Showcase tests, bUnit
+
 ---
 
 ### Zoho Books integration
@@ -129,7 +137,7 @@ TimeTracker will eventually integrate with Zoho Books to partially automate invo
 ## Phase dependency order
 
 ```
-0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 ✅ → 10 ✅ → 11 ✅ → 12 ✅ → Zoho
+0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅ → 6 ✅ → 7 ✅ → 8 ✅ → 9 ✅ → 10 ✅ → 11 ✅ → 12 ✅ → 13 ✅ → Zoho
 ```
 
 ## Infrastructure summary
