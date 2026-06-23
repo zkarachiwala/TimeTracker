@@ -28,6 +28,14 @@
       },
       "dotnetRunMessages": true
     },
+    "container": {
+      "commandName": "Project",
+      "applicationUrl": "http://+:5019",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true
+    },
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,

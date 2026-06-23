@@ -169,6 +169,22 @@ docker compose up -d --build app
 
 ---
 
+## Claude Code with a dev container
+
+When VS Code reopens inside the container, its integrated terminal runs inside the container too. Claude Code is not installed inside the container, so the VS Code extension won't work from there.
+
+**Recommended workflow (WSL2 on Windows):**
+- Keep a **Windows Terminal** tab open running WSL2 alongside VS Code
+- Run `claude` from there — it reads the same repo files via the shared WSL2 filesystem
+- VS Code (inside the container) handles editing, `dotnet run`, and EF migrations
+- Claude Code (host terminal) handles code review, file edits, and AI assistance
+
+Alternatively, keep a **second VS Code window** on the host (not reopened in the container) and use that window's Claude Code extension. Both windows operate on the same files.
+
+The key insight: Claude Code is a host-side tool. It doesn't need to be inside the container to work on the project — the files are the same either way.
+
+---
+
 ## Codespaces: same spec, different host
 
 The `.devcontainer/devcontainer.json` works identically in GitHub Codespaces — that's the point of the dev container spec. VS Code (locally) and Codespaces both read the same file.
@@ -196,6 +212,21 @@ This project ends up with three separate SQL Server instances, each serving a di
 They never all run simultaneously in normal use. The fast unit tests (`Category!=Container`) use EF Core InMemory and touch no SQL Server at all.
 
 This is objectively more infrastructure than a single-user timetracking app needs. It exists because each instance teaches something different: containerised service dependencies (dev container), test isolation and Testcontainers patterns (#161), and the baseline of knowing how to run a database locally.
+
+---
+
+## Common gotchas
+
+| Gotcha | Fix |
+|--------|-----|
+| SQL Server container exits immediately | Weak `SA_PASSWORD` — must meet complexity rules (upper, lower, digit, symbol, 8+ chars) |
+| App can't reach SQL Server | Use service name `db` in the connection string, not `localhost` |
+| `https` or `http` launch profiles make app unreachable from host | Their `applicationUrl` binds to `localhost` only inside the container — Docker port forwarding can't reach it. Use `dotnet run --launch-profile container` which binds to `http://+:5019` (all interfaces). |
+| Data lost on `docker compose down` | Use a named volume, not an anonymous volume |
+| `docker compose down -v` wipes data | Only use `-v` when you want a completely clean slate |
+| EF migrations fail in `postCreateCommand` | Ensure `--project` points to the correct `.csproj` and `depends_on: service_healthy` is set so SQL Server is ready |
+| Claude Code not available in container terminal | Claude Code runs on the host — use a separate Windows Terminal tab. See the section above. |
+| Google OAuth `ClientId` null / 500 on first request | .NET User Secrets don't exist inside the container. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to `.env` and wire them into docker-compose.yml as `Authentication__Google__ClientId` / `Authentication__Google__ClientSecret`. |
 
 ---
 
