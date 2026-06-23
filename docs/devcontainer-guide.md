@@ -169,6 +169,35 @@ docker compose up -d --build app
 
 ---
 
+## Claude Code with a dev container
+
+When VS Code reopens inside the container, its integrated terminal runs inside the container too. Claude Code is not installed inside the container, so the VS Code extension won't work from there.
+
+**Recommended workflow (WSL2 on Windows):**
+- Keep a **Windows Terminal** tab open running WSL2 alongside VS Code
+- Run `claude` from there — it reads the same repo files via the shared WSL2 filesystem
+- VS Code (inside the container) handles editing, `dotnet run`, and EF migrations
+- Claude Code (host terminal) handles code review, file edits, and AI assistance
+
+The Docker extension (`ms-azuretools.vscode-docker`) works inside the container via the `docker-outside-of-docker` feature — so container management (restart, logs) works from within VS Code without needing a separate terminal.
+
+---
+
+## Common gotchas
+
+| Gotcha | Fix |
+|--------|-----|
+| SQL Server container exits immediately | Weak `SA_PASSWORD` — must meet complexity rules (upper, lower, digit, symbol, 8+ chars) |
+| App can't reach SQL Server | Use service name `db` in the connection string, not `localhost` |
+| `https` or `http` launch profile makes app unreachable | Use `container` profile — binds to `http://+:5019` (all interfaces), not `localhost` |
+| Google OAuth `ClientId` null / 500 on first request | User Secrets not mounted — check the volume mount in `docker-compose.yml` points to your WSL home |
+| Build artifacts conflict between host and container | Container writes `obj/bin` as its user; host can't overwrite them. Clean via: `docker run --rm -v $(pwd):/workspace alpine sh -c "rm -rf /workspace/TimeTracker.*/obj /workspace/TimeTracker.*/bin"` |
+| Data lost on `docker compose down` | Use named volume — only `docker compose down -v` destroys it |
+| Docker extension not working in VS Code | Ensure `docker-outside-of-docker` feature is in `devcontainer.json` and container was rebuilt |
+| VS Code doesn't offer "Reopen in Container" | Click the `><` icon bottom-left → "Reopen in Container" |
+
+---
+
 ## Codespaces: same spec, different host
 
 The `.devcontainer/devcontainer.json` works identically in GitHub Codespaces — that's the point of the dev container spec. VS Code (locally) and Codespaces both read the same file.
