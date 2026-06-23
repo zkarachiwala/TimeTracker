@@ -1,0 +1,72 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}/TimeTracker.sln"],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "run",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["run", "--project", "${workspaceFolder}/TimeTracker.Web", "--launch-profile", "container"],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "test: fast",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test", "${workspaceFolder}/TimeTracker.Tests",
+        "--filter", "Category!=Container",
+        "&&",
+        "dotnet", "test", "${workspaceFolder}/TimeTracker.ComponentTests"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "test: container",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["test", "${workspaceFolder}/TimeTracker.Tests", "--filter", "Category=Container"],
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "ef: migrate",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "ef", "database", "update",
+        "--project", "${workspaceFolder}/TimeTracker.Web",
+        "--context", "TimeTrackerDataContext"
+      ],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

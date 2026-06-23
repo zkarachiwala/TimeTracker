@@ -1,0 +1,44 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "${SA_PASSWORD}"
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost",
+             "-U", "sa", "-P", "${SA_PASSWORD}", "-C",
+             "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    image: mcr.microsoft.com/devcontainers/dotnet:dev-10.0-noble
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5019
+      ConnectionStrings__TimeTrackerConnection: "Server=db,1433;Database=TimeTrackerDb;TrustServerCertificate=True"
+      ConnectionStrings__IdentityConnection: "Server=db,1433;Database=TimeTrackerDb;TrustServerCertificate=True"
+      DbUser: "${DB_USER}"
+      DbPassword: "${DB_PASSWORD}"
+    ports:
+      - "5019:5019"
+    volumes:
+      - .:/workspace:cached
+      - /home/zkarachiwala/.microsoft/usersecrets:/home/vscode/.microsoft/usersecrets:ro
+    working_dir: /workspace
+    command: sleep infinity
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
+volumes:
+  sqlserver_data:
