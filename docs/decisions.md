@@ -22,7 +22,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D016](#d016-playwright--full-suite-pre-push-ci-smoke-test-only) | Playwright — full suite pre-push, CI smoke test only | 2026-06 | Accepted |
 | [D017](#d017-cloudflare-free-plan-over-paid-cdnwaf) | Cloudflare free plan over paid CDN/WAF | 2026-06 | Accepted |
 | [D018](#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens) | Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens | 2026-06 | Accepted |
-| [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Accepted |
+| [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Partially superseded — UptimeRobot disabled 2026-06 |
 | [D020](#d020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
 | [D021](#d021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
 | [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Accepted |
@@ -411,7 +411,7 @@ Each layer is independently valuable but they work together: the cap limits per-
 
 ## D019: Serilog + /health endpoint + UptimeRobot over Application Insights
 
-**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD23](technical-debt.md#observability)
+**Date:** 2026-06 — **Status:** Partially superseded — UptimeRobot disabled 2026-06 — **Tracks:** [TD23](technical-debt.md#observability), [TD26](technical-debt.md#infrastructure--compute)
 
 **Context:** #97 required structured logging, a health check endpoint, and uptime monitoring. Application Insights is the natural Azure APM choice, but the current workspace-based model stores data in Log Analytics with pay-as-you-go pricing — no free monthly data allowance. Free hosting is a hard constraint ([D003](#d003-zero-cost-hosting-azure-f1--azure-sql-free)).
 
@@ -445,6 +445,12 @@ All four services have a genuine free tier. Cost was therefore not the different
 - ❌ No distributed tracing or correlation IDs — individual requests cannot be traced end-to-end
 - ❌ No performance baselines or alerting on error spikes (UptimeRobot only alerts on downtime, not degradation)
 - ❌ Log retention is limited to what Azure App Service log stream keeps (short-lived); no queryable log store
+
+**Update — 2026-06: UptimeRobot disabled**
+
+The UptimeRobot monitor was paused after discovering it exhausted the Azure F1 60 CPU-min/day quota. A 5-minute ping prevents the .NET process from going idle — the process stays alive 24/7 and accumulates enough baseline CPU (GC, background threads, request processing) to exceed the daily limit even with no real user traffic. This conflict between F1's CPU quota and always-on monitoring was not identified at design time.
+
+The `/health` liveness endpoint remains in place (correct to keep — useful for manual diagnostics and ready for monitoring if the app ever moves off F1). UptimeRobot monitoring should not be re-enabled while the app stays on F1. See [TD26](technical-debt.md#infrastructure--compute).
 
 ---
 
