@@ -1,5 +1,11 @@
 # UptimeRobot Setup — Uptime Monitoring for TimeTracker
 
+> **⚠ Monitor disabled — 2026-06**
+>
+> The UptimeRobot monitor was paused because pinging `/health` every 5 minutes keeps the .NET process alive 24/7, exhausting Azure F1's 60 CPU-min/day quota even when no real user traffic hits the app. Do not re-enable this monitor while the app runs on F1. See [D019](decisions.md#d019-serilog--health-endpoint--uptimerobot-over-application-insights) and [TD26](technical-debt.md#infrastructure--compute).
+>
+> This setup guide is retained for when the app moves to a paid tier.
+
 UptimeRobot pings the `/health` endpoint every 5 minutes from external servers and emails you if the app goes down. Free tier is sufficient.
 
 ---

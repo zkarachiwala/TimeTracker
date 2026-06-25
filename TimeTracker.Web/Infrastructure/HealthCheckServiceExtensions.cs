@@ -17,8 +17,10 @@ public static class HealthCheckServiceExtensions
 
     public static IEndpointRouteBuilder MapApplicationHealthChecks(this IEndpointRouteBuilder app)
     {
-        // Liveness — no DB ping. Safe for UptimeRobot every 5 min.
-        // Hitting the DB on every external check would prevent Azure SQL auto-pause
+        // Liveness — no DB ping. Do NOT point an external monitor at this while on Azure F1.
+        // A 5-min ping keeps the process alive 24/7 and exhausts the 60 CPU-min/day quota
+        // even with no real user traffic. Re-enable external monitoring only after moving off F1.
+        // Also: hitting the DB on every external check would prevent Azure SQL auto-pause
         // and exhaust the 100,000 free vCore-seconds in ~2 days.
         app.MapHealthChecks("/health", new HealthCheckOptions
         {
