@@ -6,7 +6,7 @@ This document explains the concepts behind the dev container setup in this proje
 
 ## What problem does a dev container solve?
 
-When multiple developers work on a project, "works on my machine" is a constant source of friction. One developer has .NET 8, another has .NET 10. One has SQL Server 2019, another has 2022. One is on Windows, another on macOS.
+When multiple developers work on a project, "works on my machine" is a constant source of friction. One developer has .NET 8, another has .NET 10. One has SQL Server 2022, another has 2025. One is on Windows, another on macOS.
 
 A dev container packages the entire development environment — runtime, database, tools, extensions — into a Docker image. When you open the project in VS Code, it offers to reopen it inside the container. From that point on, everyone who opens the project gets the exact same environment, regardless of what's installed on their machine.
 
