@@ -63,8 +63,12 @@ docker compose logs db        # SQL Server logs
 
 **Three SQL Server instances in this project** — they serve different purposes and never all run simultaneously:
 - Local SQL Server (existing) — local dev outside the container
-- Dev container SQL Server — inside the dev container (Docker)
+- Dev container SQL Server — SQL Server 2025 Developer edition inside the dev container (Docker)
 - Testcontainers SQL Server — spun up only during `Category=Container` tests
+
+**SQL Server 2025 features in use (dev container only):** native `json` data type, `vector` data type, `AI_GENERATE_EMBEDDINGS`, `AI_GENERATE_CHUNKS`, `sp_invoke_external_rest_endpoint`, `REGEXP_*` functions, `EDIT_DISTANCE*`/`JARO_WINKLER_*` fuzzy functions, vector indexes, and Data API Builder / SQL MCP Server. Several of these require `PREVIEW_FEATURES = ON` at the database level — see the DP-800 issues (#208–#223) for setup details per feature.
+
+**Ollama** is the local embedding and chat model provider. It runs on the Windows host; SQL Server 2025 reaches it via `host.docker.internal:11434`. Pull models before working on AI issues: `ollama pull nomic-embed-text` (embeddings) and `ollama pull llama3.2` (chat/RAG).
 
 ## Standard test commands
 
