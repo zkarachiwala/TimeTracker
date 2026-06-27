@@ -12,12 +12,17 @@
 > Entries marked ⚠️ are outdated/deprecated in the current exam.
 > A **"Gaps" section at the bottom** lists exam topics NOT covered by the James Lee course.
 
+> **Video guide:** ❌ SKIP markers reflect recommendations from a Gemini-generated study plan
+> identifying which James Lee lectures are outdated given the course's age. These are video
+> watch decisions only — separate from the hands-on issue strategy.
+
 ## Legend
 - ✅  Covered by an existing issue
 - 🔧  Needs a new issue (gap)
-- 📖  Study only — concept knowledge, no hands-on issue needed
-- ⚠️   Outdated / deprecated in the current exam — read the concept, skip the demo
-- 🔵  Paid tier required — not feasible for free personal project
+- 📖  Watch / study — concept knowledge, no hands-on issue needed for this project
+- ⚠️   Deprecated — skip the demo; read the concept only
+- ❌  SKIP — outdated video; replaced by MS Learn docs or MS-native tooling
+- 🔵  Paid tier required — watch concept videos, no hands-on feasible
 
 ---
 
@@ -121,9 +126,9 @@
 | Demo - Report on Code Coverage in Azure Pipelines (YAML) | ✅ | #234 — exam explicitly tests code coverage analysis |
 | Flaky Tests | ✅ | #244 — exam tests "monitor pipeline health including flaky tests" |
 | Demo - Configure Flaky Tests in Azure Pipelines | ✅ | #244 |
-| Azure Test Plans | 🔵 | Paid licence required — study concepts only |
-| Demo - Setup Azure Test Plans and a Free Trial | 📖 | |
-| Demo - Create a Requirements Based Test Case | 📖 | |
+| Azure Test Plans | 🔵 | Watch — paid licence for hands-on but watch all three concept videos |
+| Demo - Setup Azure Test Plans and a Free Trial | 🔵 | Watch |
+| Demo - Create a Requirements Based Test Case | 🔵 | Watch |
 
 ---
 
@@ -132,17 +137,17 @@
 
 | Lecture | Issue | Notes |
 |---|---|---|
-| ARM Template Overview | ⚠️ | Exam still mentions ARM — study JSON structure, use Bicep (#242) for hands-on |
-| Demo - Deploy a Web App using an ARM Template | ⚠️ | Read only — Bicep is the modern equivalent |
+| ARM Template Overview | 📖 | Watch — exam still tests ARM JSON concepts alongside Bicep |
+| Demo - Deploy a Web App using an ARM Template | 📖 | Watch — Bicep (#242) is the hands-on equivalent |
 | Bicep Templates | ✅ | #242 |
 | Demo - Deploy a Storage Account using a Bicep Template | ✅ | #242 |
 | Advanced Templates | ✅ | #242 — modules, linked templates |
-| Demo - Deploy a Nested ARM Template | ⚠️ | Understand the concept; Bicep modules (#242) are the current approach |
-| Demo - Deploy a Linked ARM Template | ⚠️ | Same |
+| Demo - Deploy a Nested ARM Template | 📖 | Watch — Bicep modules (#242) are the hands-on equivalent |
+| Demo - Deploy a Linked ARM Template | 📖 | Watch |
 | Demo - Deploy an ARM Template in Azure Pipelines (YAML) | ✅ | #242 — Bicep in pipeline |
-| VM Configuration Tools | 📖 | DSC / Desired State Config — exam mentions Azure Automation State Configuration; awareness only for this project |
-| Demo - Automation State Configuration | 📖 | |
-| Azure Automanage | 📖 | Awareness only |
+| VM Configuration Tools | 📖 | Watch — exam tests DSC / Azure Automation State Configuration |
+| Demo - Automation State Configuration | 📖 | Watch |
+| Azure Automanage | 📖 | Watch |
 
 ---
 
@@ -152,13 +157,13 @@
 | Lecture | Issue | Notes |
 |---|---|---|
 | Blue Green Deployments | ✅ | #241 — exam tests blue-green, canary, ring, progressive exposure, A/B |
-| Rolling Deployments | 📖 | F1 tier has no deployment slots — study concept only |
-| Ringed Deployments | 📖 | Study concept only |
+| Rolling Deployments | 📖 | Watch — F1 has no slots but exam tests the concept |
+| Ringed Deployments | 📖 | Watch — exam tests ringed/progressive exposure |
 | Feature Flags | ✅ | #239 — exam explicit: "implement feature flags by using Azure App Configuration Feature Manager" |
-| Deployments with Azure Load Balancer | 📖 | Not applicable to F1 App Service — study concept |
-| Traffic Manager | 📖 | Study concept — exam tests Traffic Manager for multi-region deployments |
-| Demo - Configure Traffic Manager | 📖 | |
-| Deployments with Azure Traffic Manager | 📖 | |
+| Deployments with Azure Load Balancer | 📖 | Watch — not applicable to F1 but exam tests the concept |
+| Traffic Manager | 📖 | Watch — exam tests Traffic Manager for multi-region deployments |
+| Demo - Configure Traffic Manager | 📖 | Watch |
+| Deployments with Azure Traffic Manager | 📖 | Watch |
 | Deployments with Azure App Service | ✅ | #241 / #256 |
 | Azure App Configuration | ✅ | #239 |
 
@@ -173,12 +178,12 @@
 | Demo - Configure and Use Key Vault from a VM | ✅ | #247 — adapt to App Service, not VM |
 | Demo - Push a Container to ACR using a Key Vault Secret | 📖 | No containers in TimeTracker — study concept |
 | Demo - Use Key Vault Secrets in Azure Pipelines CICD (YAML) | ✅ | #247 |
-| Mend Bolt | 🔧 | New issue — SCA/dependency scanning in Azure Pipelines; exam tests "dependency and licensing scanning" (free on Azure DevOps) |
-| Demo - Configure Mend Bolt with Azure Pipelines (YAML) | 🔧 | Part of same issue |
-| SonarCloud | 🔧 | New issue — code quality gate (free for public repos); exam tests "quality and release gates" |
-| Demo - Configure SonarCloud with Azure Pipelines (YAML) | 🔧 | Part of same issue |
-| ZAP | 🔧 | New issue — DAST/OWASP ZAP (free, open source); exam tests "security and governance" gates |
-| Demo - Configure OWASP ZAP with Azure Pipelines (YAML) | 🔧 | Part of same issue |
+| Mend Bolt | ❌ | SKIP video — outdated third-party tool; exam tests MS-native equivalents covered by #248 and MS Learn |
+| Demo - Configure Mend Bolt with Azure Pipelines (YAML) | ❌ | SKIP |
+| SonarCloud | ❌ | SKIP video — exam tests quality gates via GitHub Advanced Security (#248); study concept via MS Learn |
+| Demo - Configure SonarCloud with Azure Pipelines (YAML) | ❌ | SKIP |
+| ZAP | ❌ | SKIP video — exam tests DAST concept; MS-native equivalent is Defender for Cloud (study-only, paid) |
+| Demo - Configure OWASP ZAP with Azure Pipelines (YAML) | ❌ | SKIP |
 | GitHub Code Security | ✅ | #248 — CodeQL, Dependabot, secret scanning |
 | Demo - Configure GitHub Code Security | ✅ | #248 |
 
@@ -190,10 +195,10 @@
 | Lecture | Issue | Notes |
 |---|---|---|
 | Challenges of Large Repos | 📖 | Awareness — exam tests LFS and Scalar concepts |
-| Git LFS | 📖 | Exam explicit — "design and implement a strategy for managing large files, including Git LFS" |
-| Demo - Configure Git LFS with an Azure Repo | 📖 | Study the demo; no large files in TimeTracker to practice on |
-| Scalar | 📖 | Exam explicit — "design a strategy for scaling and optimizing a Git repository, including Scalar" |
-| Demo - Working with Git Scalar | 📖 | |
+| Git LFS | 📖 | Watch — exam explicit: "design and implement a strategy for managing large files, including Git LFS" |
+| Demo - Configure Git LFS with an Azure Repo | 📖 | Watch — no large files in TimeTracker to practice on |
+| Scalar | 📖 | Watch — exam explicit: "design a strategy for scaling and optimizing a Git repository, including Scalar" |
+| Demo - Working with Git Scalar | 📖 | Watch |
 | Git and Deleted Data | ✅ | #232 — exam tests "recover specific data" and "remove specific data from source control" |
 | Demo - Working with Git and Deleted Data | ✅ | #232 |
 | Git Hooks | 🔧 | New issue — client-side hooks (commit-msg, pre-commit); exam explicit via MS Learn module "Explore Git hooks" |
@@ -210,8 +215,8 @@
 |---|---|---|
 | Azure Pipelines Container Jobs | 🔧 | New issue — run build steps inside a container in Azure Pipelines |
 | Demo - Use Container Jobs in Azure Pipelines (YAML) | 🔧 | Part of same issue |
-| Azure Pipeline VMSS Agent Overview | 📖 | Exam tests VMSS agent infrastructure — study concept; Azure VMs too expensive to run |
-| Demo - Configure VMSS Agent Pool for Azure Pipelines | 📖 | |
+| Azure Pipeline VMSS Agent Overview | 📖 | Watch — exam tests VMSS agent infrastructure; too expensive to run hands-on |
+| Demo - Configure VMSS Agent Pool for Azure Pipelines | 📖 | Watch |
 | Azure Pipelines Retention | ✅ | #245 — exam tests "design and implement a retention strategy for pipeline artifacts" |
 | Demo - Exploring Azure Pipelines Retention Settings | ✅ | #245 |
 | Building Modular Azure Pipelines | ✅ | #237 — exam tests "create reusable pipeline elements including YAML templates, task groups, variable groups" |
@@ -266,15 +271,15 @@ These topics appear in the **official AZ-400 study guide (July 2026)** but have 
 | G2 | Azure Pipelines variable groups (incl. Key Vault-linked) | 🔧 | "Create reusable pipeline elements including variables and variable groups" |
 | G3 | Playwright / UI tests in Azure Pipelines | 🔧 | "Implement tests in a pipeline including configuring test agents" |
 | G4 | Azure Pipelines pipeline caching | 🔧 | "Optimize a pipeline for cost, time, performance" |
-| G5 | Mend Bolt — SCA/dependency scanning in Azure Pipelines | 🔧 | "Automate analysis of vulnerabilities of open-source components" |
-| G6 | SonarCloud — code quality gate | 🔧 | "Design and implement quality and release gates" |
-| G7 | OWASP ZAP — DAST in pipeline | 🔧 | "Design a strategy for security and compliance scanning" |
+| G5 | Mend Bolt — SCA/dependency scanning | 📖 | Video skipped (outdated); study concept via MS Learn — MS-native equivalent is Dependabot (#248) |
+| G6 | SonarCloud — code quality gate | 📖 | Video skipped (outdated); study concept via MS Learn — quality gates covered conceptually by #234 |
+| G7 | OWASP ZAP — DAST in pipeline | 📖 | Video skipped (outdated); study concept via MS Learn — MS-native equivalent is Defender for Cloud |
 | G8 | Git hooks (client-side) | 🔧 | MS Learn AZ-400 path has a dedicated "Explore Git hooks" module |
 | G9 | Azure DevOps Service Hooks + DORA dashboard | 🔧 | "Configure integration by using webhooks" + DORA metrics in Azure DevOps |
 | G10 | Classic → YAML pipeline migration | ✅ | #252 can include this — "Migrate a pipeline from classic to YAML" is exam explicit |
-| G11 | Microsoft Defender for Cloud DevOps Security | 🔧 | New exam topic (July 2026): "Configure Microsoft Defender for Cloud DevOps Security" |
-| G12 | GitHub Advanced Security for Azure DevOps | ✅ | Extend #248 — exam tests "configure GitHub Advanced Security for GitHub **and** Azure DevOps" |
-| G13 | Azure Pipelines Secure Files | 🔧 | New exam topic: "design a strategy for managing sensitive files during deployment, including Azure Pipelines secure files" |
+| G11 | Microsoft Defender for Cloud DevOps Security | 📖 | ~$15/resource/month — not feasible; study concept via MS Learn and extend #248 notes |
+| G12 | GitHub Advanced Security for Azure DevOps | 📖 | $49/committer/month — not feasible; extend #248 with a study-only section on GHAzDO vs GitHub.com |
+| G13 | Azure Pipelines Secure Files | ✅ | Free — #275 |
 | G14 | Inner source / fork workflows | 📖 | MS Learn module: "Plan to foster inner source"; study only for personal project |
 | G15 | GitHub monitoring/insights | 🔧 | Exam: "configure monitoring in GitHub, including enabling insights and creating charts" — extend #229 |
 | G16 | Container image scanning in pipeline | 📖 | Exam: "automate container scanning" — no containers in TimeTracker; study concept |
@@ -287,10 +292,10 @@ These topics appear in the **official AZ-400 study guide (July 2026)** but have 
 
 | Status | Count |
 |---|---|
-| ✅ Covered by existing issues (#225–#256) | ~90 lectures + 5 exam gaps already covered |
-| 🔧 Needs new issue | 11 gaps (G1–G9, G11, G13, G15) |
-| 📖 Study only | ~20 lectures + G14, G16 |
-| ⚠️ Outdated / deprecated | ~8 lectures (Classic pipelines, ARM JSON demos) |
-| 🔵 Paid tier required | ~3 lectures (Azure Test Plans) |
+| ✅ Covered by existing issues (#225–#256, #new) | ~90 lectures + 6 exam gaps covered |
+| 🔧 Needs new issue | 8 gaps (G1–G4, G8, G9, G15, + container jobs) |
+| 📖 Watch / study only | ~35 lectures + G5, G6, G7, G11, G12, G14, G16 |
+| ❌ SKIP (outdated video) | 9 lectures (Classic pipelines x3, Mend/Sonar/ZAP x6) |
+| 🔵 Paid tier — watch only | 3 lectures (Azure Test Plans) |
 
 *Updated 2026-06-27. Based on James Lee's AZ-400 Udemy course cross-referenced with the official AZ-400 study guide (July 27, 2026) and AZ-400T00 course outline.*
