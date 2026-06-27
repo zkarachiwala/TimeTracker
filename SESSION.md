@@ -3,6 +3,24 @@
 ## Completed this session
 - ✅ **#207 Upgrade dev container SQL Server 2022 → 2025** — merged
 - ✅ Created 16 DP-800 exam learning issues (#208–#223) — all added to project board at Medium priority
+- ✅ Created 16 additional DP-800 gap issues (#258–#273) from Udemy course map — all added to project board
+  - #258: SEQUENCE objects (section 5)
+  - #259: Views and Instead-of triggers (section 6)
+  - #260: Correlated subqueries and recursive CTEs (section 7)
+  - #261: Error handling and scalar functions (section 8)
+  - #262: Graph tables with MATCH (section 12)
+  - #263: Indexes, SARGable queries, execution plans (section 13)
+  - #264: Table partitioning on TimeEntries (section 13)
+  - #265: Columnstore indexes (section 13)
+  - #266: In-memory, external, and ledger tables (section 14)
+  - #267: Data encryption, permissions, and RLS (section 17)
+  - #268: SQL Server auditing (section 17)
+  - #269: Locking, blocking, isolation levels (section 18)
+  - #270: Unit testing and reference data in SQL Projects (section 19)
+  - #271: Azure Monitor metric alerts for SQL (section 21)
+  - #272: CDC, Change Tracking, and CES (section 26)
+  - #273: Azure Functions and Logic Apps with SQL (section 26)
+- ✅ Created `~/dp800-course-map.md` (outside source control) mapping all 170 Udemy lectures to issues
 - ✅ Created AZ-400 GitHub label
 - ✅ Created 27 AZ-400 exam learning issues (#225–#251) — all added to project board at Medium priority
   - #225: Budget alert (tagged DP-800 + AZ-400 — do this first before incurring any Azure costs)
@@ -204,4 +222,4 @@ All issues follow the learning exercise format: read-first links, YOUR task (you
 | #251 | KQL queries for operational metrics | Instrumentation |
 
 ---
-*Updated 2026-06-27. SQL Server 2025 upgrade merged (#207). 16 DP-800 learning issues created (#208–#223). 27 AZ-400 learning issues (#225–#251) + 5 Azure DevOps issues (#252–#256) created. Next: start DP-800 from #208. For AZ-400, start with #225 (budget alert) before incurring any Azure costs.*
+*Updated 2026-06-27. SQL Server 2025 upgrade merged (#207). 32 DP-800 learning issues (#208–#223, #258–#273) + 27 AZ-400 issues (#225–#251) + 5 Azure DevOps issues (#252–#256) created. Full Udemy course mapped to issues in `~/dp800-course-map.md`. Next: start DP-800 from #208 working sequentially through the course. For AZ-400, start with #225 (budget alert) before incurring any Azure costs.*
