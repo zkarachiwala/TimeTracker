@@ -1,12 +1,27 @@
 # Session handoff — 2026-06-27
 
 ## Completed this session
-- ✅ **#207 Upgrade dev container SQL Server 2022 → 2025** — PR open (branch `chore/upgrade-sqlserver-2025`)
+- ✅ **#207 Upgrade dev container SQL Server 2022 → 2025** — merged
 - ✅ Created 16 DP-800 exam learning issues (#208–#223) — all added to project board at Medium priority
+- ✅ Created AZ-400 GitHub label
+- ✅ Created 27 AZ-400 exam learning issues (#225–#251) — all added to project board at Medium priority
+  - #225: Budget alert (tagged DP-800 + AZ-400 — do this first before incurring any Azure costs)
+  - #226–#229: Processes & communications (wiki, release notes, Teams webhook, DORA metrics)
+  - #230–#232: Source control (branch protection, SemVer, git recovery)
+  - #233–#245: Build & release pipelines (packages, coverage, load test, environments, templates, runner, feature flags, migrations, blue-green, Bicep, ADE, pipeline health, retention)
+  - #246–#249: Security & compliance (OIDC, Key Vault, CodeQL, Managed Identity)
+  - #250–#251: Instrumentation (App Insights, KQL)
+- ✅ Created Azure DevOps label and 5 Azure DevOps issues (#252–#256) — all tagged AZ-400 + Azure DevOps
+  - #252: Azure Pipelines YAML CI (parallel to GitHub Actions)
+  - #253: Azure Boards — work items, sprints, AB# commit linking
+  - #254: Azure Repos — branch policies, build validation
+  - #255: Azure Artifacts — NuGet feed with upstream sources
+  - #256: Azure Pipelines environments, approvals, deployment jobs
+- ✅ Reformatted all 27 AZ-400 issues (#225–#251) to match DP-800 format (blockquote exam objective, Your task, Explore with hands-on commands, Exam checkpoint)
 
 ## DP-800 exam — learning issues (study guide order)
 
-Exam date: **6 August 2026**. All issues are fully local: SQL Server 2025 Developer + Ollama.
+All issues are fully local: SQL Server 2025 Developer + Ollama.
 
 ### Design and develop database solutions (35–40%)
 
@@ -154,5 +169,39 @@ git status
 cat SESSION.md
 ```
 
+## AZ-400 exam — learning issues (study guide order)
+
+All issues follow the learning exercise format: read-first links, YOUR task (you do the work), how to verify, and exam checkpoint questions.
+
+| # | Title | Skill area |
+|---|-------|-----------|
+| #225 | Budget alert (DP-800 + AZ-400) | Prerequisite — do first |
+| #226 | Mermaid architecture diagrams in wiki | Processes & comms |
+| #227 | Automated release notes from git history | Processes & comms |
+| #228 | GitHub → Teams webhook for CI/deploy events | Processes & comms |
+| #229 | DORA metrics dashboard | Processes & comms |
+| #230 | Branch protection rules and CODEOWNERS | Source control |
+| #231 | SemVer tagging strategy and automated version bump | Source control |
+| #232 | Git data recovery (reflog, bisect, revert, filter-repo) | Source control |
+| #233 | Publish TimeTracker.Contracts to GitHub Packages | Pipelines |
+| #234 | Code coverage with Coverlet and CI quality gate | Pipelines |
+| #235 | k6 load test in CI pipeline | Pipelines |
+| #236 | Multi-stage pipeline with GitHub Environments + approval gates | Pipelines |
+| #237 | Reusable YAML workflow templates | Pipelines |
+| #238 | Self-hosted GitHub Actions runner in Docker | Pipelines |
+| #239 | Feature flags with Azure App Configuration | Pipelines |
+| #240 | EF Core migrations as explicit pipeline step | Pipelines |
+| #241 | Blue-green deployment docs + feature flag simulation | Pipelines |
+| #242 | Bicep templates for full Azure infrastructure | Pipelines / IaC |
+| #243 | Azure Deployment Environments for PR environments | Pipelines / IaC |
+| #244 | Pipeline health (failure rate, flaky tests) | Pipelines |
+| #245 | Pipeline artifact retention policy | Pipelines |
+| #246 | OIDC workload identity federation (replace PAT) | Security |
+| #247 | Azure Key Vault for secrets | Security |
+| #248 | CodeQL and GitHub Advanced Security | Security |
+| #249 | Managed Identity for App Service → Azure SQL | Security |
+| #250 | Application Insights instrumentation | Instrumentation |
+| #251 | KQL queries for operational metrics | Instrumentation |
+
 ---
-*Updated 2026-06-27. SQL Server 2025 upgrade PR open (#207). 16 DP-800 learning issues created (#208–#223). Next: merge #207, then start DP-800 issues in study guide order from #208.*
+*Updated 2026-06-27. SQL Server 2025 upgrade merged (#207). 16 DP-800 learning issues created (#208–#223). 27 AZ-400 learning issues (#225–#251) + 5 Azure DevOps issues (#252–#256) created. Next: start DP-800 from #208. For AZ-400, start with #225 (budget alert) before incurring any Azure costs.*
