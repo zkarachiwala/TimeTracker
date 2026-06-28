@@ -25,7 +25,13 @@
                 @Initials
             </MudAvatar>
             <div class="flex-1" style="min-width:0">
-                <MudText Typo="Typo.h6" Style="line-height:1.2">@project.Name</MudText>
+                <div class="d-flex align-baseline gap-2">
+                    <MudText Typo="Typo.h6" Style="line-height:1.2">@project.Name</MudText>
+                    @if (!string.IsNullOrEmpty(project.RefCode))
+                    {
+                        <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-disabled)">@project.RefCode</MudText>
+                    }
+                </div>
                 <MudText Typo="Typo.caption">@(project.ClientName ?? "No client")</MudText>
             </div>
         </div>

@@ -10,4 +10,6 @@ public class Client : SoftDeleteableEntity
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
     public List<Project> Projects { get; set; } = [];
+    public int ClientSeqId { get; set; }
+    public string RefCode { get; set; } = string.Empty;
 }

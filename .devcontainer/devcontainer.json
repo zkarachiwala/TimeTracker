@@ -9,11 +9,15 @@
   "mounts": [
     "source=${localEnv:HOME}/.microsoft/usersecrets,target=/home/vscode/.microsoft/usersecrets,type=bind,consistency=cached,readonly"
   ],
-  "forwardPorts": [5019],
+  "forwardPorts": [5019, 1434],
   "portsAttributes": {
     "5019": {
       "label": "TimeTracker App",
       "onAutoForward": "notify"
+    },
+    "1434": {
+      "label": "SQL Server (dev container)",
+      "onAutoForward": "silent"
     }
   },
   "postCreateCommand": "dotnet tool install --global dotnet-ef && dotnet restore TimeTracker.sln && dotnet ef database update --project TimeTracker.Web --context TimeTrackerDataContext && dotnet ef database update --project TimeTracker.Web --context IdentityDataContext",

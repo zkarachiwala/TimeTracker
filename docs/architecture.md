@@ -95,6 +95,22 @@ Two EF Core `DbContext`s, both targeting **SQL Server** (`TimeTrackerDb`):
 - `TimeEntry` stores `UserId` (string) rather than a navigation property to avoid cascade delete issues
 - **Mapster** handles entity ↔ DTO mapping, configured via per-feature `IRegister` classes scanned at startup
 
+### Row-Level Security
+
+RLS is applied to `app.TimeEntries`, `app.ProjectUsers`, and `app.Projects` via SQL Server security policies. `UserSessionContextInterceptor` sets `SESSION_CONTEXT(N'UserId')` before every EF Core command; the filter predicate functions read this value to restrict rows to the current user.
+
+**SA is not automatically exempt from RLS.** SQL Server applies security policies to all users including `sa` and `sysadmin` — there is no automatic bypass. The filter functions include `OR IS_MEMBER('db_owner') = 1` so that `sa` (which is `db_owner`) can query app tables in SSMS without needing to set session context first.
+
+**Querying from SSMS:** No setup needed — `sa` bypasses RLS via the `db_owner` check above.
+
+**Production:** The app database user is not `db_owner`, so the exemption has no effect in production.
+
+### Reference codes (PROJ-nnn / CLI-nnn)
+
+`Project` and `Client` each have a sequence-backed reference code: `seq_ProjectRef` → `PROJ-001`, `seq_ClientRef` → `CLI-001`. The sequence generates an integer (`ProjectSeqId` / `ClientSeqId`) stored in the row; a computed stored column formats it into the display string (`RefCode`).
+
+**Gaps are expected.** SQL Server sequences default to `CACHE 50` — 50 values are pre-allocated per block. If the server restarts before all 50 are used, unused values in that block are discarded and the next block starts at the next multiple of 50. A new client after 5 existing ones may get `CLI-051` rather than `CLI-006`. This is by design and a known DP-800 exam point: sequence values are never rolled back, and cached values are lost on restart. Gaps are acceptable for internal reference codes.
+
 ### Architecture
 
 **Vertical Slice Architecture** — no controllers, no repository layer.

@@ -130,4 +130,5 @@ app.MapClientEndpoints();
 app.MapAuthEndpoints();
 app.MapAdminEndpoints();
 
+
 app.Run();

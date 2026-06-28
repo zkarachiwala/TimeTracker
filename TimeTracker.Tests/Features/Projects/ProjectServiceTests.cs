@@ -314,6 +314,33 @@ public class ProjectServiceTests
             CreateService(options).UpdateProject(999, new ProjectUpdateRequest { Name = "Updated" }));
     }
 
+    [Fact]
+    public async Task CreateProject_DoesNotSetRefCode()
+    {
+        var options = CreateOptions();
+
+        await CreateService(options).CreateProject(new ProjectCreateRequest { Name = "New Project" });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(string.Empty, context.Projects.Single().RefCode);
+    }
+
+    [Fact]
+    public async Task UpdateProject_DoesNotModifyRefCode()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        project.RefCode = "PROJ-001";
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).UpdateProject(project.Id, new ProjectUpdateRequest { Name = "Updated Name", HourlyRate = 200m });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal("PROJ-001", context.Projects.Single().RefCode);
+    }
+
     // --- GetDeletedProjects / RestoreProject ---
 
     [Fact]
