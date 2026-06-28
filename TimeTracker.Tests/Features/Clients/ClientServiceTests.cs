@@ -197,6 +197,33 @@ public class ClientServiceTests
     }
 
     [Fact]
+    public async Task CreateClient_DoesNotSetRefCode()
+    {
+        var options = CreateOptions();
+
+        await CreateService(options).CreateClient(new ClientCreateRequest { Name = "New Client" });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(string.Empty, context.Clients.Single().RefCode);
+    }
+
+    [Fact]
+    public async Task UpdateClient_DoesNotModifyRefCode()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var client = MakeClient("Acme");
+        client.RefCode = "CLI-001";
+        seed.Clients.Add(client);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).UpdateClient(client.Id, new ClientUpdateRequest { Name = "Acme Updated", DefaultHourlyRate = 200m });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal("CLI-001", context.Clients.Single().RefCode);
+    }
+
+    [Fact]
     public async Task ArchiveClient_SetsIsArchived()
     {
         var options = CreateOptions();

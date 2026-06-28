@@ -10,7 +10,8 @@ public record ClientResponse(
     decimal? AwardRate,
     string? ContactName,
     string? ContactEmail,
-    string? ContactPhone
+    string? ContactPhone,
+    string RefCode = ""
 );
 
 public class ClientRequest

@@ -25,6 +25,29 @@ public class TimeTrackerDataContext : DbContext
         modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.DefaultHourlyRate).HasPrecision(18, 2);
         modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.AwardRate).HasPrecision(18, 2);
         modelBuilder.Entity<Project>().Property(p => p.HourlyRate).HasPrecision(18, 2);
+
+        // Sequence numbering
+
+        modelBuilder.HasSequence<int>("seq_ProjectRef", schema: "app")
+            .StartsAt(1).IncrementsBy(1);
+
+        modelBuilder.Entity<Project>().Property(p => p.ProjectSeqId)
+            .HasDefaultValueSql("NEXT VALUE FOR app.seq_ProjectRef");
+
+        modelBuilder.Entity<Project>().Property(p => p.RefCode)
+            .HasComputedColumnSql("'PROJ-' + RIGHT('000' + CAST(ProjectSeqId AS VARCHAR(10)), 3)", stored: true)
+            .HasMaxLength(20);
+
+        modelBuilder.HasSequence<int>("seq_ClientRef", schema: "app")
+            .StartsAt(1).IncrementsBy(1);
+
+        modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.ClientSeqId)
+            .HasDefaultValueSql("NEXT VALUE FOR app.seq_ClientRef");
+            
+        modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.RefCode)
+            .HasComputedColumnSql("'CLI-' + RIGHT('000' + CAST(ClientSeqId AS VARCHAR(10)), 3)", stored: true)
+            .HasMaxLength(20);
+
         base.OnModelCreating(modelBuilder);
     }
 

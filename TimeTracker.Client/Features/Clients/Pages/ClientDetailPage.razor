@@ -22,7 +22,13 @@
                 @client.Name[..Math.Min(2, client.Name.Length)].ToUpper()
             </MudAvatar>
             <div class="flex-1" style="min-width:0">
-                <MudText Typo="Typo.h6" Style="line-height:1.2">@client.Name</MudText>
+                <div class="d-flex align-baseline gap-2">
+                    <MudText Typo="Typo.h6" Style="line-height:1.2">@client.Name</MudText>
+                    @if (!string.IsNullOrEmpty(client.RefCode))
+                    {
+                        <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-disabled)">@client.RefCode</MudText>
+                    }
+                </div>
                 @if (client.IsArchived)
                 {
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:20px; font-size:.7rem">archived</MudChip>

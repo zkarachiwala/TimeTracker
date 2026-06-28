@@ -10,7 +10,8 @@ public record ProjectResponse(
     decimal? HourlyRate,
     string? Description,
     DateTime? StartDate,
-    DateTime? EndDate
+    DateTime? EndDate,
+    string RefCode = ""
 );
 
 public class ProjectRequest

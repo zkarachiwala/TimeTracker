@@ -11,4 +11,6 @@ public class Project : SoftDeleteableEntity
     public DateTime? EndDate { get; set; }
     public List<TimeEntry>? TimeEntries { get; set; } = [];
     public List<ProjectUser> ProjectUsers { get; set; } = [];
+    public int ProjectSeqId { get; set; }
+    public string RefCode { get; set; } = string.Empty;
 }
