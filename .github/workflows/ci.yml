@@ -42,7 +42,7 @@ jobs:
 
       - name: Restore
         if: steps.changes.outputs.code == 'true'
-        run: dotnet restore TimeTracker.sln
+        run: dotnet restore TimeTracker.sln --locked-mode
 
       - name: Build
         if: steps.changes.outputs.code == 'true'
