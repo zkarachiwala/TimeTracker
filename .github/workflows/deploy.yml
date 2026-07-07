@@ -70,7 +70,7 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore TimeTracker.sln
+        run: dotnet restore TimeTracker.sln --locked-mode
 
       - name: Publish
         run: >
