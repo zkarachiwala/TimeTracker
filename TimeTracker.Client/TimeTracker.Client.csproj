@@ -4,6 +4,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TimeTracker.Client</RootNamespace>
+    <!-- The SDK pins this implicit package to the exact restoring SDK version ($(NETCoreSdkVersion)),
+         which breaks packages.lock.json the moment CI and local dev run different SDK patches. -->
+    <WasmEnableHotReload>false</WasmEnableHotReload>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.9" />

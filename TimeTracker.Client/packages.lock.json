@@ -54,12 +54,6 @@
           "Microsoft.JSInterop.WebAssembly": "10.0.9"
         }
       },
-      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
-        "type": "Direct",
-        "requested": "[10.0.109, )",
-        "resolved": "10.0.109",
-        "contentHash": "LKdYZXWIbRvQc542PCFdr3krH2rvaHHn/1dbXMtS2pggvpoPCmqghAvhiyZnatk6WR4K+ZeR+wirEhwrgVnECw=="
-      },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
         "requested": "[10.0.9, )",
