@@ -111,6 +111,12 @@
           "Microsoft.EntityFrameworkCore.Relational": "10.0.9"
         }
       },
+      "Microsoft.OpenApi": {
+        "type": "Direct",
+        "requested": "[2.7.6, )",
+        "resolved": "2.7.6",
+        "contentHash": "suM/dwWsQC8DEOcTeLQvKpXP0c2j/hllKD++IqCavZENr8Df1IgVDMCJRMZd2pGI1NSxMDWrhuPQXG+ZMRrSZA=="
+      },
       "MudBlazor": {
         "type": "Direct",
         "requested": "[9.6.0, )",
@@ -401,11 +407,6 @@
         "type": "Transitive",
         "resolved": "10.0.9",
         "contentHash": "4G0A7GuQrtCAes8PuJPTDUcy+lCrxHWjr8ZlkDOa4h8a2Txj1XdhbXKLnld2vMY5EyZNC5jZXxa1xTD/AOCUlw=="
-      },
-      "Microsoft.OpenApi": {
-        "type": "Transitive",
-        "resolved": "2.0.0",
-        "contentHash": "GGYLfzV/G/ct80OZ45JxnWP7NvMX1BCugn/lX7TH5o0lcVaviavsLMTxmFV2AybXWjbi3h6FF1vgZiTK6PXndw=="
       },
       "Microsoft.SqlServer.Server": {
         "type": "Transitive",
