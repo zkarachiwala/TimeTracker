@@ -4,6 +4,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TimeTracker.Client</RootNamespace>
+    <!-- Excluded from lock-file enforcement (see Directory.Build.props): this WASM project's
+         SDK-implicit packages (hot reload agent, ILLink tasks) are pinned to or hashed against
+         the exact restoring SDK build, which makes packages.lock.json fail across environments
+         running different SDK installations even at identical version numbers. -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.9" />
