@@ -360,8 +360,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.103",
-        "contentHash": "tIq6T4oyBMjxxxllslJu2fOJqEj8SOW29IfWqHYxubreOVlFWnxPN2PjDMuwoHjkrOnPKyuqoNcVYh5YOZcs0Q=="
+        "resolved": "10.0.109",
+        "contentHash": "LKdYZXWIbRvQc542PCFdr3krH2rvaHHn/1dbXMtS2pggvpoPCmqghAvhiyZnatk6WR4K+ZeR+wirEhwrgVnECw=="
       },
       "Microsoft.EntityFrameworkCore": {
         "type": "Transitive",
@@ -992,7 +992,7 @@
           "Heron.MudTotalCalendar": "[4.0.0, )",
           "Microsoft.AspNetCore.Components.Authorization": "[10.0.9, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.9, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.103, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.109, )",
           "MudBlazor": "[9.6.0, )",
           "TimeTracker.Contracts": "[1.0.0, )"
         }
