@@ -915,8 +915,8 @@
       },
       "System.Linq.Dynamic.Core": {
         "type": "Transitive",
-        "resolved": "1.7.2",
-        "contentHash": "11SGBy8DCywOVElSs2J+Cd4WFHruFrBnaaQ86q2HWHBGcCAQDLnbA0ivpFvMeXGPqcEPE+Q3HZtXaXN4F8JLQg=="
+        "resolved": "1.7.3",
+        "contentHash": "0m52+B4Jce/9AXLXPZnnFW7NeLotHBuYvbsVF3D/DTvvbCGJZdskPn5xjr5sjnnFI3XekNdPqG2djyJE3UU7SA=="
       },
       "System.Memory.Data": {
         "type": "Transitive",
@@ -1024,7 +1024,7 @@
           "PublicHoliday": "[3.13.0, )",
           "Scalar.AspNetCore": "[2.16.11, )",
           "Serilog.AspNetCore": "[10.0.0, )",
-          "System.Linq.Dynamic.Core": "[1.7.2, )",
+          "System.Linq.Dynamic.Core": "[1.7.3, )",
           "TimeTracker.Client": "[1.0.0, )",
           "TimeTracker.Contracts": "[1.0.0, )",
           "TimeTracker.Shared": "[1.0.0, )"
