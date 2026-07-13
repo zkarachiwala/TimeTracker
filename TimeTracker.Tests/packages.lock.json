@@ -782,8 +782,8 @@
       },
       "Scalar.AspNetCore": {
         "type": "Transitive",
-        "resolved": "2.16.10",
-        "contentHash": "dJsam1uxJ+h6YzaqDGjja1y3miyBd4VDumMwwow03yJapiRp3OtV5lMaOUvp8w5b16gAflYyvfj7HDL+0X2Rqw=="
+        "resolved": "2.16.11",
+        "contentHash": "Sa7aHHX3x6qJo/nCOf0MPTi+Nl8tihiEDqWw7mRMajFn6KKElZyM4CP4C6ptUBPFfBWN61dvYcuMe8yWJaeYsA=="
       },
       "Serilog": {
         "type": "Transitive",
@@ -1022,7 +1022,7 @@
           "Microsoft.OpenApi": "[2.7.6, )",
           "MudBlazor": "[9.6.0, )",
           "PublicHoliday": "[3.13.0, )",
-          "Scalar.AspNetCore": "[2.16.10, )",
+          "Scalar.AspNetCore": "[2.16.11, )",
           "Serilog.AspNetCore": "[10.0.0, )",
           "System.Linq.Dynamic.Core": "[1.7.2, )",
           "TimeTracker.Client": "[1.0.0, )",
