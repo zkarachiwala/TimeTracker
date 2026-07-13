@@ -47,6 +47,12 @@ Every entry records a decision that was forced by a constraint (cost, tier limit
 |---|--------|----------|-----------|-------------|-----------------|
 | TD21 | | No CDN, WAF, or custom domain | Azure App Service F1 free tier does not support custom domains. Cloudflare free tier URL redirections do not work. The app is served directly at `timetracker-zak.azurewebsites.net`. | No custom domain. No CDN caching. No DDoS mitigation. No WAF. | Upgrade App Service to at least Basic (B1) to unlock custom domain binding, then add Cloudflare free plan (CDN + basic DDoS) or Azure Front Door for WAF. See [D017](decisions.md#d017-cloudflare-free-plan-over-paid-cdnwaf). |
 
+### Dependencies
+
+| # | Status | Decision | Constraint | Consequence | Proper solution |
+|---|--------|----------|-----------|-------------|-----------------|
+| TD27 | | `Microsoft.OpenApi` pinned to the 2.x line, major-version bumps ignored in Dependabot | `Microsoft.AspNetCore.OpenApi` 10.0.9 (ASP.NET Core's built-in OpenAPI generation) declares a dependency on `Microsoft.OpenApi >= 2.0.0`, not 3.x. Upstream release notes for `Microsoft.OpenApi` 3.0.0 state 3.x support "will be implemented in a future version of ASP.NET". Taking 3.x now risks breaking Swagger generation. | Dependabot PR #290 (2.7.6 → 3.8.0) was closed. `.github/dependabot.yml` now ignores `semver-major` updates for `Microsoft.OpenApi`, so it will not resurface until manually revisited. No automated signal exists for when ASP.NET Core adds 3.x support. | Revisit when `Microsoft.AspNetCore.OpenApi` itself gets bumped to a version that requires `Microsoft.OpenApi` 3.x (a NuGet restore conflict at that point is the natural trigger) — then remove the ignore rule and take the major bump. |
+
 ---
 
 ## Resolved
