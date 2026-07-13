@@ -24,3 +24,9 @@ updates:
           - "Microsoft.EntityFrameworkCore*"
           - "Microsoft.AspNetCore.Identity.EntityFrameworkCore"
           - "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"
+    ignore:
+      # Microsoft.AspNetCore.OpenApi 10.0.9 pins Microsoft.OpenApi >= 2.0.0 and has not
+      # been updated for the 3.x line yet (upstream release notes: 3.x support lands in
+      # a future ASP.NET Core version). Stay on 2.x until that catches up.
+      - dependency-name: "Microsoft.OpenApi"
+        update-types: ["version-update:semver-major"]
