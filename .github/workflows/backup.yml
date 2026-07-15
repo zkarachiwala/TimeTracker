@@ -92,8 +92,12 @@ jobs:
 
       - name: Push to private backup repo
         run: |
+          set -x
           git clone https://x-access-token:${{ secrets.BACKUP_REPO_TOKEN }}@github.com/${{ github.repository_owner }}/${{ vars.BACKUP_REPO_NAME }}.git backup-repo
+          echo "clone exit: $?"
+          ls -la backup-repo
           cp ${{ steps.export.outputs.file }} backup-repo/
+          echo "cp exit: $?"
           cd backup-repo
           find . -name "backup-*.bacpac" | while read f; do
             d=$(basename "$f" .bacpac | sed 's/backup-//')
@@ -102,8 +106,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add .
+          git status
           git diff --staged --quiet || git commit -m "backup: ${{ steps.export.outputs.file }}"
-          git push
+          echo "commit exit: $?"
+          GIT_CURL_VERBOSE=1 git push
+          echo "push exit: $?"
 
       - name: Close SQL firewall
         if: always()
