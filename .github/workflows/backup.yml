@@ -92,25 +92,21 @@ jobs:
 
       - name: Push to private backup repo
         run: |
-          set -x
           git clone https://x-access-token:${{ secrets.BACKUP_REPO_TOKEN }}@github.com/${{ github.repository_owner }}/${{ vars.BACKUP_REPO_NAME }}.git backup-repo
-          echo "clone exit: $?"
-          ls -la backup-repo
           cp ${{ steps.export.outputs.file }} backup-repo/
-          echo "cp exit: $?"
           cd backup-repo
           find . -name "backup-*.bacpac" | while read f; do
             d=$(basename "$f" .bacpac | sed 's/backup-//')
-            [[ $(date -d "$d" +%s 2>/dev/null) -lt $(date -d "30 days ago" +%s) ]] && rm "$f"
+            filedate=$(date -d "$d" +%s 2>/dev/null) || continue
+            if [ "$filedate" -lt "$(date -d "30 days ago" +%s)" ]; then
+              rm "$f"
+            fi
           done
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add .
-          git status
           git diff --staged --quiet || git commit -m "backup: ${{ steps.export.outputs.file }}"
-          echo "commit exit: $?"
-          GIT_CURL_VERBOSE=1 git push
-          echo "push exit: $?"
+          git push
 
       - name: Close SQL firewall
         if: always()
