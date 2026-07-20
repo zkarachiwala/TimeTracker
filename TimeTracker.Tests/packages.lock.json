@@ -200,8 +200,8 @@
       },
       "Microsoft.AspNetCore.Authentication.Google": {
         "type": "Transitive",
-        "resolved": "10.0.9",
-        "contentHash": "xqjTc8/ap0dwKmdaqSlV8RxjXb02uQ8rynDtTuHRU2gmOYaNm6O+uUjobp4Ararzq0ndKNXiWnQErxjWEGFGiA=="
+        "resolved": "10.0.10",
+        "contentHash": "9jjUYgbZE7z9YSNpgYbU5L6cUHHhzfT6RUT00euTXA3HAxo5nJjqc2YTx1qj2Z+f30fVmjx9uG3YgISw5oMC2w=="
       },
       "Microsoft.AspNetCore.Authorization": {
         "type": "Transitive",
@@ -1010,7 +1010,7 @@
         "type": "Project",
         "dependencies": {
           "Mapster": "[10.0.10, )",
-          "Microsoft.AspNetCore.Authentication.Google": "[10.0.9, )",
+          "Microsoft.AspNetCore.Authentication.Google": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.QuickGrid": "[10.0.9, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Server": "[10.0.9, )",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.9, )",
