@@ -187,16 +187,16 @@
       },
       "Mapster": {
         "type": "Transitive",
-        "resolved": "10.0.10",
-        "contentHash": "kAMFaMKi13GxNXmpd9JiTYXjZD5B1+UN5eCke3E4hrCZLwNPyMCOF7CGyZvuiEJHfq2/ZWsXnqUR9PIZ1viB1A==",
+        "resolved": "10.0.11",
+        "contentHash": "MesrjeIg4lyaxJKVFHysc1GH4TooIuuY/RJRCgBPoFwDD3D1tngF362cKBkxhxR/8EhpfMfGLeU4nzCEz6hPaQ==",
         "dependencies": {
-          "Mapster.Core": "10.0.10"
+          "Mapster.Core": "10.0.11"
         }
       },
       "Mapster.Core": {
         "type": "Transitive",
-        "resolved": "10.0.10",
-        "contentHash": "EsBABlsVcE/25SJQx4pi+6LB6jwih3mTpedWD9X8aybvunpDIRS5tQErdJLY7tfpDTA2xTmnCre/qwcAxNcbmw=="
+        "resolved": "10.0.11",
+        "contentHash": "vpChY4hsk+CvIR3AFN/uQJkkP6gwYSUZFnuqgWBiTTbThbFEnB6chP7QUoSWZBcuPAnOjol09Ev7F1PVwECAIg=="
       },
       "Microsoft.AspNetCore.Authentication.Google": {
         "type": "Transitive",
@@ -230,11 +230,11 @@
       },
       "Microsoft.AspNetCore.Components.Authorization": {
         "type": "Transitive",
-        "resolved": "10.0.9",
-        "contentHash": "02LpaCwhK+zwy20T2Bs9w1hlpuICwdOeLAm6qFF33cWYg4Q1vNwkZqKnsvnpCqMDTU8ynPhqMfz5ccfZAAa0vg==",
+        "resolved": "10.0.10",
+        "contentHash": "em2xVQkvtn3BHFT3J9pp4K3yDgPnp0S5a+gcGxb6xkjqy+81yDa8XEEaQnkruCVRusFMltORFFmnlrnHa/A90w==",
         "dependencies": {
-          "Microsoft.AspNetCore.Authorization": "10.0.9",
-          "Microsoft.AspNetCore.Components": "10.0.9"
+          "Microsoft.AspNetCore.Authorization": "10.0.10",
+          "Microsoft.AspNetCore.Components": "10.0.10"
         }
       },
       "Microsoft.AspNetCore.Components.Forms": {
@@ -990,7 +990,7 @@
         "dependencies": {
           "Heron.MudCalendar": "[4.0.0, )",
           "Heron.MudTotalCalendar": "[4.0.0, )",
-          "Microsoft.AspNetCore.Components.Authorization": "[10.0.9, )",
+          "Microsoft.AspNetCore.Components.Authorization": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.9, )",
           "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.109, )",
           "MudBlazor": "[9.7.0, )",
@@ -1009,7 +1009,7 @@
       "timetracker.web": {
         "type": "Project",
         "dependencies": {
-          "Mapster": "[10.0.10, )",
+          "Mapster": "[10.0.11, )",
           "Microsoft.AspNetCore.Authentication.Google": "[10.0.9, )",
           "Microsoft.AspNetCore.Components.QuickGrid": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Server": "[10.0.9, )",

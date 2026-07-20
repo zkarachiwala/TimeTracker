@@ -19,7 +19,7 @@
     <PackageReference Include="MudBlazor" Version="9.7.0" />
     <PackageReference Include="PublicHoliday" Version="3.13.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.11" />
-    <PackageReference Include="Mapster" Version="10.0.10" />
+    <PackageReference Include="Mapster" Version="10.0.11" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
