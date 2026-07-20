@@ -36,7 +36,7 @@ jobs:
 
       - name: Setup .NET
         if: steps.changes.outputs.code == 'true'
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
