@@ -25,9 +25,9 @@
       },
       "Microsoft.AspNetCore.Components.QuickGrid": {
         "type": "Direct",
-        "requested": "[10.0.9, )",
-        "resolved": "10.0.9",
-        "contentHash": "HAdLHvQ3h9z6vxVty3MKG9X/6aV+MXgaYxWzPrMQpa8lk128SogJMQ4nk1FjUYLt85MD6l9a1HVHVdJsMCP+uQ=="
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "1wIaj1TJwKaZ8uqMypLZggnLra2jxeXLivgx1ZwUwFXdzN2o2+uZZWH6yqVcFUM0OGdGFyd4GCMrXcHH5cu7fw=="
       },
       "Microsoft.AspNetCore.Components.WebAssembly.Server": {
         "type": "Direct",
