@@ -30,6 +30,7 @@ on:
       - '**/*.css'
   schedule:
     - cron: '16 6 * * 6'
+  workflow_dispatch:
 
 jobs:
   analyze:
