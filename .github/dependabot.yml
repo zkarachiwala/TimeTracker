@@ -24,6 +24,13 @@ updates:
           - "Microsoft.EntityFrameworkCore*"
           - "Microsoft.AspNetCore.Identity.EntityFrameworkCore"
           - "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"
+      # The rest of the ASP.NET Core packages ship together in .NET's monthly patch
+      # releases (e.g. 10.0.9 -> 10.0.10 across Web, Client and ComponentTests on the
+      # same day). Grouping avoids 4-6 near-identical separate PRs each month. Listed
+      # after entity-framework-core so those packages keep going to that group instead.
+      aspnetcore-runtime:
+        patterns:
+          - "Microsoft.AspNetCore.*"
     ignore:
       # Microsoft.AspNetCore.OpenApi 10.0.9 pins Microsoft.OpenApi >= 2.0.0 and has not
       # been updated for the 3.x line yet (upstream release notes: 3.x support lands in
