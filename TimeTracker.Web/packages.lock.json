@@ -31,11 +31,11 @@
       },
       "Microsoft.AspNetCore.Components.WebAssembly.Server": {
         "type": "Direct",
-        "requested": "[10.0.9, )",
-        "resolved": "10.0.9",
-        "contentHash": "ZTtYvBILwGxhIiXi1L03ETBBOgMmizStu7dO/YblK6rPTa27wpEgYKp5Z9bUfr+wsFvHIDWd/ZMGb9on41f6yw==",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "4VZTIYe3nJ3im3ILpcpPp9LJbJ43lYeDAJSQQosAogz889by8FRaMCpjo8YFeXLBFDGpNYJSBPNBYLdeq8bn1A==",
         "dependencies": {
-          "Microsoft.AspNetCore.Components.WebAssembly": "10.0.9"
+          "Microsoft.AspNetCore.Components.WebAssembly": "10.0.10"
         }
       },
       "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
@@ -49,18 +49,18 @@
       },
       "Microsoft.AspNetCore.Identity.UI": {
         "type": "Direct",
-        "requested": "[10.0.9, )",
-        "resolved": "10.0.9",
-        "contentHash": "4VYkt04Vqkju3srIXzcVbYxEmhCmzI+NXw1HXl96CXhzx8CZimNKOkqjgO3QO844gDdwF9mWGnOwkKpD0qtEcA==",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "RdI9FJYK+sSU20x+/SUumKoXRrnIT4PpcqaZ6lwQvMpV4XJKir/yaF0k7P9C7V/GTijxlOzymFlT+McXMotZDw==",
         "dependencies": {
-          "Microsoft.Extensions.FileProviders.Embedded": "10.0.9"
+          "Microsoft.Extensions.FileProviders.Embedded": "10.0.10"
         }
       },
       "Microsoft.AspNetCore.OpenApi": {
         "type": "Direct",
-        "requested": "[10.0.9, )",
-        "resolved": "10.0.9",
-        "contentHash": "1ihb8FO9cGgEK1/m3CTtT/SfnynwmiZib0W2pcDVj3KSWk/Sca4VOXEtaptKQc582zpFrzTFiwkGRCglt6H+WQ==",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "d4Atx9IHq7JgX0F/h7Db+m9zAUzC+cKdI9k+OWnnyQIOUQtfvjIEuhvbjPigVMkAmPUgCbJ8Yp6M9ghUqHtJSQ==",
         "dependencies": {
           "Microsoft.OpenApi": "2.0.0"
         }
@@ -113,9 +113,9 @@
       },
       "Microsoft.OpenApi": {
         "type": "Direct",
-        "requested": "[2.10.0, )",
-        "resolved": "2.10.0",
-        "contentHash": "tD7ve8JrWfJ+aRfW7J9yDj8t6pbMOzdr8nSc5BlIZaIRxqZZ67RJ8J69//Tx6HHSNFsqomBbipkPP20opnqvMg=="
+        "requested": "[2.11.0, )",
+        "resolved": "2.11.0",
+        "contentHash": "/ignjfdeKT2SGLIR7QEv19KnI0rvoxRG/TYDOZdK9EsWLjKK9IK8i1Mo5NRm9PRV3i64DzlTqnIflWvoyfljLg=="
       },
       "MudBlazor": {
         "type": "Direct",
@@ -205,10 +205,10 @@
       },
       "Microsoft.AspNetCore.Components.WebAssembly": {
         "type": "Transitive",
-        "resolved": "10.0.9",
-        "contentHash": "tBv68AsZ3r6z2QdV2m3cSSKUCbvEscN8REpHxcUs22vlR6UjTz6IKdInKNREkJ/3G1AQrBKrRTdrfrHVffE8Iw==",
+        "resolved": "10.0.10",
+        "contentHash": "0Zib7U6HmGw4Noj/+yJz1YuEJwo3XOV0iLezXDLFsrHTaC8L+KUOR/1+1tX7AAeipDG6jP3gPZOwpirk6G3LYQ==",
         "dependencies": {
-          "Microsoft.JSInterop.WebAssembly": "10.0.9"
+          "Microsoft.JSInterop.WebAssembly": "10.0.10"
         }
       },
       "Microsoft.Bcl.AsyncInterfaces": {
@@ -337,8 +337,8 @@
       },
       "Microsoft.Extensions.FileProviders.Embedded": {
         "type": "Transitive",
-        "resolved": "10.0.9",
-        "contentHash": "UpRgjjSUmF7KYZTIv1Zd2Y0Wv2oK9jE+Jmyp4UMynTowjvJGG1yrRe2JodYyVgcDgZF2auGwYEl+U0J1+YhBRw=="
+        "resolved": "10.0.10",
+        "contentHash": "TZQQIZ1wFmQX7WdRAyhaDlv3splUPOYheTP3aZtoLpxMlVnLOFRjiLaDB0PZX/d27N52+FLbiNkwL02x4hZgjg=="
       },
       "Microsoft.Identity.Client": {
         "type": "Transitive",
@@ -405,8 +405,8 @@
       },
       "Microsoft.JSInterop.WebAssembly": {
         "type": "Transitive",
-        "resolved": "10.0.9",
-        "contentHash": "4G0A7GuQrtCAes8PuJPTDUcy+lCrxHWjr8ZlkDOa4h8a2Txj1XdhbXKLnld2vMY5EyZNC5jZXxa1xTD/AOCUlw=="
+        "resolved": "10.0.10",
+        "contentHash": "FjPAGQWbCP85FWY2Wl9opHSsY+u9nZb8Ui6eTVHEMY/RJateOhW78jEtC4QOQ/6slkS1MKyIAF6ZHIrUR1fX/w=="
       },
       "Microsoft.SqlServer.Server": {
         "type": "Transitive",
@@ -592,7 +592,7 @@
         "dependencies": {
           "Heron.MudCalendar": "[4.0.0, )",
           "Heron.MudTotalCalendar": "[4.0.0, )",
-          "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.9, )",
+          "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )",
           "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.109, )",
           "MudBlazor": "[9.7.0, )",
           "TimeTracker.Contracts": "[1.0.0, )"
