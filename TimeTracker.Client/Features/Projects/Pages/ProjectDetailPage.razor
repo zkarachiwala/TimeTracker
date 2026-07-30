@@ -81,6 +81,27 @@
                         </div>
                     }
                 </div>
+
+                @* ── Budget progress (only when a budget is set) ── *@
+                @if (budget is not null)
+                {
+                    <MudDivider Class="my-3" />
+                    <div class="d-flex justify-space-between align-center mb-1">
+                        <MudText Typo="Typo.body2" Class="tabnum">
+                            @budget.UsedHours of @budget.BudgetHours hours used (@budget.PercentUsed%)
+                        </MudText>
+                        @if (budget.State != BudgetCalculations.BudgetState.UnderBudget)
+                        {
+                            <div class="d-flex align-center gap-1">
+                                <MudIcon Icon="@BudgetIcon" Size="Size.Small" Color="@BudgetColor" />
+                                <MudText Typo="Typo.caption" Color="@BudgetColor">@BudgetLabel</MudText>
+                            </div>
+                        }
+                    </div>
+                    <MudProgressLinear Value="@budget.ProgressValue"
+                                       Color="@BudgetColor"
+                                       Style="height:8px; border-radius:4px" />
+                }
             </MudCardContent>
         </MudCard>
 
@@ -179,12 +200,28 @@
     private List<AdminUserResponse> _allUsers = [];
     private AdminUserResponse? _selectedUser;
     private double ytdHours;
+    private BudgetCalculations.BudgetStatus? budget;
     private bool projectSheetOpen;
     private bool entrySheetOpen;
     private TimeEntryResponse? sheetEntry;
 
     private IEnumerable<AdminUserResponse> UnassignedUsers =>
         _allUsers.Where(u => !_projectUsers.Any(pu => pu.UserId == u.Id));
+
+    private Color BudgetColor => budget?.State switch
+    {
+        BudgetCalculations.BudgetState.OverBudget => Color.Error,
+        BudgetCalculations.BudgetState.Warning => Color.Warning,
+        _ => Color.Primary
+    };
+
+    private string BudgetIcon => budget?.State == BudgetCalculations.BudgetState.OverBudget
+        ? Icons.Material.Filled.ErrorOutline
+        : Icons.Material.Filled.Warning;
+
+    private string BudgetLabel => budget?.State == BudgetCalculations.BudgetState.OverBudget
+        ? "Over budget"
+        : "Approaching budget";
 
     private string Initials => project is null ? "" :
         (project.ClientName ?? project.Name).Length >= 2
@@ -216,6 +253,10 @@
             ytdHours = Math.Round(allEntries
                 .Where(e => e.End.HasValue && e.Start.Year == year)
                 .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
+
+            // Budget is measured against lifetime hours, not just this year's.
+            budget = BudgetCalculations.Compute(
+                project.BudgetHours, BudgetCalculations.UsedHours(allEntries, Id));
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {

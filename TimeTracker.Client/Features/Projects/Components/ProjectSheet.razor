@@ -55,6 +55,10 @@
                              @bind-Value:after="() => rateTouched = true" />
         }
 
+        <MudNumericField T="decimal?" Label="Budget (hours)" @bind-Value="budgetHours"
+                         Variant="Variant.Outlined" Class="mb-3" Min="0"
+                         HelperText="Leave blank for no budget" />
+
         <MudTextField Label="Description (optional)" @bind-Value="description"
                       Variant="Variant.Outlined" Class="mb-4" />
 
@@ -123,6 +127,7 @@
     private bool billable = true;
     private decimal? hourlyRate;
     private bool rateTouched;
+    private decimal? budgetHours;
     private string description = string.Empty;
 
     private bool _open;
@@ -178,6 +183,7 @@
             clientId = Project.ClientId;
             billable = Project.HourlyRate is > 0;
             hourlyRate = billable ? Project.HourlyRate : null;
+            budgetHours = Project.BudgetHours;
             description = Project.Description ?? string.Empty;
         }
         else
@@ -186,6 +192,7 @@
             clientId = null;
             billable = true;
             hourlyRate = null;
+            budgetHours = null;
             description = string.Empty;
         }
         rateTouched = false;
@@ -222,6 +229,8 @@
     private async Task Save()
     {
         var rate = billable ? (hourlyRate ?? 0) : 0;
+        // Budgets are optional — blank or zero means no budget rather than a zero-hour one.
+        var budget = budgetHours is > 0 ? budgetHours : null;
         if (IsEditing)
         {
             await ProjectService.UpdateProject(Project!.Id, new ProjectUpdateRequest
@@ -229,6 +238,7 @@
                 Name = name,
                 ClientId = clientId,
                 HourlyRate = rate,
+                BudgetHours = budget,
                 Description = description,
                 StartDate = Project.StartDate,
                 EndDate = Project.EndDate
@@ -242,6 +252,7 @@
                 Name = name,
                 ClientId = clientId,
                 HourlyRate = rate,
+                BudgetHours = budget,
                 Description = description,
                 StartDate = DateTime.Today
             });
@@ -267,6 +278,7 @@
             Name = Project.Name,
             ClientId = Project.ClientId,
             HourlyRate = Project.HourlyRate ?? 0,
+            BudgetHours = Project.BudgetHours,
             Description = Project.Description,
             StartDate = Project.StartDate,
             EndDate = newEndDate

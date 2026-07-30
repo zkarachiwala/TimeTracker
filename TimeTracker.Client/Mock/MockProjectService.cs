@@ -26,7 +26,8 @@ public class MockProjectService(MockDataStore store) : IProjectService
             request.HourlyRate,
             request.Description,
             request.StartDate,
-            request.EndDate));
+            request.EndDate,
+            BudgetHours: request.BudgetHours));
         return Task.CompletedTask;
     }
 
@@ -47,7 +48,9 @@ public class MockProjectService(MockDataStore store) : IProjectService
             request.HourlyRate,
             request.Description,
             request.StartDate,
-            request.EndDate);
+            request.EndDate,
+            old.RefCode,
+            request.BudgetHours);
         return Task.CompletedTask;
     }
 

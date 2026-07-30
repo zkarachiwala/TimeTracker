@@ -36,9 +36,13 @@ public class MockDataStore
 
     private static List<ProjectResponse> SeedProjects() =>
     [
-        new(1, "Website Redesign", 1, "Acme Corp",    150m, "Full site refresh",               new DateTime(2026, 1, 1), null),
-        new(2, "API Integration",  1, "Acme Corp",    150m, "REST API integration layer",       new DateTime(2026, 2, 1), null),
-        new(3, "Mobile App",       2, "Beta Digital", 175m, "Cross-platform mobile app",        new DateTime(2026, 3, 1), null),
+        // Budgets are deliberately mixed so the showcase demonstrates every budget state,
+        // including a project with no budget at all (plain billable hours).
+        // Seeded hours are 42.5 / 31.5 / 34.0, so these budgets land under / warning / over.
+        // Project 4 has no budget argument at all.
+        new(1, "Website Redesign", 1, "Acme Corp",    150m, "Full site refresh",               new DateTime(2026, 1, 1), null, "", 120m),
+        new(2, "API Integration",  1, "Acme Corp",    150m, "REST API integration layer",       new DateTime(2026, 2, 1), null, "", 38m),
+        new(3, "Mobile App",       2, "Beta Digital", 175m, "Cross-platform mobile app",        new DateTime(2026, 3, 1), null, "", 30m),
         new(4, "Admin & Overhead", null, null,        null, "Internal admin and overhead time",  null,                   null),
     ];
 
