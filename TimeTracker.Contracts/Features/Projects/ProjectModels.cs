@@ -11,7 +11,8 @@ public record ProjectResponse(
     string? Description,
     DateTime? StartDate,
     DateTime? EndDate,
-    string RefCode = ""
+    string RefCode = "",
+    decimal? BudgetHours = null
 );
 
 public class ProjectRequest
@@ -23,6 +24,9 @@ public class ProjectRequest
     [Required(ErrorMessage = "Please enter an hourly rate.")]
     [Range(0.01, double.MaxValue, ErrorMessage = "Rate must be greater than zero.")]
     public decimal? HourlyRate { get; set; }
+    // Optional: projects billed as plain hours have no budget at all.
+    [Range(0.01, double.MaxValue, ErrorMessage = "Budget must be greater than zero.")]
+    public decimal? BudgetHours { get; set; }
     public string? Description { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
@@ -33,6 +37,7 @@ public class ProjectCreateRequest
     public required string Name { get; set; }
     public int? ClientId { get; set; }
     public decimal? HourlyRate { get; set; }
+    public decimal? BudgetHours { get; set; }
     public string? Description { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
@@ -43,6 +48,7 @@ public class ProjectUpdateRequest
     public required string Name { get; set; }
     public int? ClientId { get; set; }
     public decimal? HourlyRate { get; set; }
+    public decimal? BudgetHours { get; set; }
     public string? Description { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }

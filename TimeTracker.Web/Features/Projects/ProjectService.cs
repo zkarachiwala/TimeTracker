@@ -58,6 +58,7 @@ public class ProjectService : IProjectService
             Name = request.Name,
             ClientId = request.ClientId,
             HourlyRate = request.HourlyRate,
+            BudgetHours = request.BudgetHours,
             Description = request.Description,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
@@ -77,6 +78,7 @@ public class ProjectService : IProjectService
         project.Name = request.Name;
         project.ClientId = request.ClientId;
         project.HourlyRate = request.HourlyRate;
+        project.BudgetHours = request.BudgetHours;
         project.Description = request.Description;
         project.StartDate = request.StartDate;
         project.EndDate = request.EndDate;

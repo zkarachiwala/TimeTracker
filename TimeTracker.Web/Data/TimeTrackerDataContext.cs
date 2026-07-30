@@ -25,6 +25,7 @@ public class TimeTrackerDataContext : DbContext
         modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.DefaultHourlyRate).HasPrecision(18, 2);
         modelBuilder.Entity<TimeTracker.Shared.Entities.Client>().Property(c => c.AwardRate).HasPrecision(18, 2);
         modelBuilder.Entity<Project>().Property(p => p.HourlyRate).HasPrecision(18, 2);
+        modelBuilder.Entity<Project>().Property(p => p.BudgetHours).HasPrecision(18, 2);
 
         // Sequence numbering
 

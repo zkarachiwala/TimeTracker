@@ -6,6 +6,7 @@ public class Project : SoftDeleteableEntity
     public int? ClientId { get; set; }
     public Client? Client { get; set; }
     public decimal? HourlyRate { get; set; }
+    public decimal? BudgetHours { get; set; }
     public string? Description { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }

@@ -23,12 +23,13 @@ public class ProjectServiceTests
     private static ProjectService CreateService(DbContextOptions<TimeTrackerDataContext> options, string userId = UserId, UserManager<User>? userManager = null) =>
         new(new TestDbContextFactory(options), new FakeUserContextService(userId), userManager!);
 
-    private static Project MakeProject(string userId, string name = "Project", bool isDeleted = false, decimal? hourlyRate = 100m, int? clientId = null) =>
+    private static Project MakeProject(string userId, string name = "Project", bool isDeleted = false, decimal? hourlyRate = 100m, int? clientId = null, decimal? budgetHours = null) =>
         new()
         {
             Name = name,
             IsDeleted = isDeleted,
             HourlyRate = hourlyRate,
+            BudgetHours = budgetHours,
             ClientId = clientId,
             Description = "Details",
             ProjectUsers = [new ProjectUser { UserId = userId }]
@@ -170,6 +171,26 @@ public class ProjectServiceTests
     }
 
     [Fact]
+    public async Task CreateProject_PersistsBudgetHours()
+    {
+        var options = CreateOptions();
+        await CreateService(options).CreateProject(new ProjectCreateRequest { Name = "Fixed Scope", BudgetHours = 40m });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(40m, context.Projects.Single().BudgetHours);
+    }
+
+    [Fact]
+    public async Task CreateProject_LeavesBudgetHoursNull_WhenNotProvided()
+    {
+        var options = CreateOptions();
+        await CreateService(options).CreateProject(new ProjectCreateRequest { Name = "Hourly Project" });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Null(context.Projects.Single().BudgetHours);
+    }
+
+    [Fact]
     public async Task CreateProject_AddsCurrentUserToProjectUsers()
     {
         var options = CreateOptions();
@@ -243,6 +264,36 @@ public class ProjectServiceTests
 
         using var context = new TimeTrackerDataContext(options);
         Assert.Null(context.Projects.Single().EndDate);
+    }
+
+    [Fact]
+    public async Task UpdateProject_UpdatesBudgetHours()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId, budgetHours: 40m);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).UpdateProject(project.Id, new ProjectUpdateRequest { Name = project.Name, BudgetHours = 60m });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(60m, context.Projects.Single().BudgetHours);
+    }
+
+    [Fact]
+    public async Task UpdateProject_ClearsBudgetHours_WhenSetToNull()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId, budgetHours: 40m);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        await CreateService(options).UpdateProject(project.Id, new ProjectUpdateRequest { Name = project.Name, BudgetHours = null });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Null(context.Projects.Single().BudgetHours);
     }
 
     [Fact]
