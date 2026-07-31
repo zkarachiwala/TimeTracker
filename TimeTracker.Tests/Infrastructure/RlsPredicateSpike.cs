@@ -33,8 +33,10 @@ namespace TimeTracker.Tests.Infrastructure;
 /// each other or with the shared RlsIntegrationTests database.
 ///
 /// Every query runs as a low-privilege login holding only db_datareader + db_datawriter — the
-/// same shape as the production Managed Identity. This is essential: sa is db_owner and exempt
-/// from RLS by design, so a spike run as sa would prove nothing.
+/// same shape as the production Managed Identity. This is essential: the predicate functions
+/// carry an explicit OR IS_MEMBER('db_owner') = 1 clause, so sa is waved through and a spike run
+/// as sa would prove nothing. Note the exemption is written into the functions, not granted by
+/// SQL Server — see docs/rls-security-model.md.
 /// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "Container")]
@@ -418,8 +420,8 @@ public class RlsPredicateSpike(SqlServerFixture fixture, ITestOutputHelper outpu
     // ── Seeding ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Seeds as sa (db_owner, RLS-exempt — intentional) so the fixture data exists regardless of
-    /// whichever candidate policy is under test.
+    /// Seeds as sa, which the predicates' IS_MEMBER('db_owner') clause waves through — intentional,
+    /// so the fixture data exists regardless of whichever candidate policy is under test.
     ///
     /// Shared project: UserA and UserB both members, both with entries — the rollup case.
     /// Foreign project: UserB only — the isolation case.

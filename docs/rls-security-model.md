@@ -1,0 +1,188 @@
+# Row-Level Security — how data isolation actually works
+
+Plain-English reference for the RLS setup. If you only read one thing: **the database itself
+refuses to return rows that aren't yours.** It does not trust the application to filter correctly.
+
+---
+
+## The three layers
+
+Data isolation is defended three times. Each layer assumes the one above it might fail.
+
+```mermaid
+flowchart TD
+    A["<b>Layer 1 — Endpoint</b><br/>RequireAuthorization, RequireRole('Admin')<br/><i>Is this person allowed to call this at all?</i>"]
+    B["<b>Layer 2 — Service</b><br/>IUserContextService scopes every query<br/><i>Ask only for rows belonging to this user</i>"]
+    C["<b>Layer 3 — Database (RLS)</b><br/>Security policies on app tables<br/><i>Return only rows belonging to this user,<br/>no matter what was asked for</i>"]
+
+    A --> B --> C
+
+    style C stroke-width:3px
+```
+
+Layers 1 and 2 are ordinary application code and can be bypassed by a bug, or by any code that
+talks to `DbContext` directly. Layer 3 cannot — it applies to every query on the connection,
+including raw SQL. That is the whole point of it.
+
+---
+
+## What the database knows about "you"
+
+RLS has no idea who is signed in. It reads one value: a per-connection variable called
+`SESSION_CONTEXT`. Something has to put the user id there before every query.
+
+```mermaid
+flowchart LR
+    R["HTTP request<br/>with auth cookie"] --> CL["ClaimTypes<br/>.NameIdentifier"]
+    CL --> I["UserSessionContextInterceptor"]
+    I -->|"EXEC sp_set_session_context<br/>N'UserId', @userId"| DB["SQL connection"]
+    DB --> Q["EF Core query runs"]
+    Q --> POL["Security policy<br/>filters the rows"]
+    POL --> RES["Only your rows<br/>come back"]
+```
+
+`UserSessionContextInterceptor` (`TimeTracker.Web/Infrastructure/UserSessionContextInterceptor.cs`)
+does this before **every** command — not just when a connection opens. That matters because
+connection pooling reuses physical connections across requests without resetting
+`SESSION_CONTEXT`. Set it once per connection and the next user inherits the previous user's
+identity.
+
+> Because it must be re-set per command, `sp_set_session_context`'s `@read_only = 1` option is
+> unavailable here. It would prevent the value being overwritten mid-session, but it would also
+> prevent the interceptor doing its job on a pooled connection.
+
+---
+
+## Which tables are protected, and by what rule
+
+Three tables carry a security policy. `Clients` deliberately does not (see D020).
+
+```mermaid
+flowchart TD
+    S["SESSION_CONTEXT('UserId')"]
+
+    S --> TEP["<b>app.TimeEntries</b><br/>TimeEntriesUserPolicy<br/>visible when UserId = you"]
+    S --> PUP["<b>app.ProjectUsers</b><br/>ProjectUsersUserPolicy<br/>visible when UserId = you"]
+    S --> PP["<b>app.Projects</b><br/>ProjectsUserPolicy<br/>visible when you have a<br/>ProjectUsers row for it"]
+
+    PUP -.->|"membership decides<br/>project visibility"| PP
+```
+
+`app.ProjectUsers` is the hinge: it is both protected in its own right *and* the lookup that
+decides which projects you can see. `app.TimeEntries` is filtered directly on its own `UserId`
+column — it does not go via the project.
+
+Both rules live in inline table-valued functions, `app.fn_filter_by_user_id` and
+`app.fn_filter_projects_by_user`, created in the RLS migrations under `TimeTracker.Web/Migrations/`.
+
+---
+
+## The `db_owner` escape hatch — read this carefully
+
+**SQL Server does not automatically exempt `sa`, `sysadmin` or `db_owner` from RLS filter
+predicates.** They are filtered like anyone else unless a predicate explicitly lets them through.
+
+This project's predicates end with:
+
+```sql
+OR IS_MEMBER('db_owner') = 1
+```
+
+That clause — added by the `ExemptDbOwnerFromRls` migration, *after* the original policies proved
+too restrictive — is the only reason `sa` can query app tables in SSMS without setting session
+context first. The original migration had no such clause and filtered `sa` out completely.
+
+Two consequences worth internalising:
+
+- **Any new predicate function must include the clause deliberately.** Omit it and local
+  development, SSMS, and the backup job all start returning empty tables.
+- **Local development does not exercise RLS.** Local dev connects as `sa`, which the clause waves
+  through. Production connects as a Managed Identity holding only `db_datareader` +
+  `db_datawriter`, so RLS is fully enforced there and *only* there. Something can work perfectly
+  locally and return nothing in production.
+
+`RlsIntegrationTests` exists precisely to close that gap: it creates a throwaway low-privilege
+login and queries as that, so the policies are genuinely exercised in a test.
+
+| Principal | Used by | RLS applies? |
+|---|---|---|
+| `sa` / `db_owner` | Local dev, SSMS | No — via the explicit `IS_MEMBER` clause |
+| Managed Identity (`db_datareader` + `db_datawriter`) | Production app | **Yes** |
+| Backup service principal (`db_owner`) | Nightly `.bacpac` export | No — needs full rows to export |
+| `timetracker_rls_test` (`db_datareader` + `db_datawriter`) | Container tests | **Yes** |
+
+---
+
+## Known gaps
+
+These are real, current, and none of them are hypothetical.
+
+**Reads are filtered; writes are not.** Every policy uses `FILTER` predicates, which hide rows on
+read. Nothing at the database level stops an `INSERT` or `UPDATE` carrying another user's
+`UserId`. Closing that needs `BLOCK` predicates.
+
+**Aggregates fail silently.** A `SUM` over filtered rows does not error — it returns a *partial*
+total that looks perfectly plausible. This is how the project budget bar (#167) ended up showing
+one person's hours while appearing to show the project's.
+
+**Anything team-wide is blocked by design.** Because isolation is per-user rather than per-tenant,
+the database cannot express "everyone on this project". Two known casualties:
+
+- `GetProjectUsers` returns only yourself in production. It looks correct locally because `sa` is
+  waved through by the `IS_MEMBER` clause.
+- A project budget cannot roll up the team's hours.
+
+**`SESSION_CONTEXT` is only as trustworthy as the app tier.** The application asserts who the user
+is; the database believes it. RLS defends against a bug in the query layer, not against a
+compromised application.
+
+---
+
+## Where this is heading
+
+> **Status: proposed, not implemented.** The design below is unverified — `RlsPredicateSpike`
+> in `TimeTracker.Tests/Infrastructure/` exists to test these assumptions against a real SQL
+> Server before anything is committed. Do not treat this section as fact.
+
+The intended direction adds an Organisation tier above projects, which changes what RLS is *for*:
+the tenant boundary, rather than per-user isolation. Per-user and per-project visibility then
+becomes application-tier authorization — the split commercial time trackers use.
+
+```mermaid
+flowchart TD
+    O["<b>Organisation</b> (tenant)<br/><i>RLS boundary — hard isolation</i>"]
+    P["<b>Project</b><br/>belongs to one organisation"]
+    PU["<b>ProjectUser</b> + Role<br/>Member or Manager"]
+    TE["<b>TimeEntry</b><br/>owned by one user"]
+
+    O --> P
+    P --> PU
+    P --> TE
+
+    style O stroke-width:3px
+```
+
+Under that model:
+
+| Table | Filtered by |
+|---|---|
+| `app.Projects` | the organisation you belong to |
+| `app.TimeEntries` | your own rows, **or** rows on a project you manage |
+
+A Manager role on `ProjectUser` is what unlocks the team rollup a project budget needs, without
+giving every member sight of colleagues' timesheets — matching how Harvest separates Administrator,
+Project Manager and Member.
+
+Open questions the spike must answer before this is designed properly: whether a predicate on
+`app.ProjectUsers` may query `app.ProjectUsers`, whether nested policies break the manager lookup,
+whether `BLOCK` predicates behave as expected, and whether the membership policy should simply be
+dropped.
+
+---
+
+## Related
+
+- `docs/decisions.md` — D020 (RLS + audit trail), D023 (single-tenant), D028 (Testcontainers)
+- `docs/architecture.md` — schema diagrams
+- `TimeTracker.Tests/Infrastructure/RlsIntegrationTests.cs` — proves the policies work
+- `TimeTracker.Tests/Infrastructure/RlsPredicateSpike.cs` — throwaway; answers the open questions
