@@ -187,10 +187,12 @@ az ad app federated-credential delete --id $MIGRATE_APP_OID --federated-credenti
 - [ ] Temporary federated credential removed
 - [ ] Since `main` currently has no pending migrations, this run is a safe no-op — the idempotent
       script should apply nothing and still exit 0
-- [ ] **Unverified from static review**: the exact `sqlcmd` flag syntax
-      (`--authentication-method=ActiveDirectoryAccessToken --access-token ...`) for the
-      `mssql-tools18` version installed by the workflow's apt step. If this step fails, check
-      `sqlcmd --version` in the job log and adjust the flags to match.
+- [ ] **Unverified from static review**: `mssql-tools18`'s bundled sqlcmd turned out to be the
+      legacy ODBC-based tool with no access-token auth mode at all (confirmed via a real failed
+      run — `Sqlcmd: '-authentication-method=...': Unknown Option`). Switched to installing
+      `Microsoft.SqlServer.Sqlcmd` as a dotnet global tool (the modern go-sqlcmd) and passing the
+      token via `SQLCMDPASSWORD` instead of a flag. This is still unverified against a real run —
+      if it fails, check `~/.dotnet/tools/sqlcmd --help` in the job log for the actual syntax.
 - [ ] `deploy` job still runs and succeeds afterward (it now depends on `migrate`)
 
 ## 6. Only after step 5 passes — revoke the old grants

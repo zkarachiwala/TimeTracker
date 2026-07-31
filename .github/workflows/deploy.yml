@@ -121,26 +121,26 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "value=$TOKEN" >> $GITHUB_OUTPUT
 
+      # mssql-tools18's bundled sqlcmd is the legacy ODBC-based tool - it doesn't understand
+      # --long-option syntax at all and has no access-token auth mode. The modern,
+      # cross-platform go-sqlcmd (which supports ActiveDirectoryAccessToken) ships as a dotnet
+      # global tool instead, same install pattern already used for dotnet-ef and sqlpackage.
       - name: Install sqlcmd
-        run: |
-          curl -sSL -O https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
-          echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
+        run: dotnet tool install --global Microsoft.SqlServer.Sqlcmd
 
-      # NOTE: verify --authentication-method/--access-token flag syntax against the
-      # installed sqlcmd version on the first workflow_dispatch dry run (D031's
-      # rollout doc flags this as unverified from static review).
+      # go-sqlcmd's ActiveDirectoryAccessToken auth mode takes the token via SQLCMDPASSWORD,
+      # not a dedicated --access-token flag - there's no separate flag for it, the token
+      # substitutes for the password. Unverified beyond static review; if this step fails,
+      # check `~/.dotnet/tools/sqlcmd --help` in the job log for the actual supported syntax.
       - name: Apply migration scripts
+        env:
+          SQLCMDPASSWORD: ${{ steps.token.outputs.value }}
         run: |
-          sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
-            --authentication-method=ActiveDirectoryAccessToken \
-            --access-token "${{ steps.token.outputs.value }}" \
+          ~/.dotnet/tools/sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
+            --authentication-method ActiveDirectoryAccessToken \
             -i ./migrations-artifact/TimeTrackerDataContext.sql
-          sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
-            --authentication-method=ActiveDirectoryAccessToken \
-            --access-token "${{ steps.token.outputs.value }}" \
+          ~/.dotnet/tools/sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
+            --authentication-method ActiveDirectoryAccessToken \
             -i ./migrations-artifact/IdentityDataContext.sql
 
       - name: Close SQL firewall
