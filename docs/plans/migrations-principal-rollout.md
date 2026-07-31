@@ -47,8 +47,8 @@ az ad app federated-credential create \
   }"
 ```
 
-- [ ] App registration + service principal created
-- [ ] Federated credential created
+- [x] App registration + service principal created
+- [x] Federated credential created
 
 ## 2. Create and assign a dedicated firewall RBAC role
 
@@ -81,9 +81,9 @@ az role assignment create \
   --scope /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Sql/servers/$SERVER
 ```
 
-- [ ] Role created (separate from the backup principal's role)
-- [ ] Role assigned, scoped to `timetracker-sql` only
-- [ ] While here: narrow the pre-existing `TimeTracker Backup Firewall Manager` role's
+- [x] Role created (separate from the backup principal's role)
+- [x] Role assigned, scoped to `timetracker-sql` only
+- [x] While here: narrow the pre-existing `TimeTracker Backup Firewall Manager` role's
       `AssignableScopes` from `/subscriptions/$SUB` to `/subscriptions/$SUB/resourceGroups/$RG` —
       same fix, different role (`az role definition update`, see `docs/azure-deployment.md` Step B)
 
@@ -106,7 +106,7 @@ ALTER ROLE rls_bypass    ADD MEMBER [timetracker-github-migrations];
 `docs/rls-security-model.md`, a `FILTER` predicate applies to `UPDATE` as well as `SELECT`, so any
 future backfill run without the bypass would touch zero rows and report success.
 
-- [ ] User created, all four grants applied
+- [x] User created, all four grants applied
 - [ ] **Verify whether `db_ddladmin` already covers `CREATE FUNCTION`** — if the idempotent script
       in step 5 fails with a `CREATE FUNCTION` permission error despite `db_ddladmin`, add
       `GRANT CREATE FUNCTION TO [timetracker-github-migrations];` explicitly
@@ -132,7 +132,7 @@ should still reference them.
 
 `AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` are already shared secrets — no new entry needed.
 
-- [ ] Secret and variables added (as Variables, not Secrets — this bit us once already)
+- [x] Secret and variables added (as Variables, not Secrets — this bit us once already)
 - [ ] Old `BACKUP_RESOURCE_GROUP`/`BACKUP_SQL_SERVER`/`BACKUP_SQL_DATABASE` variables deleted once
       `backup.yml` is confirmed working against the new names (next nightly run, or trigger
       manually first)
@@ -160,16 +160,16 @@ az ad app federated-credential create \
   }"
 ```
 
-- [ ] Temporary federated credential created
+- [x] Temporary federated credential created
 
 ```
 gh workflow run deploy.yml --ref claude/pipeline-migrations-322
 ```
 
-- [ ] `migrate` job: firewall opens, artifact uploads (`migration-scripts-<sha>`), `dotnet ef
+- [x] `migrate` job: firewall opens, artifact uploads (`migration-scripts-<sha>`), `dotnet ef
       database update` exits 0 for both contexts, firewall closes (`az sql server firewall-rule
       list` shows no leaked `github-actions-migrate` rule after the run)
-- [ ] If `deploy` itself doesn't run or is blocked: check **Settings → Environments →
+- [x] If `deploy` itself doesn't run or is blocked: check **Settings → Environments →
       production → Deployment branches** — if it's restricted to `main` only, `migrate` (which has
       no `environment:` block) can still be verified from this branch even though `deploy` can't.
       That's fine for this step; `deploy` only needs to succeed once this merges to `main`.
@@ -184,8 +184,8 @@ CRED_ID=$(az ad app federated-credential list --id $MIGRATE_APP_OID \
 az ad app federated-credential delete --id $MIGRATE_APP_OID --federated-credential-id $CRED_ID
 ```
 
-- [ ] Temporary federated credential removed
-- [ ] Since `main` currently has no pending migrations, this run is a safe no-op — `dotnet ef
+- [x] Temporary federated credential removed
+- [x] Since `main` currently has no pending migrations, this run is a safe no-op — `dotnet ef
       database update` should find nothing to apply and exit 0
 - [ ] Applying migrations went through several iterations before landing on the current approach —
       worth knowing the history so it isn't relitigated:
@@ -209,7 +209,9 @@ az ad app federated-credential delete --id $MIGRATE_APP_OID --federated-credenti
          via the same `DefaultAzureCredential` chain, no separate tool or token needed.
       This final approach is still unverified against a real run — if it fails, the error will be
       a normal EF Core connection/auth error, not a third-party CLI flag mismatch.
-- [ ] `deploy` job still runs and succeeds afterward (it now depends on `migrate`)
+- [x] `deploy` job correctly does **not** run from this branch — blocked by `production`'s
+      deployment branch policy (restricted to `main`), exactly as intended. It only needs to
+      succeed once this merges to `main`; that's not verifiable from a feature branch.
 
 ## 6. Only after step 5 passes — revoke the old grants
 
@@ -218,8 +220,8 @@ REVOKE CREATE FUNCTION FROM [timetracker-zak];
 REVOKE ALTER ANY SECURITY POLICY FROM [timetracker-zak];
 ```
 
-- [ ] Grants revoked
-- [ ] Confirm the **currently-deployed `main` app** boots cleanly — not this branch. `main`
+- [x] Grants revoked
+- [x] Confirm the **currently-deployed `main` app** boots cleanly — not this branch. `main`
       doesn't have the `migrate` job at all yet; it's still running the old `Program.cs` with
       `MigrateAsync()` at startup, and (per step 5's cleanup) this branch can no longer
       authenticate to Azure anyway once the temporary federated credential is removed. Verify by
