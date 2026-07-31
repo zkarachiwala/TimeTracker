@@ -293,7 +293,7 @@ az role definition create --role-definition "{
     \"Microsoft.Sql/servers/firewallRules/write\",
     \"Microsoft.Sql/servers/firewallRules/delete\"
   ],
-  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+  \"AssignableScopes\": [\"/subscriptions/$SUB/resourceGroups/$RG\"]
 }"
 
 az role assignment create \
@@ -414,6 +414,8 @@ BACKUP_SP_OID=$(az ad sp show --id $BACKUP_APP_ID --query id -o tsv)
 
 ### Step B — Create a minimal custom Azure role
 
+`AssignableScopes` is capped at the resource group, not the subscription — a role definition can be assigned anywhere within its `AssignableScopes`, so a subscription-wide value would let this role later be (mis)assigned to some other SQL server or resource group, even though the one `role assignment create` below only ever grants it against this one server.
+
 ```bash
 az role definition create --role-definition "{
   \"Name\": \"TimeTracker Backup Firewall Manager\",
@@ -422,9 +424,23 @@ az role definition create --role-definition "{
     \"Microsoft.Sql/servers/firewallRules/write\",
     \"Microsoft.Sql/servers/firewallRules/delete\"
   ],
-  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+  \"AssignableScopes\": [\"/subscriptions/$SUB/resourceGroups/$RG\"]
 }"
 ```
+
+> If this role already exists with the wider `/subscriptions/$SUB` scope (it was originally created that way), narrow it in place rather than recreating it — `az role definition update` with the same `Name` and the corrected `AssignableScopes` updates the existing definition:
+> ```bash
+> az role definition update --role-definition "{
+>   \"Name\": \"TimeTracker Backup Firewall Manager\",
+>   \"Description\": \"Adds and removes a single SQL Server firewall rule for the GitHub Actions backup workflow\",
+>   \"Actions\": [
+>     \"Microsoft.Sql/servers/firewallRules/write\",
+>     \"Microsoft.Sql/servers/firewallRules/delete\"
+>   ],
+>   \"AssignableScopes\": [\"/subscriptions/$SUB/resourceGroups/$RG\"]
+> }"
+> ```
+> The existing role assignment (Step C) is unaffected — narrowing `AssignableScopes` doesn't touch assignments already made within the new, narrower range.
 
 ### Step C — Assign the role, scoped to the SQL server only
 

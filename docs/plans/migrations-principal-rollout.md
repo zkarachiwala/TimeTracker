@@ -59,6 +59,10 @@ its own separate role definition — **do not reuse the backup principal's role*
 principals so a compromise of one doesn't touch the other; sharing a role assignment between them
 would recouple that audit boundary even though the permissions happen to be identical.
 
+`AssignableScopes` is capped at the resource group, not the subscription, so this role definition
+can never later be (mis)assigned to some other SQL server or resource group — only the one
+`role assignment create` below grants anything, and only against `$SERVER`.
+
 ```bash
 az role definition create --role-definition "{
   \"Name\": \"TimeTracker Migrations Firewall Manager\",
@@ -67,7 +71,7 @@ az role definition create --role-definition "{
     \"Microsoft.Sql/servers/firewallRules/write\",
     \"Microsoft.Sql/servers/firewallRules/delete\"
   ],
-  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+  \"AssignableScopes\": [\"/subscriptions/$SUB/resourceGroups/$RG\"]
 }"
 
 az role assignment create \
@@ -79,6 +83,9 @@ az role assignment create \
 
 - [ ] Role created (separate from the backup principal's role)
 - [ ] Role assigned, scoped to `timetracker-sql` only
+- [ ] While here: narrow the pre-existing `TimeTracker Backup Firewall Manager` role's
+      `AssignableScopes` from `/subscriptions/$SUB` to `/subscriptions/$SUB/resourceGroups/$RG` —
+      same fix, different role (`az role definition update`, see `docs/azure-deployment.md` Step B)
 
 ## 3. SQL grants
 
