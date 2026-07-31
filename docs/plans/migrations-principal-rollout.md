@@ -4,11 +4,11 @@ Companion to `docs/plans/rls-bypass-rollout.md`. That rollout replaced a blanket
 exemption with a named role; this one replaces the app's own runtime identity as the thing that
 runs schema migrations. See `docs/decisions.md` D031 for the full rationale.
 
-**Read this before merging `claude/pipeline-migrations-322`.** The new `migrate` job in
-`deploy.yml` will fail every deploy until the Azure/GitHub setup below exists — `Program.cs`'s
-`MigrateAsync()` calls are deliberately left in place as a safety net until this is verified, so a
-failing `migrate` job does not itself take the app down, but it does block `deploy` (`deploy` now
-`needs: [check, migrate]`).
+**Status: all 7 steps below have been run and verified against real production Azure/GitHub
+infrastructure**, including `Program.cs`'s `MigrateAsync()` removal (step 7) — the app now depends
+entirely on the pipeline's `migrate` job having already run; there is no more startup-migration
+safety net. `deploy` now `needs: [check, migrate]`, so a failing `migrate` job blocks `deploy`
+rather than the app silently booting against a stale schema.
 
 ---
 
@@ -234,10 +234,15 @@ REVOKE ALTER ANY SECURITY POLICY FROM [timetracker-zak];
 
 ## 7. Only after step 6 is confirmed stable — remove startup migration
 
-This is a separate follow-up code change (Phase 3 of the issue #322 plan), not part of this
-branch: remove `Database.MigrateAsync()` from `Program.cs` and replace it with a
-`GetPendingMigrationsAsync()` guard that refuses to boot on a stale schema. Do not land this until
-steps 1–6 above have a proven successful real deploy.
+Steps 1–6 above have a proven successful real deploy (verified against production Azure/GitHub
+infrastructure, not just locally), so this is unblocked. Done as part of this same branch —
+`Database.MigrateAsync()` removed from `Program.cs` for both contexts, replaced with a
+`GetPendingMigrationsAsync()` guard that throws (refusing to boot) if either context has pending
+migrations. Fast tests (173), component tests (22), and container tests (9, including
+`MigrationSmokeTests`) all still pass.
+
+- [x] `MigrateAsync()` removed, startup guard added
+- [x] Full test suite (fast + component + container) passes
 
 ---
 
