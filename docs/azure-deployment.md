@@ -134,7 +134,7 @@ az sql db show-connection-string \
   --client ado.net
 ```
 
-Then open **Azure Data Studio** (or any SQL client that supports Azure AD login), connect to `${SERVER}.database.windows.net` with your Azure AD account, and run:
+Then open **VS Code with the [MSSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql)** (Microsoft's recommended replacement for the now-retired Azure Data Studio) — or any SQL client that supports Azure AD login — connect to `${SERVER}.database.windows.net` with your Azure AD account, and run:
 
 ```sql
 CREATE USER [<APP>] FROM EXTERNAL PROVIDER;
@@ -478,7 +478,7 @@ az ad app federated-credential create \
 
 ### Step E — Create the SQL database user
 
-Connect to `timetracker-sql.database.windows.net` with your Azure AD admin account (Azure Data Studio or `sqlcmd`) and run against `TimeTrackerDb`:
+Connect to `timetracker-sql.database.windows.net` with your Azure AD admin account (VS Code with the MSSQL extension, or any SQL client that supports Azure AD login) and run against `TimeTrackerDb`:
 
 ```sql
 CREATE USER [timetracker-github-backup] FROM EXTERNAL PROVIDER;
