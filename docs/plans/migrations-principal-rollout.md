@@ -128,13 +128,21 @@ future backfill run without the bypass would touch zero rows and report success.
 
 ## 5. Verify before relying on the real trigger
 
+You do **not** need to merge this branch to main to test it. `gh workflow run` without `--ref`
+dispatches whatever version of `deploy.yml` is on the default branch — which doesn't have the
+`migrate` job yet — so it must be pointed explicitly at this branch:
+
 ```
-gh workflow run deploy.yml
+gh workflow run deploy.yml --ref claude/pipeline-migrations-322
 ```
 
 - [ ] `migrate` job: firewall opens, artifact uploads (`migration-scripts-<sha>`), `sqlcmd` step
       exits 0, firewall closes (`az sql server firewall-rule list` shows no leaked
       `github-actions-migrate` rule after the run)
+- [ ] If `deploy` itself doesn't run or is blocked: check **Settings → Environments →
+      production → Deployment branches** — if it's restricted to `main` only, `migrate` (which has
+      no `environment:` block) can still be verified from this branch even though `deploy` can't.
+      That's fine for this step; `deploy` only needs to succeed once this merges to `main`.
 - [ ] Since `main` currently has no pending migrations, this run is a safe no-op — the idempotent
       script should apply nothing and still exit 0
 - [ ] **Unverified from static review**: the exact `sqlcmd` flag syntax
