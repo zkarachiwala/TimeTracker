@@ -315,14 +315,20 @@ GRANT ALTER ANY SECURITY POLICY TO [timetracker-github-migrations];
 ALTER ROLE rls_bypass    ADD MEMBER [timetracker-github-migrations];
 ```
 
-Add to GitHub (**Settings → Secrets and variables → Actions**):
+Add to GitHub (**Settings → Secrets and variables → Actions → Variables tab** for the three
+resource identifiers — they aren't sensitive, and belong as Variables, not Secrets):
 
 | Type | Name | Value |
 |------|------|-------|
 | Secret | `MIGRATIONS_AZURE_CLIENT_ID` | `$MIGRATE_APP_ID` |
-| Variable | `SQL_RESOURCE_GROUP` | Same as `BACKUP_RESOURCE_GROUP` |
+| Variable | `SQL_RESOURCE_GROUP` | `timetracker-rg` |
 | Variable | `SQL_SERVER` | `timetracker-sql` |
 | Variable | `SQL_DATABASE` | `TimeTrackerDb` |
+
+`SQL_RESOURCE_GROUP`/`SQL_SERVER`/`SQL_DATABASE` are shared with `backup.yml` — both workflows
+read the same three variables rather than each having their own differently-named copies (the
+`BACKUP_*`-prefixed versions these replaced were misleadingly named for a value that isn't
+backup-specific).
 
 Full rollout sequencing (why this order, and what to verify at each step) is in `docs/plans/migrations-principal-rollout.md`.
 
@@ -514,12 +520,12 @@ In **Settings → Secrets and variables → Actions** on the `TimeTracker` repo 
 |------|------|-------|
 | Secret | `BACKUP_AZURE_CLIENT_ID` | From above |
 | Secret | `BACKUP_REPO_TOKEN` | Fine-grained PAT from Step G |
-| Variable | `BACKUP_RESOURCE_GROUP` | `timetracker-rg` |
-| Variable | `BACKUP_SQL_SERVER` | `timetracker-sql` |
-| Variable | `BACKUP_SQL_DATABASE` | `TimeTrackerDb` |
+| Variable | `SQL_RESOURCE_GROUP` | `timetracker-rg` |
+| Variable | `SQL_SERVER` | `timetracker-sql` |
+| Variable | `SQL_DATABASE` | `TimeTrackerDb` |
 | Variable | `BACKUP_REPO_NAME` | `TimeTracker-backups` (or whatever you named it) |
 
-`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are reused from the deploy setup.
+`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are reused from the deploy setup. `SQL_RESOURCE_GROUP`/`SQL_SERVER`/`SQL_DATABASE` are shared with the `migrate` job in `deploy.yml` (Step 7f) — both workflows point at the same three variables rather than each holding their own copy, since they're generic resource identifiers, not backup-specific.
 
 ### Verifying
 

@@ -113,18 +113,29 @@ future backfill run without the bypass would touch zero rows and report success.
 
 ## 4. GitHub secrets and variables
 
-**Settings → Secrets and variables → Actions:**
+**Settings → Secrets and variables → Actions** — note the **Variables** tab specifically, not
+Secrets. `SQL_RESOURCE_GROUP`/`SQL_SERVER`/`SQL_DATABASE` are plain resource identifiers, not
+sensitive — they belong as Variables, same as the rest of this table:
 
 | Type | Name | Value |
 |------|------|-------|
 | Secret | `MIGRATIONS_AZURE_CLIENT_ID` | `$APP_ID` from step 1 |
-| Variable | `SQL_RESOURCE_GROUP` | Same resource group as `BACKUP_RESOURCE_GROUP` |
-| Variable | `SQL_SERVER` | `timetracker-sql` (same as `BACKUP_SQL_SERVER`) |
-| Variable | `SQL_DATABASE` | `TimeTrackerDb` (same as `BACKUP_SQL_DATABASE`) |
+| Variable | `SQL_RESOURCE_GROUP` | `timetracker-rg` |
+| Variable | `SQL_SERVER` | `timetracker-sql` |
+| Variable | `SQL_DATABASE` | `TimeTrackerDb` |
+
+These replace `BACKUP_RESOURCE_GROUP`/`BACKUP_SQL_SERVER`/`BACKUP_SQL_DATABASE` — those names were
+backup-specific despite holding generic infrastructure identifiers that `backup.yml` and this
+`migrate` job both need. `backup.yml` has been updated to read `SQL_RESOURCE_GROUP`/`SQL_SERVER`/
+`SQL_DATABASE` too, so once these three exist, delete the three old `BACKUP_*` ones — nothing
+should still reference them.
 
 `AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` are already shared secrets — no new entry needed.
 
-- [ ] Secret and variables added
+- [ ] Secret and variables added (as Variables, not Secrets — this bit us once already)
+- [ ] Old `BACKUP_RESOURCE_GROUP`/`BACKUP_SQL_SERVER`/`BACKUP_SQL_DATABASE` variables deleted once
+      `backup.yml` is confirmed working against the new names (next nightly run, or trigger
+      manually first)
 
 ## 5. Verify before relying on the real trigger
 
