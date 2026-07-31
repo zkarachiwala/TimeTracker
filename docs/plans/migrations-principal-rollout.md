@@ -128,9 +128,28 @@ future backfill run without the bypass would touch zero rows and report success.
 
 ## 5. Verify before relying on the real trigger
 
-You do **not** need to merge this branch to main to test it. `gh workflow run` without `--ref`
-dispatches whatever version of `deploy.yml` is on the default branch — which doesn't have the
-`migrate` job yet — so it must be pointed explicitly at this branch:
+You do **not** need to merge this branch to main to test it, but the OIDC federated credential
+from step 1 is scoped to `subject: repo:zkarachiwala/TimeTracker:ref:refs/heads/main` only — a
+token issued for this branch presents a different subject claim
+(`ref:refs/heads/claude/pipeline-migrations-322`) and Azure will reject it with
+`AADSTS700213: No matching federated identity record found`. Add a second, temporary federated
+credential scoped to this branch to test with, and remove it once verified — keep the permanent
+one main-only:
+
+```bash
+MIGRATE_APP_OID=$(az ad app list --display-name "timetracker-github-migrations" --query "[0].id" -o tsv)
+
+az ad app federated-credential create \
+  --id $MIGRATE_APP_OID \
+  --parameters "{
+    \"name\": \"timetracker-pipeline-migrations-322-test\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"repo:zkarachiwala/TimeTracker:ref:refs/heads/claude/pipeline-migrations-322\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+```
+
+- [ ] Temporary federated credential created
 
 ```
 gh workflow run deploy.yml --ref claude/pipeline-migrations-322
@@ -143,6 +162,18 @@ gh workflow run deploy.yml --ref claude/pipeline-migrations-322
       production → Deployment branches** — if it's restricted to `main` only, `migrate` (which has
       no `environment:` block) can still be verified from this branch even though `deploy` can't.
       That's fine for this step; `deploy` only needs to succeed once this merges to `main`.
+
+Once `migrate` has a proven successful run, remove the temporary credential — the permanent one
+(scoped to `main`) is what should be left in place after this branch merges:
+
+```bash
+CRED_ID=$(az ad app federated-credential list --id $MIGRATE_APP_OID \
+  --query "[?name=='timetracker-pipeline-migrations-322-test'].id" -o tsv)
+
+az ad app federated-credential delete --id $MIGRATE_APP_OID --federated-credential-id $CRED_ID
+```
+
+- [ ] Temporary federated credential removed
 - [ ] Since `main` currently has no pending migrations, this run is a safe no-op — the idempotent
       script should apply nothing and still exit 0
 - [ ] **Unverified from static review**: the exact `sqlcmd` flag syntax
