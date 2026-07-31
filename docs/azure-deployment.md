@@ -155,7 +155,7 @@ GRANT ALTER ANY SECURITY POLICY TO [<APP>];
 
 > **Why these are separate:** `db_datareader` and `db_datawriter` grant DML access only. Schema-level DDL (`CREATE FUNCTION`) and security infrastructure (`ALTER ANY SECURITY POLICY`) require explicit grants. These are the minimum permissions needed; no elevation to `db_owner` or `db_ddladmin` is required.
 >
-> **db_owner exemption:** `db_owner` and `sysadmin` users are exempt from RLS by SQL Server design. The production Managed Identity holds only `db_datareader + db_datawriter`, so RLS **is** enforced in production. Local dev uses `sa` (sysadmin), so RLS is bypassed locally — this is intentional.
+> **RLS exemption:** nothing is exempt from RLS by default — not `sa`, not `sysadmin`, not `db_owner`. The predicates name a single database role, `rls_bypass`, and membership of it is the only way past them. The production Managed Identity is not a member, so RLS is enforced in production; `sa` is not a member either, so it is enforced in local development too. Only the backup principal holds it, because SqlPackage cannot set `SESSION_CONTEXT`. See `docs/rls-security-model.md`.
 
 ---
 
