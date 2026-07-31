@@ -428,17 +428,18 @@ az role definition create --role-definition "{
 }"
 ```
 
-> If this role already exists with the wider `/subscriptions/$SUB` scope (it was originally created that way), narrow it in place rather than recreating it — `az role definition update` with the same `Name` and the corrected `AssignableScopes` updates the existing definition:
+> If this role already exists with the wider `/subscriptions/$SUB` scope (it was originally created
+> that way), narrow it in place rather than recreating it. `az role definition update` needs the
+> role's actual GUID `id`, not just its display name — fetch the live definition, patch only
+> `assignableScopes`, and update from that:
 > ```bash
-> az role definition update --role-definition "{
->   \"Name\": \"TimeTracker Backup Firewall Manager\",
->   \"Description\": \"Adds and removes a single SQL Server firewall rule for the GitHub Actions backup workflow\",
->   \"Actions\": [
->     \"Microsoft.Sql/servers/firewallRules/write\",
->     \"Microsoft.Sql/servers/firewallRules/delete\"
->   ],
->   \"AssignableScopes\": [\"/subscriptions/$SUB/resourceGroups/$RG\"]
-> }"
+> az role definition list --custom-role-only true \
+>   --query "[?roleName=='TimeTracker Backup Firewall Manager']" -o json > role.json
+>
+> jq --arg scope "/subscriptions/$SUB/resourceGroups/$RG" \
+>   '.[0].assignableScopes = [$scope]' role.json > role-updated.json
+>
+> az role definition update --role-definition role-updated.json
 > ```
 > The existing role assignment (Step C) is unaffected — narrowing `AssignableScopes` doesn't touch assignments already made within the new, narrower range.
 
