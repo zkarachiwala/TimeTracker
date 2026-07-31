@@ -71,7 +71,14 @@ jobs:
       - name: Install dotnet-ef
         run: dotnet tool install --global dotnet-ef
 
+      # EF Core's design-time tooling defaults to the Development environment for design-time
+      # operations regardless of what the app would actually run as. That flips
+      # ConnectionStringBuilder.Build's IsDevelopment() check true, which then expects DbUser/
+      # DbPassword config that only exists as local user secrets - not in CI. Forcing Production
+      # here keeps design-time script generation on the same code path as the real app.
       - name: Generate idempotent migration scripts
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
         run: |
           mkdir -p ./migrations-artifact
           ~/.dotnet/tools/dotnet-ef migrations script --idempotent \
