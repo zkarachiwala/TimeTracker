@@ -14,6 +14,17 @@ failing `migrate` job does not itself take the app down, but it does block `depl
 
 ## 1. Provision the Azure AD principal
 
+These steps are self-contained — you do not need to have run `docs/azure-deployment.md` Step 0
+first. Set the resource names here:
+
+```bash
+RG=timetracker-rg
+SERVER=timetracker-sql
+
+SUB=$(az account show --query id -o tsv)
+TENANT=$(az account show --query tenantId -o tsv)
+```
+
 Same pattern as `docs/azure-deployment.md` Step 7 (the deploy SP), naming this one
 `timetracker-github-migrations`:
 
@@ -63,7 +74,7 @@ az role assignment create \
   --role "TimeTracker Migrations Firewall Manager" \
   --assignee-object-id $SP_OID \
   --assignee-principal-type ServicePrincipal \
-  --scope /subscriptions/$SUB/resourceGroups/<RG>/providers/Microsoft.Sql/servers/timetracker-sql
+  --scope /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Sql/servers/$SERVER
 ```
 
 - [ ] Role created (separate from the backup principal's role)
