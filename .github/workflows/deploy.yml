@@ -42,10 +42,111 @@ jobs:
             echo "No app code changed — skipping deploy and Playwright tests."
           fi
 
+  migrate:
+    name: Apply EF Core Migrations
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ needs.check.outputs.code == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.MIGRATIONS_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore TimeTracker.sln --locked-mode
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+
+      # EF Core's design-time tooling defaults to the Development environment for design-time
+      # operations regardless of what the app would actually run as. That flips
+      # ConnectionStringBuilder.Build's IsDevelopment() check true, which then expects DbUser/
+      # DbPassword config that only exists as local user secrets - not in CI. Forcing Production
+      # keeps design-time operations on the same code path as the real app. Applies to both
+      # steps below, since both invoke dotnet-ef's design-time host building.
+      #
+      # This script is generated purely as a reviewable audit artifact (uploaded below, before
+      # the actual apply step) - it is never executed. Applying migrations goes through EF's own
+      # `dotnet ef database update`, the standard vendor-supported mechanism, not a hand-rolled
+      # SQL client invocation.
+      - name: Generate idempotent migration scripts (audit artifact only)
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+        run: |
+          mkdir -p ./migrations-artifact
+          ~/.dotnet/tools/dotnet-ef migrations script --idempotent \
+            --context TimeTrackerDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --output ./migrations-artifact/TimeTrackerDataContext.sql
+          ~/.dotnet/tools/dotnet-ef migrations script --idempotent \
+            --context IdentityDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --output ./migrations-artifact/IdentityDataContext.sql
+
+      - name: Upload migration scripts artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-scripts-${{ github.sha }}
+          path: ./migrations-artifact/*.sql
+          retention-days: 90
+
+      - name: Get runner public IP
+        id: ip
+        run: echo "addr=$(curl -sf https://api.ipify.org)" >> $GITHUB_OUTPUT
+
+      - name: Open SQL firewall for runner
+        run: |
+          az sql server firewall-rule create \
+            --resource-group ${{ vars.SQL_RESOURCE_GROUP }} \
+            --server ${{ vars.SQL_SERVER }} \
+            --name github-actions-migrate \
+            --start-ip-address ${{ steps.ip.outputs.addr }} \
+            --end-ip-address ${{ steps.ip.outputs.addr }}
+
+      # --connection overrides the app's configured connection string for this operation only
+      # (documented EF CLI option). Authentication=Active Directory Default uses the same
+      # DefaultAzureCredential chain as the app's own SqlClient stack, which falls through to
+      # the already-authenticated Azure CLI session the "Azure Login" step above established via
+      # OIDC - no separate token or SQL client tool needed.
+      - name: Apply migrations
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+        run: |
+          ~/.dotnet/tools/dotnet-ef database update \
+            --context TimeTrackerDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --connection "Server=${{ vars.SQL_SERVER }}.database.windows.net;Database=${{ vars.SQL_DATABASE }};Authentication=Active Directory Default;Encrypt=True"
+          ~/.dotnet/tools/dotnet-ef database update \
+            --context IdentityDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --connection "Server=${{ vars.SQL_SERVER }}.database.windows.net;Database=${{ vars.SQL_DATABASE }};Authentication=Active Directory Default;Encrypt=True"
+
+      - name: Close SQL firewall
+        if: always()
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group ${{ vars.SQL_RESOURCE_GROUP }} \
+            --server ${{ vars.SQL_SERVER }} \
+            --name github-actions-migrate \
+            --yes 2>/dev/null || true
+
   deploy:
     name: Publish & Deploy
     runs-on: ubuntu-latest
-    needs: check
+    needs: [check, migrate]
     if: ${{ needs.check.outputs.code == 'true' }}
 
     environment:

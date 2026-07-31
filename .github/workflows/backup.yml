@@ -29,8 +29,8 @@ jobs:
       - name: Open SQL firewall for runner
         run: |
           az sql server firewall-rule create \
-            --resource-group ${{ vars.BACKUP_RESOURCE_GROUP }} \
-            --server ${{ vars.BACKUP_SQL_SERVER }} \
+            --resource-group ${{ vars.SQL_RESOURCE_GROUP }} \
+            --server ${{ vars.SQL_SERVER }} \
             --name github-actions-backup \
             --start-ip-address ${{ steps.ip.outputs.addr }} \
             --end-ip-address ${{ steps.ip.outputs.addr }}
@@ -59,8 +59,8 @@ jobs:
             OUTPUT=$(sqlpackage \
               /Action:Export \
               /TargetFile:"$FILE" \
-              /SourceServerName:"${{ vars.BACKUP_SQL_SERVER }}.database.windows.net" \
-              /SourceDatabaseName:"${{ vars.BACKUP_SQL_DATABASE }}" \
+              /SourceServerName:"${{ vars.SQL_SERVER }}.database.windows.net" \
+              /SourceDatabaseName:"${{ vars.SQL_DATABASE }}" \
               /AccessToken:"${{ steps.token.outputs.value }}" 2>&1)
             EXIT_CODE=$?
             
@@ -112,7 +112,7 @@ jobs:
         if: always()
         run: |
           az sql server firewall-rule delete \
-            --resource-group ${{ vars.BACKUP_RESOURCE_GROUP }} \
-            --server ${{ vars.BACKUP_SQL_SERVER }} \
+            --resource-group ${{ vars.SQL_RESOURCE_GROUP }} \
+            --server ${{ vars.SQL_SERVER }} \
             --name github-actions-backup \
             --yes 2>/dev/null || true

@@ -73,10 +73,19 @@ using (var scope = app.Services.CreateScope())
 {
     var ctxFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TimeTrackerDataContext>>();
     await using var appCtx = await ctxFactory.CreateDbContextAsync();
-    await appCtx.Database.MigrateAsync();
-
     var identityCtx = scope.ServiceProvider.GetRequiredService<IdentityDataContext>();
-    await identityCtx.Database.MigrateAsync();
+
+    var pendingAppMigrations = await appCtx.Database.GetPendingMigrationsAsync();
+    var pendingIdentityMigrations = await identityCtx.Database.GetPendingMigrationsAsync();
+    if (pendingAppMigrations.Any() || pendingIdentityMigrations.Any())
+    {
+        throw new InvalidOperationException(
+            "Pending EF Core migrations detected " +
+            $"(TimeTrackerDataContext: [{string.Join(", ", pendingAppMigrations)}], " +
+            $"IdentityDataContext: [{string.Join(", ", pendingIdentityMigrations)}]). " +
+            "Migrations must be applied via the deploy pipeline's migrate job before startup. " +
+            "Refusing to boot on a stale schema.");
+    }
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     if (!await roleManager.RoleExistsAsync("Admin"))

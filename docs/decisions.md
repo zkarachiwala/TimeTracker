@@ -25,13 +25,14 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Partially superseded — UptimeRobot disabled 2026-06 |
 | [D020](#d020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
 | [D021](#d021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
-| [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Accepted |
+| [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Superseded by D031 |
 | [D025](#d025-publicholiday-for-au-public-holiday-resolution) | `PublicHoliday` for AU public holiday resolution | 2026-06 | Accepted |
 | [D026](#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer) | xUnit over NUnit for Playwright + new bUnit component layer | 2026-06 | Accepted |
 | [D027](#d027-showcase-css-unified-via-msbuild) | Showcase CSS unified via MSBuild | 2026-06 | Accepted |
 | [D028](#d028-testcontainers-for-rls-and-migration-smoke-tests) | Testcontainers for RLS and migration smoke tests | 2026-06 | Accepted |
 | [D029](#d029-dev-container--docker-compose-despite-single-user-app-scope) | Dev container + Docker Compose despite single-user app scope | 2026-06 | Accepted |
 | [D030](#d030-http-only-inside-the-dev-container) | HTTP-only inside the dev container | 2026-06 | Accepted |
+| [D031](#d031-pipeline-migrations--least-privilege-app-identity-supersedes-d022) | Pipeline migrations + least-privilege app identity (supersedes D022) | 2026-07 | Accepted |
 
 ---
 
@@ -554,7 +555,9 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 
 ## D022: EF Core `MigrateAsync()` at startup
 
-**Date:** 2026-06 — **Status:** Accepted
+**Date:** 2026-06 — **Status:** Superseded by [D031](#d031-pipeline-migrations--least-privilege-app-identity-supersedes-d022) (2026-07)
+
+> **Superseded:** this decision's trade-off was accepted on the grounds of operational simplicity and being safe under Azure F1's single-instance hosting — the multi-instance race it flags below never occurred. It was superseded for an unrelated reason: keeping the app's runtime identity able to run `MigrateAsync()` required granting it `CREATE FUNCTION` and `ALTER ANY SECURITY POLICY`, which meant the app could disable the RLS policies protecting its own data (see D031). The original reasoning below is left intact for history.
 
 **Context:** EF Core migrations need to reach the production database whenever schema changes are deployed. Options are: run migrations manually, add a migration step to the CI/CD pipeline, or call `MigrateAsync()` in `Program.cs` so the app migrates itself on startup.
 
@@ -794,3 +797,36 @@ Google OAuth is not affected: Google explicitly whitelists `http://localhost` (a
 - ✅ No certificate management in `postCreateCommand` — simpler, less to break
 - ✅ Google OAuth works without modification — `http://localhost` is whitelisted
 - ❌ App runs on HTTP inside the container — acceptable given this is a local dev environment on a trusted machine
+
+---
+
+## D031: Pipeline migrations + least-privilege app identity (supersedes D022)
+
+**Date:** 2026-07 — **Status:** Accepted — **Issue:** [#322](https://github.com/zkarachiwala/TimeTracker/issues/322)
+
+**Context:** D022 chose to call `Database.MigrateAsync()` for both `TimeTrackerDataContext` and `IdentityDataContext` at app startup, running as the app's Managed Identity (`timetracker-zak`). That identity held only `db_datareader`/`db_datawriter`. When the RLS migration ([D020](#d020-sql-server-row-level-security--audit-trail)) landed, it needed to create SQL functions and security policies — DDL the identity didn't have — so the app threw during boot and stayed down. The fix applied at the time granted the runtime identity the DDL it needed:
+
+```sql
+GRANT CREATE FUNCTION TO [timetracker-zak];
+GRANT ALTER ANY SECURITY POLICY TO [timetracker-zak];
+```
+
+That resolved the outage but inverted least privilege: the web app can disable the RLS policies protecting its own data. A compromised app tier could run `ALTER SECURITY POLICY ... WITH (STATE = OFF)` and read everything — directly undercutting the defence-in-depth rationale that justified RLS in D020. D022 already flagged startup migration as a poor operational fit (races across instances, blocks boot, no rollback) but accepted it because Azure F1 is single-instance by definition. **This decision supersedes D022 for a different reason — least privilege, not instance count.** The F1 single-instance reasoning in D022 still holds; it just isn't the deciding factor anymore.
+
+**Decision:** Migrations run in the CI/CD pipeline, not at app startup, under a new dedicated principal — not the app identity, not the backup principal.
+
+- `.github/workflows/deploy.yml` gets a `migrate` job between `check` and `deploy`, authenticated as a new Azure AD service principal (`timetracker-github-migrations`, OIDC, following the same federated-credential pattern as the existing deploy and backup principals). It opens/closes the SQL firewall for the runner's IP exactly as `backup.yml` already does for its own principal.
+- The job generates `dotnet ef migrations script --idempotent` for both contexts, uploads the script(s) as a build artifact **before** executing them, then runs that exact uploaded file against the database — not a fresh `dotnet ef database update`, so what's reviewable in the artifact is provably what ran.
+- `timetracker-github-migrations` holds `db_datareader`, `db_datawriter`, `db_ddladmin`, `ALTER ANY SECURITY POLICY`, and membership in `rls_bypass`. The `rls_bypass` membership matters even though this rollout adds no data migration: per `docs/rls-security-model.md`, a `FILTER` predicate applies to `UPDATE` as well as `SELECT`, so a future backfill run without the bypass would silently touch zero rows and report success.
+- `timetracker-zak` (the app identity) has `CREATE FUNCTION` and `ALTER ANY SECURITY POLICY` revoked, back to `db_datareader`/`db_datawriter` only.
+- `Program.cs` no longer calls `MigrateAsync()` for either context. It calls `GetPendingMigrationsAsync()` on both instead, and refuses to boot (throws) if either has pending migrations — a forgotten pipeline step now fails loudly instead of silently running against the wrong schema. `IdentityDataContext` moves to the pipeline alongside `TimeTrackerDataContext` for consistency, even though the `id` schema carries no RLS policies: D022's multi-instance race risk applies to it too, and leaving one context migrated-at-startup while the other isn't is an easy-to-forget inconsistency. The Identity role/admin seeding logic in `Program.cs` is unaffected — it doesn't need the DDL grants and stays exactly as-is.
+
+**Rollout order matters.** The pipeline step is added and verified *before* the app identity's grants are revoked, and the grants are revoked *before* `MigrateAsync()` is removed from `Program.cs` — at every intermediate stage there is a safety net (either the app can still self-migrate, or nothing is pending so the revoke is harmless). Full sequencing in `docs/plans/migrations-principal-rollout.md`.
+
+**Consequences:**
+- ✅ The app's runtime identity can no longer disable the RLS policies protecting its own data — restores the least-privilege intent from D020
+- ✅ Migrations are reviewable before they run (uploaded artifact) and retained with the build, rather than implicit in a startup code path
+- ✅ No more startup migration race across instances, and boot no longer blocks on schema changes
+- ✅ Boot now fails fast and loudly on a stale schema, instead of an app silently migrating whatever it finds
+- ❌ A third SQL principal to provision and reason about, alongside the app identity and the backup principal — more moving parts, though each is now narrower in scope than the thing it replaces
+- ❌ CI now needs SQL Server firewall access for the migration step, same operational cost `backup.yml` already carries

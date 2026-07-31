@@ -134,7 +134,7 @@ az sql db show-connection-string \
   --client ado.net
 ```
 
-Then open **Azure Data Studio** (or any SQL client that supports Azure AD login), connect to `${SERVER}.database.windows.net` with your Azure AD account, and run:
+Then open **VS Code with the [MSSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql)** (Microsoft's recommended replacement for the now-retired Azure Data Studio) — or any SQL client that supports Azure AD login — connect to `${SERVER}.database.windows.net` with your Azure AD account, and run:
 
 ```sql
 CREATE USER [<APP>] FROM EXTERNAL PROVIDER;
@@ -146,16 +146,24 @@ Replace `<APP>` with the value you set for `APP` above (e.g. `timetracker-zak`).
 
 ### Step 5b — Grant Row-Level Security permissions
 
-The EF Core migration that installs RLS (`AddAuditTrailAndRowLevelSecurity`) creates SQL functions and security policies. These DDL operations require two additional grants beyond `db_datareader`/`db_datawriter`. Run as admin in the same SQL session:
+> **As of [D031](decisions.md#d031-pipeline-migrations--least-privilege-app-identity-supersedes-d022),
+> this step is historical.** Migrations run in the deploy pipeline under a dedicated principal
+> (Step 7f below), not as the app's Managed Identity. The app identity (`<APP>`) only needs Step
+> 5's grants — `db_datareader`/`db_datawriter` — nothing further. This section is kept for
+> context on why the DDL grants existed in the first place.
+
+The EF Core migration that installs RLS (`AddAuditTrailAndRowLevelSecurity`) creates SQL functions and security policies. These DDL operations require two additional grants beyond `db_datareader`/`db_datawriter`. At the time, these were granted directly to the app identity:
 
 ```sql
 GRANT CREATE FUNCTION TO [<APP>];
 GRANT ALTER ANY SECURITY POLICY TO [<APP>];
 ```
 
-> **Why these are separate:** `db_datareader` and `db_datawriter` grant DML access only. Schema-level DDL (`CREATE FUNCTION`) and security infrastructure (`ALTER ANY SECURITY POLICY`) require explicit grants. These are the minimum permissions needed; no elevation to `db_owner` or `db_ddladmin` is required.
+That inverted least privilege — the running app could disable the RLS policies protecting its own data — which is exactly what D031's pipeline migrations principal fixes. If you're following this guide fresh, skip these two grants on `<APP>` and go straight to Step 7f instead.
+
+> **Why these are separate:** `db_datareader` and `db_datawriter` grant DML access only. Schema-level DDL (`CREATE FUNCTION`) and security infrastructure (`ALTER ANY SECURITY POLICY`) require explicit grants. No elevation to `db_owner` is required.
 >
-> **RLS exemption:** nothing is exempt from RLS by default — not `sa`, not `sysadmin`, not `db_owner`. The predicates name a single database role, `rls_bypass`, and membership of it is the only way past them. The production Managed Identity is not a member, so RLS is enforced in production; `sa` is not a member either, so it is enforced in local development too. Only the backup principal holds it, because SqlPackage cannot set `SESSION_CONTEXT`. See `docs/rls-security-model.md`.
+> **RLS exemption:** nothing is exempt from RLS by default — not `sa`, not `sysadmin`, not `db_owner`. The predicates name a single database role, `rls_bypass`, and membership of it is the only way past them. The production Managed Identity is not a member, so RLS is enforced in production; `sa` is not a member either, so it is enforced in local development too. The backup principal and the migrations principal both hold it — the backup principal because SqlPackage cannot set `SESSION_CONTEXT`, the migrations principal because a data migration `UPDATE` without it would silently touch zero rows. See `docs/rls-security-model.md`.
 
 ---
 
@@ -252,11 +260,85 @@ In your repository go to **Settings → Secrets and variables → Actions** and 
 | Secret | `AZURE_SUBSCRIPTION_ID` | From step 7d |
 | Variable | `AZURE_WEBAPP_NAME` | The value of `APP` (e.g. `timetracker-zak`) |
 
+### Step 7f — Provision the migrations principal (D031)
+
+A separate OIDC principal runs EF Core migrations in the pipeline, so the app's own runtime identity never needs schema-level DDL rights. Same pattern as 7a–7c, a different name and a different SQL role shape:
+
+```bash
+az ad app create --display-name "timetracker-github-migrations"
+
+MIGRATE_APP_ID=$(az ad app list --display-name "timetracker-github-migrations" --query "[0].appId" -o tsv)
+MIGRATE_APP_OID=$(az ad app list --display-name "timetracker-github-migrations" --query "[0].id" -o tsv)
+
+az ad sp create --id $MIGRATE_APP_ID
+MIGRATE_SP_OID=$(az ad sp show --id $MIGRATE_APP_ID --query id -o tsv)
+
+az ad app federated-credential create \
+  --id $MIGRATE_APP_OID \
+  --parameters "{
+    \"name\": \"timetracker-main\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"repo:zkarachiwala/TimeTracker:ref:refs/heads/main\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+```
+
+Create a **separate** custom firewall-only RBAC role for this principal — same shape as the backup principal's role (D021 — `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server, not the broader built-in `SQL Server Contributor`), but its own role definition, not a shared one. Backup and migrations are deliberately isolated principals; sharing a role between them would couple their audit trails and blast radius back together, which defeats the point of having two principals in the first place.
+
+```bash
+az role definition create --role-definition "{
+  \"Name\": \"TimeTracker Migrations Firewall Manager\",
+  \"Description\": \"Adds and removes a single SQL Server firewall rule for the GitHub Actions migrate workflow\",
+  \"Actions\": [
+    \"Microsoft.Sql/servers/firewallRules/write\",
+    \"Microsoft.Sql/servers/firewallRules/delete\"
+  ],
+  \"AssignableScopes\": [\"/subscriptions/$SUB/resourceGroups/$RG\"]
+}"
+
+az role assignment create \
+  --role "TimeTracker Migrations Firewall Manager" \
+  --assignee-object-id $MIGRATE_SP_OID \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Sql/servers/$SERVER
+```
+
+Then, connected to the database with your Azure AD admin account:
+
+```sql
+CREATE USER [timetracker-github-migrations] FROM EXTERNAL PROVIDER;
+
+ALTER ROLE db_datareader ADD MEMBER [timetracker-github-migrations];
+ALTER ROLE db_datawriter ADD MEMBER [timetracker-github-migrations];
+ALTER ROLE db_ddladmin   ADD MEMBER [timetracker-github-migrations];
+GRANT ALTER ANY SECURITY POLICY TO [timetracker-github-migrations];
+ALTER ROLE rls_bypass    ADD MEMBER [timetracker-github-migrations];
+```
+
+Add to GitHub (**Settings → Secrets and variables → Actions → Variables tab** for the three
+resource identifiers — they aren't sensitive, and belong as Variables, not Secrets):
+
+| Type | Name | Value |
+|------|------|-------|
+| Secret | `MIGRATIONS_AZURE_CLIENT_ID` | `$MIGRATE_APP_ID` |
+| Variable | `SQL_RESOURCE_GROUP` | `timetracker-rg` |
+| Variable | `SQL_SERVER` | `timetracker-sql` |
+| Variable | `SQL_DATABASE` | `TimeTrackerDb` |
+
+`SQL_RESOURCE_GROUP`/`SQL_SERVER`/`SQL_DATABASE` are shared with `backup.yml` — both workflows
+read the same three variables rather than each having their own differently-named copies (the
+`BACKUP_*`-prefixed versions these replaced were misleadingly named for a value that isn't
+backup-specific).
+
+Full rollout sequencing (why this order, and what to verify at each step) is in `docs/plans/migrations-principal-rollout.md`.
+
 ---
 
 ## Step 8 — First deployment
 
-Push any commit to `main` (or re-run the Deploy workflow from the Actions tab). Once CI passes, the Deploy workflow authenticates via OIDC, publishes, and deploys. Migrations run automatically on startup.
+Push any commit to `main` (or re-run the Deploy workflow from the Actions tab). Once CI passes, the Deploy workflow authenticates via OIDC. A `migrate` job applies any pending EF Core migrations under the dedicated migrations principal (Step 7f) before the app is published and deployed — see D031.
+
+> **Rollout note:** until the `migrate` job has a proven successful run in production and Step 5b's DDL grants are revoked from the app identity, `Program.cs` still also calls `MigrateAsync()` at startup as a safety net (harmless once nothing is pending). It's only removed — in favour of a startup guard that refuses to boot on a stale schema — once that verification is complete. See `docs/plans/migrations-principal-rollout.md` for exactly where that rollout currently stands.
 
 Check progress at: `https://github.com/zkarachiwala/TimeTracker/actions`
 
@@ -338,6 +420,8 @@ BACKUP_SP_OID=$(az ad sp show --id $BACKUP_APP_ID --query id -o tsv)
 
 ### Step B — Create a minimal custom Azure role
 
+`AssignableScopes` is capped at the resource group, not the subscription — a role definition can be assigned anywhere within its `AssignableScopes`, so a subscription-wide value would let this role later be (mis)assigned to some other SQL server or resource group, even though the one `role assignment create` below only ever grants it against this one server.
+
 ```bash
 az role definition create --role-definition "{
   \"Name\": \"TimeTracker Backup Firewall Manager\",
@@ -346,9 +430,26 @@ az role definition create --role-definition "{
     \"Microsoft.Sql/servers/firewallRules/write\",
     \"Microsoft.Sql/servers/firewallRules/delete\"
   ],
-  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+  \"AssignableScopes\": [\"/subscriptions/$SUB/resourceGroups/$RG\"]
 }"
 ```
+
+> If this role already exists with the wider `/subscriptions/$SUB` scope (it was originally created
+> that way), narrow it in place rather than recreating it. `az role definition update` needs the
+> role's actual GUID `id`, not just its display name — fetch the live definition, patch only
+> `assignableScopes`, and update from that:
+> ```bash
+> az role definition list --custom-role-only true \
+>   --query "[?roleName=='TimeTracker Backup Firewall Manager']" -o json > role.json
+>
+> # role.json is an array (even with one match) — .[0] at the end unwraps it to a bare
+> # object, since `az role definition update` needs a dictionary, not an array-of-one.
+> jq --arg scope "/subscriptions/$SUB/resourceGroups/$RG" \
+>   '.[0].assignableScopes = [$scope] | .[0]' role.json > role-updated.json
+>
+> az role definition update --role-definition role-updated.json
+> ```
+> The existing role assignment (Step C) is unaffected — narrowing `AssignableScopes` doesn't touch assignments already made within the new, narrower range.
 
 ### Step C — Assign the role, scoped to the SQL server only
 
@@ -377,7 +478,7 @@ az ad app federated-credential create \
 
 ### Step E — Create the SQL database user
 
-Connect to `timetracker-sql.database.windows.net` with your Azure AD admin account (Azure Data Studio or `sqlcmd`) and run against `TimeTrackerDb`:
+Connect to `timetracker-sql.database.windows.net` with your Azure AD admin account (VS Code with the MSSQL extension, or any SQL client that supports Azure AD login) and run against `TimeTrackerDb`:
 
 ```sql
 CREATE USER [timetracker-github-backup] FROM EXTERNAL PROVIDER;
@@ -419,12 +520,12 @@ In **Settings → Secrets and variables → Actions** on the `TimeTracker` repo 
 |------|------|-------|
 | Secret | `BACKUP_AZURE_CLIENT_ID` | From above |
 | Secret | `BACKUP_REPO_TOKEN` | Fine-grained PAT from Step G |
-| Variable | `BACKUP_RESOURCE_GROUP` | `timetracker-rg` |
-| Variable | `BACKUP_SQL_SERVER` | `timetracker-sql` |
-| Variable | `BACKUP_SQL_DATABASE` | `TimeTrackerDb` |
+| Variable | `SQL_RESOURCE_GROUP` | `timetracker-rg` |
+| Variable | `SQL_SERVER` | `timetracker-sql` |
+| Variable | `SQL_DATABASE` | `TimeTrackerDb` |
 | Variable | `BACKUP_REPO_NAME` | `TimeTracker-backups` (or whatever you named it) |
 
-`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are reused from the deploy setup.
+`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are reused from the deploy setup. `SQL_RESOURCE_GROUP`/`SQL_SERVER`/`SQL_DATABASE` are shared with the `migrate` job in `deploy.yml` (Step 7f) — both workflows point at the same three variables rather than each holding their own copy, since they're generic resource identifiers, not backup-specific.
 
 ### Verifying
 
