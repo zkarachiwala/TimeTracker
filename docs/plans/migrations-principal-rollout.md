@@ -166,9 +166,9 @@ az ad app federated-credential create \
 gh workflow run deploy.yml --ref claude/pipeline-migrations-322
 ```
 
-- [ ] `migrate` job: firewall opens, artifact uploads (`migration-scripts-<sha>`), `sqlcmd` step
-      exits 0, firewall closes (`az sql server firewall-rule list` shows no leaked
-      `github-actions-migrate` rule after the run)
+- [ ] `migrate` job: firewall opens, artifact uploads (`migration-scripts-<sha>`), `dotnet ef
+      database update` exits 0 for both contexts, firewall closes (`az sql server firewall-rule
+      list` shows no leaked `github-actions-migrate` rule after the run)
 - [ ] If `deploy` itself doesn't run or is blocked: check **Settings → Environments →
       production → Deployment branches** — if it's restricted to `main` only, `migrate` (which has
       no `environment:` block) can still be verified from this branch even though `deploy` can't.
@@ -185,14 +185,30 @@ az ad app federated-credential delete --id $MIGRATE_APP_OID --federated-credenti
 ```
 
 - [ ] Temporary federated credential removed
-- [ ] Since `main` currently has no pending migrations, this run is a safe no-op — the idempotent
-      script should apply nothing and still exit 0
-- [ ] **Unverified from static review**: `mssql-tools18`'s bundled sqlcmd turned out to be the
-      legacy ODBC-based tool with no access-token auth mode at all (confirmed via a real failed
-      run — `Sqlcmd: '-authentication-method=...': Unknown Option`). Switched to installing
-      `Microsoft.SqlServer.Sqlcmd` as a dotnet global tool (the modern go-sqlcmd) and passing the
-      token via `SQLCMDPASSWORD` instead of a flag. This is still unverified against a real run —
-      if it fails, check `~/.dotnet/tools/sqlcmd --help` in the job log for the actual syntax.
+- [ ] Since `main` currently has no pending migrations, this run is a safe no-op — `dotnet ef
+      database update` should find nothing to apply and exit 0
+- [ ] Applying migrations went through several iterations before landing on the current approach —
+      worth knowing the history so it isn't relitigated:
+      1. First attempt used `mssql-tools18`'s bundled `sqlcmd` with a hand-crafted
+         `--authentication-method=ActiveDirectoryAccessToken --access-token ...` invocation. Failed
+         — that tool is the legacy ODBC-based `sqlcmd`, which doesn't understand `--long-option`
+         syntax at all and has no access-token auth mode (`Sqlcmd: '-authentication-method=...':
+         Unknown Option`).
+      2. Switched to `Microsoft.SqlServer.Sqlcmd` (the modern go-sqlcmd, installed as a dotnet
+         global tool). Checked Microsoft's own docs and found `ActiveDirectoryAccessToken` isn't a
+         real auth method for it at all — the supported list is Default/Integrated/Password/
+         Interactive/ManagedIdentity/ServicePrincipal.
+      3. **This was the wrong direction entirely.** Hand-rolling a separate SQL client to execute
+         a generated script is not how EF Core Code-First migrations are meant to be applied in
+         CI/CD — the standard, vendor-supported approach is `dotnet ef database update` (or
+         `dotnet ef migrations bundle`) directly, using the same `Microsoft.Data.SqlClient` stack
+         the app itself already uses. The idempotent script generation is kept, but purely as a
+         reviewable audit artifact (uploaded, never executed) — the actual apply step is
+         `dotnet ef database update --connection "...Authentication=Active Directory Default..."`,
+         which picks up the existing `az login` session from the "Azure Login" step automatically
+         via the same `DefaultAzureCredential` chain, no separate tool or token needed.
+      This final approach is still unverified against a real run — if it fails, the error will be
+      a normal EF Core connection/auth error, not a third-party CLI flag mismatch.
 - [ ] `deploy` job still runs and succeeds afterward (it now depends on `migrate`)
 
 ## 6. Only after step 5 passes — revoke the old grants

@@ -75,8 +75,14 @@ jobs:
       # operations regardless of what the app would actually run as. That flips
       # ConnectionStringBuilder.Build's IsDevelopment() check true, which then expects DbUser/
       # DbPassword config that only exists as local user secrets - not in CI. Forcing Production
-      # here keeps design-time script generation on the same code path as the real app.
-      - name: Generate idempotent migration scripts
+      # keeps design-time operations on the same code path as the real app. Applies to both
+      # steps below, since both invoke dotnet-ef's design-time host building.
+      #
+      # This script is generated purely as a reviewable audit artifact (uploaded below, before
+      # the actual apply step) - it is never executed. Applying migrations goes through EF's own
+      # `dotnet ef database update`, the standard vendor-supported mechanism, not a hand-rolled
+      # SQL client invocation.
+      - name: Generate idempotent migration scripts (audit artifact only)
         env:
           ASPNETCORE_ENVIRONMENT: Production
         run: |
@@ -90,8 +96,6 @@ jobs:
             --project TimeTracker.Web/TimeTracker.Web.csproj \
             --output ./migrations-artifact/IdentityDataContext.sql
 
-      # Uploaded before execution so the artifact is provably what ran, not a
-      # regeneration — see D031.
       - name: Upload migration scripts artifact
         uses: actions/upload-artifact@v4
         with:
@@ -112,36 +116,23 @@ jobs:
             --start-ip-address ${{ steps.ip.outputs.addr }} \
             --end-ip-address ${{ steps.ip.outputs.addr }}
 
-      - name: Get Azure AD token for SQL
-        id: token
-        run: |
-          TOKEN=$(az account get-access-token \
-            --resource https://database.windows.net \
-            --query accessToken -o tsv)
-          echo "::add-mask::$TOKEN"
-          echo "value=$TOKEN" >> $GITHUB_OUTPUT
-
-      # mssql-tools18's bundled sqlcmd is the legacy ODBC-based tool - it doesn't understand
-      # --long-option syntax at all and has no access-token auth mode. The modern,
-      # cross-platform go-sqlcmd (which supports ActiveDirectoryAccessToken) ships as a dotnet
-      # global tool instead, same install pattern already used for dotnet-ef and sqlpackage.
-      - name: Install sqlcmd
-        run: dotnet tool install --global Microsoft.SqlServer.Sqlcmd
-
-      # go-sqlcmd's ActiveDirectoryAccessToken auth mode takes the token via SQLCMDPASSWORD,
-      # not a dedicated --access-token flag - there's no separate flag for it, the token
-      # substitutes for the password. Unverified beyond static review; if this step fails,
-      # check `~/.dotnet/tools/sqlcmd --help` in the job log for the actual supported syntax.
-      - name: Apply migration scripts
+      # --connection overrides the app's configured connection string for this operation only
+      # (documented EF CLI option). Authentication=Active Directory Default uses the same
+      # DefaultAzureCredential chain as the app's own SqlClient stack, which falls through to
+      # the already-authenticated Azure CLI session the "Azure Login" step above established via
+      # OIDC - no separate token or SQL client tool needed.
+      - name: Apply migrations
         env:
-          SQLCMDPASSWORD: ${{ steps.token.outputs.value }}
+          ASPNETCORE_ENVIRONMENT: Production
         run: |
-          ~/.dotnet/tools/sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
-            --authentication-method ActiveDirectoryAccessToken \
-            -i ./migrations-artifact/TimeTrackerDataContext.sql
-          ~/.dotnet/tools/sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
-            --authentication-method ActiveDirectoryAccessToken \
-            -i ./migrations-artifact/IdentityDataContext.sql
+          ~/.dotnet/tools/dotnet-ef database update \
+            --context TimeTrackerDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --connection "Server=${{ vars.SQL_SERVER }}.database.windows.net;Database=${{ vars.SQL_DATABASE }};Authentication=Active Directory Default;Encrypt=True"
+          ~/.dotnet/tools/dotnet-ef database update \
+            --context IdentityDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --connection "Server=${{ vars.SQL_SERVER }}.database.windows.net;Database=${{ vars.SQL_DATABASE }};Authentication=Active Directory Default;Encrypt=True"
 
       - name: Close SQL firewall
         if: always()
