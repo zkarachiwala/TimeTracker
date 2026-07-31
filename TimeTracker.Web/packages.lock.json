@@ -13,9 +13,9 @@
       },
       "Microsoft.AspNetCore.App.Internal.Assets": {
         "type": "Direct",
-        "requested": "[10.0.10, )",
-        "resolved": "10.0.10",
-        "contentHash": "8k0KoYKvNrSqP8E3oDJMBVKavlTEE6BacdLGtEDcxv9Hz0XxWFkD6JdLJsxXUlGeAfZ6YfvWmxKenl73qeCTSA=="
+        "requested": "[10.0.9, )",
+        "resolved": "10.0.9",
+        "contentHash": "E9Wp/LPKAYkGOVBv4lt5U5TnUA/7pov7QZAwF3eI64kK8AAXqkPDwuadEOwpL1WXEfgecYm0fccluvABp32D8g=="
       },
       "Microsoft.AspNetCore.Authentication.Google": {
         "type": "Direct",
@@ -125,9 +125,9 @@
       },
       "PublicHoliday": {
         "type": "Direct",
-        "requested": "[3.13.0, )",
-        "resolved": "3.13.0",
-        "contentHash": "2x7v33VwwJvMjVa5SfkCQrp3tAColhpuNpCHaD4E4jSDwSSdcjyfOyxV4Gwfdnse1ZCQ7QkPL112l61Vrft3xQ=="
+        "requested": "[3.14.0, )",
+        "resolved": "3.14.0",
+        "contentHash": "BczDElY3ZiuhxtKSgUoH83/ImvP65ZnCNiBLvSzXQv0HImO5cGTsP5vpIMY3quA3No1OluWUQB9HAvheJSytow=="
       },
       "Scalar.AspNetCore": {
         "type": "Direct",
@@ -309,8 +309,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.110",
-        "contentHash": "v2QuCGg7GLcuILPU+S57gi2bnLMcROOBFvLjqFKb3fF420eimHOmmZdALkRkd+qMku83SaGLy2bsL8Z1WFWbVw=="
+        "resolved": "10.0.109",
+        "contentHash": "LKdYZXWIbRvQc542PCFdr3krH2rvaHHn/1dbXMtS2pggvpoPCmqghAvhiyZnatk6WR4K+ZeR+wirEhwrgVnECw=="
       },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
@@ -593,7 +593,7 @@
           "Heron.MudCalendar": "[4.0.0, )",
           "Heron.MudTotalCalendar": "[4.0.0, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.110, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.109, )",
           "MudBlazor": "[9.7.0, )",
           "TimeTracker.Contracts": "[1.0.0, )"
         }
