@@ -125,9 +125,9 @@
       },
       "PublicHoliday": {
         "type": "Direct",
-        "requested": "[3.13.0, )",
-        "resolved": "3.13.0",
-        "contentHash": "2x7v33VwwJvMjVa5SfkCQrp3tAColhpuNpCHaD4E4jSDwSSdcjyfOyxV4Gwfdnse1ZCQ7QkPL112l61Vrft3xQ=="
+        "requested": "[3.14.0, )",
+        "resolved": "3.14.0",
+        "contentHash": "BczDElY3ZiuhxtKSgUoH83/ImvP65ZnCNiBLvSzXQv0HImO5cGTsP5vpIMY3quA3No1OluWUQB9HAvheJSytow=="
       },
       "Scalar.AspNetCore": {
         "type": "Direct",

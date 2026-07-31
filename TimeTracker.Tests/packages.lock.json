@@ -771,8 +771,8 @@
       },
       "PublicHoliday": {
         "type": "Transitive",
-        "resolved": "3.13.0",
-        "contentHash": "2x7v33VwwJvMjVa5SfkCQrp3tAColhpuNpCHaD4E4jSDwSSdcjyfOyxV4Gwfdnse1ZCQ7QkPL112l61Vrft3xQ=="
+        "resolved": "3.14.0",
+        "contentHash": "BczDElY3ZiuhxtKSgUoH83/ImvP65ZnCNiBLvSzXQv0HImO5cGTsP5vpIMY3quA3No1OluWUQB9HAvheJSytow=="
       },
       "Scalar.AspNetCore": {
         "type": "Transitive",
@@ -1015,7 +1015,7 @@
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.10, )",
           "Microsoft.OpenApi": "[2.11.0, )",
           "MudBlazor": "[9.7.0, )",
-          "PublicHoliday": "[3.13.0, )",
+          "PublicHoliday": "[3.14.0, )",
           "Scalar.AspNetCore": "[2.16.17, )",
           "Serilog.AspNetCore": "[10.0.0, )",
           "System.Linq.Dynamic.Core": "[1.7.3, )",
