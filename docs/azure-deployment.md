@@ -436,8 +436,10 @@ az role definition create --role-definition "{
 > az role definition list --custom-role-only true \
 >   --query "[?roleName=='TimeTracker Backup Firewall Manager']" -o json > role.json
 >
+> # role.json is an array (even with one match) — .[0] at the end unwraps it to a bare
+> # object, since `az role definition update` needs a dictionary, not an array-of-one.
 > jq --arg scope "/subscriptions/$SUB/resourceGroups/$RG" \
->   '.[0].assignableScopes = [$scope]' role.json > role-updated.json
+>   '.[0].assignableScopes = [$scope] | .[0]' role.json > role-updated.json
 >
 > az role definition update --role-definition role-updated.json
 > ```
