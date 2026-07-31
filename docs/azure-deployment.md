@@ -283,14 +283,21 @@ az ad app federated-credential create \
   }"
 ```
 
-Assign the same custom firewall-only RBAC role the backup principal has (D021 — `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server, not the broader built-in `SQL Server Contributor`):
+Create a **separate** custom firewall-only RBAC role for this principal — same shape as the backup principal's role (D021 — `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server, not the broader built-in `SQL Server Contributor`), but its own role definition, not a shared one. Backup and migrations are deliberately isolated principals; sharing a role between them would couple their audit trails and blast radius back together, which defeats the point of having two principals in the first place.
 
 ```bash
-ROLE_ID=$(az role definition list --custom-role-only true --query "[?roleName=='<custom-firewall-role-name>'].name" -o tsv)
+az role definition create --role-definition "{
+  \"Name\": \"TimeTracker Migrations Firewall Manager\",
+  \"Description\": \"Adds and removes a single SQL Server firewall rule for the GitHub Actions migrate workflow\",
+  \"Actions\": [
+    \"Microsoft.Sql/servers/firewallRules/write\",
+    \"Microsoft.Sql/servers/firewallRules/delete\"
+  ],
+  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+}"
 
 az role assignment create \
-  --role $ROLE_ID \
-  --subscription $SUB \
+  --role "TimeTracker Migrations Firewall Manager" \
   --assignee-object-id $MIGRATE_SP_OID \
   --assignee-principal-type ServicePrincipal \
   --scope /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Sql/servers/$SERVER

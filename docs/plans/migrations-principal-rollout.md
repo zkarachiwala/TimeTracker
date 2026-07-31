@@ -39,24 +39,34 @@ az ad app federated-credential create \
 - [ ] App registration + service principal created
 - [ ] Federated credential created
 
-## 2. Assign the firewall RBAC role
+## 2. Create and assign a dedicated firewall RBAC role
 
-Same custom role the backup principal has (D021: `firewallRules/write` + `firewallRules/delete`
-only, scoped to the SQL server — not the built-in `SQL Server Contributor`, which grants more).
-Reuse the existing custom role definition if you still have its name/ID from the backup rollout;
-otherwise look it up:
+Same *shape* of role the backup principal has (D021: `firewallRules/write` + `firewallRules/delete`
+only, scoped to the SQL server — not the built-in `SQL Server Contributor`, which grants more), but
+its own separate role definition — **do not reuse the backup principal's role**
+(`TimeTracker Backup Firewall Manager`). Backup and migrations are deliberately separate
+principals so a compromise of one doesn't touch the other; sharing a role assignment between them
+would recouple that audit boundary even though the permissions happen to be identical.
 
 ```bash
-ROLE_ID=$(az role definition list --custom-role-only true --query "[?roleName=='<custom-role-name>'].name" -o tsv)
+az role definition create --role-definition "{
+  \"Name\": \"TimeTracker Migrations Firewall Manager\",
+  \"Description\": \"Adds and removes a single SQL Server firewall rule for the GitHub Actions migrate workflow\",
+  \"Actions\": [
+    \"Microsoft.Sql/servers/firewallRules/write\",
+    \"Microsoft.Sql/servers/firewallRules/delete\"
+  ],
+  \"AssignableScopes\": [\"/subscriptions/$SUB\"]
+}"
 
 az role assignment create \
-  --role $ROLE_ID \
-  --subscription $SUB \
+  --role "TimeTracker Migrations Firewall Manager" \
   --assignee-object-id $SP_OID \
   --assignee-principal-type ServicePrincipal \
   --scope /subscriptions/$SUB/resourceGroups/<RG>/providers/Microsoft.Sql/servers/timetracker-sql
 ```
 
+- [ ] Role created (separate from the backup principal's role)
 - [ ] Role assigned, scoped to `timetracker-sql` only
 
 ## 3. SQL grants
