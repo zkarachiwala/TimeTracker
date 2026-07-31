@@ -219,9 +219,16 @@ REVOKE ALTER ANY SECURITY POLICY FROM [timetracker-zak];
 ```
 
 - [ ] Grants revoked
-- [ ] Redeploy (or `workflow_dispatch`) and confirm the app boots cleanly — `MigrateAsync()` is
-      still in `Program.cs` at this point, but with nothing pending it doesn't need the revoked
-      grants
+- [ ] Confirm the **currently-deployed `main` app** boots cleanly — not this branch. `main`
+      doesn't have the `migrate` job at all yet; it's still running the old `Program.cs` with
+      `MigrateAsync()` at startup, and (per step 5's cleanup) this branch can no longer
+      authenticate to Azure anyway once the temporary federated credential is removed. Verify by
+      restarting the App Service directly and checking it comes back up:
+      ```bash
+      az webapp restart --name timetracker-zak --resource-group timetracker-rg
+      ```
+      Since nothing is currently pending, `MigrateAsync()` doesn't need the revoked grants to
+      succeed — a clean restart confirms that.
 
 ## 7. Only after step 6 is confirmed stable — remove startup migration
 
