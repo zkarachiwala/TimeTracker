@@ -42,10 +42,113 @@ jobs:
             echo "No app code changed — skipping deploy and Playwright tests."
           fi
 
+  migrate:
+    name: Apply EF Core Migrations
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ needs.check.outputs.code == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.MIGRATIONS_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore TimeTracker.sln --locked-mode
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Generate idempotent migration scripts
+        run: |
+          mkdir -p ./migrations-artifact
+          ~/.dotnet/tools/dotnet-ef migrations script --idempotent \
+            --context TimeTrackerDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --output ./migrations-artifact/TimeTrackerDataContext.sql
+          ~/.dotnet/tools/dotnet-ef migrations script --idempotent \
+            --context IdentityDataContext \
+            --project TimeTracker.Web/TimeTracker.Web.csproj \
+            --output ./migrations-artifact/IdentityDataContext.sql
+
+      # Uploaded before execution so the artifact is provably what ran, not a
+      # regeneration — see D031.
+      - name: Upload migration scripts artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-scripts-${{ github.sha }}
+          path: ./migrations-artifact/*.sql
+          retention-days: 90
+
+      - name: Get runner public IP
+        id: ip
+        run: echo "addr=$(curl -sf https://api.ipify.org)" >> $GITHUB_OUTPUT
+
+      - name: Open SQL firewall for runner
+        run: |
+          az sql server firewall-rule create \
+            --resource-group ${{ vars.SQL_RESOURCE_GROUP }} \
+            --server ${{ vars.SQL_SERVER }} \
+            --name github-actions-migrate \
+            --start-ip-address ${{ steps.ip.outputs.addr }} \
+            --end-ip-address ${{ steps.ip.outputs.addr }}
+
+      - name: Get Azure AD token for SQL
+        id: token
+        run: |
+          TOKEN=$(az account get-access-token \
+            --resource https://database.windows.net \
+            --query accessToken -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "value=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Install sqlcmd
+        run: |
+          curl -sSL -O https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+          echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
+
+      # NOTE: verify --authentication-method/--access-token flag syntax against the
+      # installed sqlcmd version on the first workflow_dispatch dry run (D031's
+      # rollout doc flags this as unverified from static review).
+      - name: Apply migration scripts
+        run: |
+          sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
+            --authentication-method=ActiveDirectoryAccessToken \
+            --access-token "${{ steps.token.outputs.value }}" \
+            -i ./migrations-artifact/TimeTrackerDataContext.sql
+          sqlcmd -S ${{ vars.SQL_SERVER }}.database.windows.net -d ${{ vars.SQL_DATABASE }} \
+            --authentication-method=ActiveDirectoryAccessToken \
+            --access-token "${{ steps.token.outputs.value }}" \
+            -i ./migrations-artifact/IdentityDataContext.sql
+
+      - name: Close SQL firewall
+        if: always()
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group ${{ vars.SQL_RESOURCE_GROUP }} \
+            --server ${{ vars.SQL_SERVER }} \
+            --name github-actions-migrate \
+            --yes 2>/dev/null || true
+
   deploy:
     name: Publish & Deploy
     runs-on: ubuntu-latest
-    needs: check
+    needs: [check, migrate]
     if: ${{ needs.check.outputs.code == 'true' }}
 
     environment:
