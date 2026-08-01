@@ -128,7 +128,7 @@ public class ProjectServiceTests
         context.Projects.Add(project);
         await context.SaveChangesAsync();
 
-        // All projects are visible to all users (single-tenant, D023)
+        // All projects are visible to all users (single-tenant, ADR-023)
         var result = await CreateService(options).GetProjectById(project.Id);
 
         Assert.NotNull(result);

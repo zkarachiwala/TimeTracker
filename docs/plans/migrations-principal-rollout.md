@@ -2,7 +2,7 @@
 
 Companion to `docs/plans/rls-bypass-rollout.md`. That rollout replaced a blanket `db_owner` RLS
 exemption with a named role; this one replaces the app's own runtime identity as the thing that
-runs schema migrations. See `docs/decisions.md` D031 for the full rationale.
+runs schema migrations. See `docs/decisions.md` ADR-031 for the full rationale.
 
 **Status: all 7 steps below have been run and verified against real production Azure/GitHub
 infrastructure**, including `Program.cs`'s `MigrateAsync()` removal (step 7) — the app now depends
@@ -52,7 +52,7 @@ az ad app federated-credential create \
 
 ## 2. Create and assign a dedicated firewall RBAC role
 
-Same *shape* of role the backup principal has (D021: `firewallRules/write` + `firewallRules/delete`
+Same *shape* of role the backup principal has (ADR-021: `firewallRules/write` + `firewallRules/delete`
 only, scoped to the SQL server — not the built-in `SQL Server Contributor`, which grants more), but
 its own separate role definition — **do not reuse the backup principal's role**
 (`TimeTracker Backup Firewall Manager`). Backup and migrations are deliberately separate

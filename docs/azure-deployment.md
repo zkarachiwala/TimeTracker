@@ -146,7 +146,7 @@ Replace `<APP>` with the value you set for `APP` above (e.g. `timetracker-zak`).
 
 ### Step 5b — Grant Row-Level Security permissions
 
-> **As of [D031](decisions.md#d031-pipeline-migrations--least-privilege-app-identity-supersedes-d022),
+> **As of [ADR-031](decisions.md#adr-031-pipeline-migrations--least-privilege-app-identity-supersedes-adr-022),
 > this step is historical.** Migrations run in the deploy pipeline under a dedicated principal
 > (Step 7f below), not as the app's Managed Identity. The app identity (`<APP>`) only needs Step
 > 5's grants — `db_datareader`/`db_datawriter` — nothing further. This section is kept for
@@ -159,7 +159,7 @@ GRANT CREATE FUNCTION TO [<APP>];
 GRANT ALTER ANY SECURITY POLICY TO [<APP>];
 ```
 
-That inverted least privilege — the running app could disable the RLS policies protecting its own data — which is exactly what D031's pipeline migrations principal fixes. If you're following this guide fresh, skip these two grants on `<APP>` and go straight to Step 7f instead.
+That inverted least privilege — the running app could disable the RLS policies protecting its own data — which is exactly what ADR-031's pipeline migrations principal fixes. If you're following this guide fresh, skip these two grants on `<APP>` and go straight to Step 7f instead.
 
 > **Why these are separate:** `db_datareader` and `db_datawriter` grant DML access only. Schema-level DDL (`CREATE FUNCTION`) and security infrastructure (`ALTER ANY SECURITY POLICY`) require explicit grants. No elevation to `db_owner` is required.
 >
@@ -260,7 +260,7 @@ In your repository go to **Settings → Secrets and variables → Actions** and 
 | Secret | `AZURE_SUBSCRIPTION_ID` | From step 7d |
 | Variable | `AZURE_WEBAPP_NAME` | The value of `APP` (e.g. `timetracker-zak`) |
 
-### Step 7f — Provision the migrations principal (D031)
+### Step 7f — Provision the migrations principal (ADR-031)
 
 A separate OIDC principal runs EF Core migrations in the pipeline, so the app's own runtime identity never needs schema-level DDL rights. Same pattern as 7a–7c, a different name and a different SQL role shape:
 
@@ -283,7 +283,7 @@ az ad app federated-credential create \
   }"
 ```
 
-Create a **separate** custom firewall-only RBAC role for this principal — same shape as the backup principal's role (D021 — `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server, not the broader built-in `SQL Server Contributor`), but its own role definition, not a shared one. Backup and migrations are deliberately isolated principals; sharing a role between them would couple their audit trails and blast radius back together, which defeats the point of having two principals in the first place.
+Create a **separate** custom firewall-only RBAC role for this principal — same shape as the backup principal's role (ADR-021 — `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server, not the broader built-in `SQL Server Contributor`), but its own role definition, not a shared one. Backup and migrations are deliberately isolated principals; sharing a role between them would couple their audit trails and blast radius back together, which defeats the point of having two principals in the first place.
 
 ```bash
 az role definition create --role-definition "{
@@ -336,7 +336,7 @@ Full rollout sequencing (why this order, and what to verify at each step) is in 
 
 ## Step 8 — First deployment
 
-Push any commit to `main` (or re-run the Deploy workflow from the Actions tab). Once CI passes, the Deploy workflow authenticates via OIDC. A `migrate` job applies any pending EF Core migrations under the dedicated migrations principal (Step 7f) before the app is published and deployed — see D031.
+Push any commit to `main` (or re-run the Deploy workflow from the Actions tab). Once CI passes, the Deploy workflow authenticates via OIDC. A `migrate` job applies any pending EF Core migrations under the dedicated migrations principal (Step 7f) before the app is published and deployed — see ADR-031.
 
 > **Rollout note:** until the `migrate` job has a proven successful run in production and Step 5b's DDL grants are revoked from the app identity, `Program.cs` still also calls `MigrateAsync()` at startup as a safety net (harmless once nothing is pending). It's only removed — in favour of a startup guard that refuses to boot on a stale schema — once that verification is complete. See `docs/plans/migrations-principal-rollout.md` for exactly where that rollout currently stands.
 
@@ -350,7 +350,7 @@ Your app will be live at: `https://${APP}.azurewebsites.net`
 
 **Not applicable on the F1 free tier.** Azure App Service F1 does not support custom domains. The app is served at `https://${APP}.azurewebsites.net` — Azure provides TLS via the default `*.azurewebsites.net` wildcard certificate at no cost. No further configuration is needed.
 
-Upgrading to at least the Basic (B1) tier unlocks custom domain binding and App Service Managed Certificates. See [D017](decisions.md#d017-cloudflare-free-plan-over-paid-cdnwaf) for the rationale.
+Upgrading to at least the Basic (B1) tier unlocks custom domain binding and App Service Managed Certificates. See [ADR-017](decisions.md#adr-017-cloudflare-free-plan-over-paid-cdnwaf) for the rationale.
 
 ---
 
