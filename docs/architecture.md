@@ -170,7 +170,7 @@ private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
 
 `LocationChanged` fires on every navigation: browser-intercepted link clicks and programmatic `NavigateTo` calls. Source: https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0
 
-Both decisions were explicit and researched — see [D001](decisions.md#d001-global-wasm-rendering-over-ssr--wasm-islands) (why not SSR + islands) and [D002](decisions.md#d002-mudblazor-over-fluent-ui-blazor-and-bootstrap) (why MudBlazor). Full justification including MudBlazor GitHub issues, the six render-mode constraints, and Fluent UI migration cost is in the [Reference section](#reference) below.
+Both decisions were explicit and researched — see [ADR-001](decisions.md#adr-001-global-wasm-rendering-over-ssr--wasm-islands) (why not SSR + islands) and [ADR-002](decisions.md#adr-002-mudblazor-over-fluent-ui-blazor-and-bootstrap) (why MudBlazor). Full justification including MudBlazor GitHub issues, the six render-mode constraints, and Fluent UI migration cost is in the [Reference section](#reference) below.
 
 #### Orphaned reference in dropdowns
 
@@ -194,9 +194,9 @@ When a record holds a foreign key to an item that is no longer available for sel
 }
 ```
 
-This pattern applies whenever: (a) a picker is restricted to a subset of items, and (b) an existing record may reference an item outside that subset. See [D024](decisions.md#d024-projectuser-as-time-allocation-gate--orphaned-reference-pattern) for the decision context.
+This pattern applies whenever: (a) a picker is restricted to a subset of items, and (b) an existing record may reference an item outside that subset. See [ADR-024](decisions.md#adr-024-projectuser-as-time-allocation-gate--orphaned-reference-pattern) for the decision context.
 
-#### API query abuse protection — defence in depth (see [D018](decisions.md#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens))
+#### API query abuse protection — defence in depth (see [ADR-018](decisions.md#adr-018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens))
 
 Three independent layers work together to prevent expensive or abusive API requests from exhausting the Azure SQL free-tier connection pool:
 
@@ -241,7 +241,7 @@ Two endpoints, separated by intent:
 
 UptimeRobot monitors `/health` every 5 minutes — see [`docs/uptimerobot-setup.md`](uptimerobot-setup.md).
 
-Application Insights is not included (pay-as-you-go, no free monthly allowance on current workspace-based model). Future APM path is OpenTelemetry → Grafana Cloud ([#121](https://github.com/zkarachiwala/TimeTracker/issues/121)). See [D019](decisions.md#d019-serilog--health-endpoint--uptimerobot-over-application-insights) and [TD23](technical-debt.md#observability).
+Application Insights is not included (pay-as-you-go, no free monthly allowance on current workspace-based model). Future APM path is OpenTelemetry → Grafana Cloud ([#121](https://github.com/zkarachiwala/TimeTracker/issues/121)). See [ADR-019](decisions.md#adr-019-serilog--health-endpoint--uptimerobot-over-application-insights) and [TD23](technical-debt.md#observability).
 
 ### Infrastructure
 
@@ -350,7 +350,7 @@ erDiagram
 
 ## Decision register
 
-See **[docs/decisions.md](decisions.md)** — 15 decisions (D001–D015) covering rendering architecture, component library, hosting, auth, data access, CI, and showcase deployment.
+See **[docs/decisions.md](decisions.md)** — 15 decisions (ADR-001–ADR-015) covering rendering architecture, component library, hosting, auth, data access, CI, and showcase deployment.
 
 ## Technical debt register
 
@@ -364,11 +364,11 @@ Standalone Blazor WASM showcase deployed to [zkarachiwala.github.io/TimeTracker]
 
 ### Key decisions
 
-- **[D011](decisions.md#d011-showcase--zero-changes-to-trackerclient)** — zero changes to `TimeTracker.Client`; mock services injected via `#if SHOWCASE` in `Program.cs`
-- **[D012](decisions.md#d012-showcase--in-memory-persistence)** — in-memory persistence only; resets on refresh; acceptable for a portfolio demo
-- **[D013](decisions.md#d013-showcase--demo-watermark-in-apprazor)** — demo watermark in `App.razor`; no production regression risk
-- **[D014](decisions.md#d014-showcase--github-pages-deployment)** — GitHub Pages deployment via `deploy.yml` showcase job; `gh-pages` branch; public repo
-- **[D015](decisions.md#d015-showcase-static-assets-isolated-to-wwwroot-showcase)** — showcase assets isolated to `wwwroot-showcase/`; MSBuild conditional `ItemGroup` makes them invisible to the normal SDK build, preventing asset fingerprint churn in dev
+- **[ADR-011](decisions.md#adr-011-showcase--zero-changes-to-trackerclient)** — zero changes to `TimeTracker.Client`; mock services injected via `#if SHOWCASE` in `Program.cs`
+- **[ADR-012](decisions.md#adr-012-showcase--in-memory-persistence)** — in-memory persistence only; resets on refresh; acceptable for a portfolio demo
+- **[ADR-013](decisions.md#adr-013-showcase--demo-watermark-in-apprazor)** — demo watermark in `App.razor`; no production regression risk
+- **[ADR-014](decisions.md#adr-014-showcase--github-pages-deployment)** — GitHub Pages deployment via `deploy.yml` showcase job; `gh-pages` branch; public repo
+- **[ADR-015](decisions.md#adr-015-showcase-static-assets-isolated-to-wwwroot-showcase)** — showcase assets isolated to `wwwroot-showcase/`; MSBuild conditional `ItemGroup` makes them invisible to the normal SDK build, preventing asset fingerprint churn in dev
 
 ### Routing under subpath hosting
 
@@ -382,7 +382,7 @@ Deep-dive justifications for decisions that have permanent architectural impact.
 
 ### Why global WASM — not SSR + WASM islands
 
-This was an explicit, researched decision. Do not revisit without re-reading this section. See also [D001](decisions.md#d001-global-wasm-rendering-over-ssr--wasm-islands).
+This was an explicit, researched decision. Do not revisit without re-reading this section. See also [ADR-001](decisions.md#adr-001-global-wasm-rendering-over-ssr--wasm-islands).
 
 The original Phase 10 plan targeted true WASM islands: SSR router, only interactive components compiled into `TimeTracker.Client`. This was abandoned for two independent sets of reasons: fundamental .NET render-model constraints that apply regardless of UI library, and MudBlazor-specific incompatibilities.
 
@@ -418,7 +418,7 @@ These apply to any Blazor app using the hybrid/islands model and are documented 
 
 ### Why MudBlazor — not Fluent UI Blazor or Bootstrap
 
-See also [D002](decisions.md#d002-mudblazor-over-fluent-ui-blazor-and-bootstrap). MudBlazor was chosen over Microsoft-aligned alternatives when the UI was overhauled in PR #38.
+See also [ADR-002](decisions.md#adr-002-mudblazor-over-fluent-ui-blazor-and-bootstrap). MudBlazor was chosen over Microsoft-aligned alternatives when the UI was overhauled in PR #38.
 
 | Library | Design system | SSR support | Architecture |
 |---------|--------------|-------------|--------------|

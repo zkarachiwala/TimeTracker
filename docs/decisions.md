@@ -1,42 +1,49 @@
-# Decision register
+# Architecture Decision Record (ADR) register
 
-Architectural decisions that were non-obvious, had meaningful alternatives, or are likely to be revisited. Numbered permanently — never reuse an ID. When a decision is superseded, update its Status and add a forward reference.
+Architectural decisions that were non-obvious, had meaningful alternatives, or are likely to be revisited. Numbered permanently — never reuse an ID.
+
+**Status** is one of: **Proposed** (not yet acted on), **Accepted** (in effect — this includes decisions later amended in place, with the amendment recorded in the entry body), **Deprecated** (no longer followed, with no replacement ADR), or **Superseded by ADR-XXX** (replaced by a specific later ADR — add the forward reference on both records).
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
-| [D001](#d001-global-wasm-rendering-over-ssr--wasm-islands) | Global WASM rendering over SSR + WASM islands | 2026-06 | Accepted |
-| [D002](#d002-mudblazor-over-fluent-ui-blazor-and-bootstrap) | MudBlazor over Fluent UI Blazor and Bootstrap | 2026-05 | Accepted |
-| [D003](#d003-zero-cost-hosting-azure-f1--azure-sql-free) | Zero-cost hosting: Azure F1 + Azure SQL free | 2026-05 | Accepted |
-| [D004](#d004-vertical-slice-architecture-no-controllers-no-repositories) | Vertical Slice Architecture — no controllers, no repositories | 2026-05 | Accepted |
-| [D005](#d005-cookie-based-auth-over-jwt) | Cookie-based auth over JWT | 2026-05 | Accepted |
-| [D006](#d006-google-oauth-only--remove-usernamepassword-login) | Google OAuth only — remove username/password login | 2026-05 | Accepted |
-| [D007](#d007-keep-rest-api-layer-separate-from-blazor-pages) | Keep REST API layer separate from Blazor pages | 2026-05 | Accepted |
-| [D008](#d008-two-ef-core-dbcontexts-app--identity) | Two EF Core DbContexts — app + identity | 2026-05 | Accepted |
-| [D009](#d009-mapster-over-automapper) | Mapster over AutoMapper | 2026-05 | Accepted |
-| [D010](#d010-playwright-ci-auth--unauthenticated-tests-only-in-ci) | Playwright CI auth — unauthenticated tests only in CI | 2026-06 | Superseded by D016 |
-| [D011](#d011-showcase--zero-changes-to-trackerclient) | Showcase — zero changes to TimeTracker.Client | 2026-06 | Accepted |
-| [D012](#d012-showcase--in-memory-persistence) | Showcase — in-memory persistence only | 2026-06 | Accepted |
-| [D013](#d013-showcase--demo-watermark-in-apprazor) | Showcase — demo watermark in App.razor | 2026-06 | Accepted |
-| [D014](#d014-showcase--github-pages-deployment) | Showcase — GitHub Pages deployment | 2026-06 | Accepted |
-| [D015](#d015-showcase-static-assets-isolated-to-wwwroot-showcase) | Showcase static assets isolated to `wwwroot-showcase/` | 2026-06 | Accepted |
-| [D016](#d016-playwright--full-suite-pre-push-ci-smoke-test-only) | Playwright — full suite pre-push, CI smoke test only | 2026-06 | Accepted |
-| [D017](#d017-cloudflare-free-plan-over-paid-cdnwaf) | Cloudflare free plan over paid CDN/WAF | 2026-06 | Accepted |
-| [D018](#d018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens) | Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens | 2026-06 | Accepted |
-| [D019](#d019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Partially superseded — UptimeRobot disabled 2026-06 |
-| [D020](#d020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
-| [D021](#d021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
-| [D022](#d022-ef-core-migrateAsync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Superseded by D031 |
-| [D025](#d025-publicholiday-for-au-public-holiday-resolution) | `PublicHoliday` for AU public holiday resolution | 2026-06 | Accepted |
-| [D026](#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer) | xUnit over NUnit for Playwright + new bUnit component layer | 2026-06 | Accepted |
-| [D027](#d027-showcase-css-unified-via-msbuild) | Showcase CSS unified via MSBuild | 2026-06 | Accepted |
-| [D028](#d028-testcontainers-for-rls-and-migration-smoke-tests) | Testcontainers for RLS and migration smoke tests | 2026-06 | Accepted |
-| [D029](#d029-dev-container--docker-compose-despite-single-user-app-scope) | Dev container + Docker Compose despite single-user app scope | 2026-06 | Accepted |
-| [D030](#d030-http-only-inside-the-dev-container) | HTTP-only inside the dev container | 2026-06 | Accepted |
-| [D031](#d031-pipeline-migrations--least-privilege-app-identity-supersedes-d022) | Pipeline migrations + least-privilege app identity (supersedes D022) | 2026-07 | Accepted |
+| [ADR-001](#adr-001-global-wasm-rendering-over-ssr--wasm-islands) | Global WASM rendering over SSR + WASM islands | 2026-06 | Accepted |
+| [ADR-002](#adr-002-mudblazor-over-fluent-ui-blazor-and-bootstrap) | MudBlazor over Fluent UI Blazor and Bootstrap | 2026-05 | Accepted |
+| [ADR-003](#adr-003-zero-cost-hosting-azure-f1--azure-sql-free) | Zero-cost hosting: Azure F1 + Azure SQL free | 2026-05 | Accepted |
+| [ADR-004](#adr-004-vertical-slice-architecture-no-controllers-no-repositories) | Vertical Slice Architecture — no controllers, no repositories | 2026-05 | Accepted |
+| [ADR-005](#adr-005-cookie-based-auth-over-jwt) | Cookie-based auth over JWT | 2026-05 | Accepted |
+| [ADR-006](#adr-006-google-oauth-only--remove-usernamepassword-login) | Google OAuth only — remove username/password login | 2026-05 | Accepted |
+| [ADR-007](#adr-007-keep-rest-api-layer-separate-from-blazor-pages) | Keep REST API layer separate from Blazor pages | 2026-05 | Accepted |
+| [ADR-008](#adr-008-two-ef-core-dbcontexts-app--identity) | Two EF Core DbContexts — app + identity | 2026-05 | Accepted |
+| [ADR-009](#adr-009-mapster-over-automapper) | Mapster over AutoMapper | 2026-05 | Accepted |
+| [ADR-010](#adr-010-playwright-ci-auth--unauthenticated-tests-only-in-ci) | Playwright CI auth — unauthenticated tests only in CI | 2026-06 | Superseded by ADR-016 |
+| [ADR-011](#adr-011-showcase--zero-changes-to-trackerclient) | Showcase — zero changes to TimeTracker.Client | 2026-06 | Accepted |
+| [ADR-012](#adr-012-showcase--in-memory-persistence) | Showcase — in-memory persistence only | 2026-06 | Accepted |
+| [ADR-013](#adr-013-showcase--demo-watermark-in-apprazor) | Showcase — demo watermark in App.razor | 2026-06 | Accepted |
+| [ADR-014](#adr-014-showcase--github-pages-deployment) | Showcase — GitHub Pages deployment | 2026-06 | Accepted |
+| [ADR-015](#adr-015-showcase-static-assets-isolated-to-wwwroot-showcase) | Showcase static assets isolated to `wwwroot-showcase/` | 2026-06 | Accepted |
+| [ADR-016](#adr-016-playwright--full-suite-pre-push-ci-smoke-test-only) | Playwright — full suite pre-push, CI smoke test only | 2026-06 | Accepted |
+| [ADR-017](#adr-017-cloudflare-free-plan-over-paid-cdnwaf) | Cloudflare free plan over paid CDN/WAF | 2026-06 | Accepted |
+| [ADR-018](#adr-018-defence-in-depth-for-api-query-abuse--pagination-cap--global-rate-limiting--cancellation-tokens) | Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens | 2026-06 | Accepted |
+| [ADR-019](#adr-019-serilog--health-endpoint--uptimerobot-over-application-insights) | Serilog + /health endpoint + UptimeRobot over Application Insights | 2026-06 | Accepted |
+| [ADR-020](#adr-020-sql-server-row-level-security--audit-trail) | SQL Server Row-Level Security + audit trail | 2026-06 | Accepted |
+| [ADR-021](#adr-021-nightly-bacpac-export-to-private-github-repo) | Nightly `.bacpac` export to private GitHub repo | 2026-06 | Accepted |
+| [ADR-022](#adr-022-ef-core-migrateasync-at-startup) | EF Core `MigrateAsync()` at startup | 2026-06 | Superseded by ADR-031 |
+| [ADR-023](#adr-023-single-tenant-architecture--one-company-shared-data) | Single-tenant architecture — one company, shared data | 2026-06 | Accepted |
+| [ADR-024](#adr-024-projectuser-as-time-allocation-gate--orphaned-reference-pattern) | `ProjectUser` as time-allocation gate + orphaned reference pattern | 2026-06 | Accepted |
+| [ADR-025](#adr-025-publicholiday-for-au-public-holiday-resolution) | `PublicHoliday` for AU public holiday resolution | 2026-06 | Accepted |
+| [ADR-026](#adr-026-xunit-over-nunit-for-playwright--new-bunit-component-layer) | xUnit over NUnit for Playwright + new bUnit component layer | 2026-06 | Accepted |
+| [ADR-027](#adr-027-showcase-css-unified-via-msbuild) | Showcase CSS unified via MSBuild | 2026-06 | Accepted |
+| [ADR-028](#adr-028-testcontainers-for-rls-and-migration-smoke-tests) | Testcontainers for RLS and migration smoke tests | 2026-06 | Accepted |
+| [ADR-029](#adr-029-dev-container--docker-compose-despite-single-user-app-scope) | Dev container + Docker Compose despite single-user app scope | 2026-06 | Accepted |
+| [ADR-030](#adr-030-http-only-inside-the-dev-container) | HTTP-only inside the dev container | 2026-06 | Accepted |
+| [ADR-031](#adr-031-pipeline-migrations--least-privilege-app-identity-supersedes-adr-022) | Pipeline migrations + least-privilege app identity (supersedes ADR-022) | 2026-07 | Accepted |
+| [ADR-032](#adr-032-oidc-over-publish-profile-for-github-actions--azure-deploy-auth) | OIDC over publish-profile for GitHub Actions → Azure deploy auth | 2026-06 | Accepted |
+| [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption) | Named `rls_bypass` role over blanket `db_owner` RLS exemption | 2026-07 | Accepted |
+| [ADR-034](#adr-034-securitystamp-session-revocation-over-a-redis-backed-revocation-list) | `SecurityStamp` session revocation over a Redis-backed revocation list | 2026-06 | Accepted |
 
 ---
 
-## D001: Global WASM rendering over SSR + WASM islands
+## ADR-001: Global WASM rendering over SSR + WASM islands
 
 **Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD1](technical-debt.md#infrastructure--compute), [TD6](technical-debt.md#cicd--testing)
 
@@ -57,7 +64,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D002: MudBlazor over Fluent UI Blazor and Bootstrap
+## ADR-002: MudBlazor over Fluent UI Blazor and Bootstrap
 
 **Date:** 2026-05 (PR #38) — **Status:** Accepted — **Tracks:** [TD17](technical-debt.md#security)
 
@@ -69,7 +76,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 - ✅ Material Design — appropriate for a personal mobile app
 - ✅ Pure C# — no JS runtime to debug
 - ✅ Largest Blazor community component library by stars and contributors
-- ❌ No SSR support (MudBlazor #9743) — locks in D001 as a permanent constraint
+- ❌ No SSR support (MudBlazor #9743) — locks in ADR-001 as a permanent constraint
 - ❌ Inline style injection requires `unsafe-inline` in CSP `style-src` — this is a real security gap. Without it MudBlazor's runtime styling breaks; with it, CSS injection attacks (e.g. attribute-selector exfiltration of sensitive values via `input[value^="a"] { background: url(...) }`) cannot be blocked by CSP. See [TD17](technical-debt.md#security).
 - ❌ Migration to Fluent UI Blazor estimated at 5–10 person-days if SSR ever becomes required
 
@@ -77,7 +84,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D003: Zero-cost hosting — Azure F1 + Azure SQL free
+## ADR-003: Zero-cost hosting — Azure F1 + Azure SQL free
 
 **Date:** 2026-05 — **Status:** Accepted — **Tracks:** [TD1–TD5](technical-debt.md#infrastructure--compute)
 
@@ -89,13 +96,13 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 - ✅ Zero monthly cost
 - ❌ F1: 60 CPU-min/day limit, single instance, no deployment slots, auto-sleep
 - ❌ Azure SQL free: serverless auto-pause (cold start latency), 7-day backup retention only
-- ❌ No staging environment — drives TD3, TD6, TD7, D010 downstream
+- ❌ No staging environment — drives TD3, TD6, TD7, ADR-010 downstream
 
 **Upgrade path:** Azure App Service Standard S1 (~$60/month) + Azure SQL Standard (~$20/month) removes the majority of constraints in the tech debt register.
 
 ---
 
-## D004: Vertical Slice Architecture — no controllers, no repositories
+## ADR-004: Vertical Slice Architecture — no controllers, no repositories
 
 **Date:** 2026-05 (PR #25) — **Status:** Accepted
 
@@ -112,7 +119,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D005: Cookie-based auth over JWT
+## ADR-005: Cookie-based auth over JWT
 
 **Date:** 2026-05 — **Status:** Accepted
 
@@ -124,12 +131,12 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 - ✅ Cookies are not accessible to JavaScript — XSS cannot steal session tokens
 - ✅ ASP.NET Identity manages cookie issuance, renewal, and revocation hooks
 - ✅ SameSite=Strict prevents CSRF from cross-origin requests
-- ❌ Cookie is domain-scoped — Playwright auth state captured on `localhost` cannot be used against `timetracker-zak.azurewebsites.net` (the proximate cause of D010)
+- ❌ Cookie is domain-scoped — Playwright auth state captured on `localhost` cannot be used against `timetracker-zak.azurewebsites.net` (the proximate cause of ADR-010)
 - ❌ No bearer token means the API cannot be called from a native mobile app or CLI without a browser cookie store
 
 ---
 
-## D006: Google OAuth only — remove username/password login
+## ADR-006: Google OAuth only — remove username/password login
 
 **Date:** 2026-05 (PR #28) — **Status:** Accepted — **Tracks:** [TD10](technical-debt.md#authentication--authorisation)
 
@@ -146,7 +153,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D007: Keep REST API layer separate from Blazor pages
+## ADR-007: Keep REST API layer separate from Blazor pages
 
 **Date:** 2026-05 — **Status:** Accepted
 
@@ -155,7 +162,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 **Decision:** Feature services (`ITimeEntryService`, `IProjectService`, `IClientService`) are exposed via minimal API endpoints (`MapTimeEntryEndpoints()` etc.) consumed by `TimeTracker.Client` HTTP services over HTTP/HTTPS.
 
 **Consequences:**
-- ✅ Required for global WASM (D001) — WASM has no direct server access
+- ✅ Required for global WASM (ADR-001) — WASM has no direct server access
 - ✅ REST API is available for future automation (Zoho Books invoice export — see [roadmap](roadmap.md))
 - ✅ Service interfaces can be mocked for `TimeTracker.Showcase` (Phase 11) without any changes to the API layer
 - ❌ Extra HTTP round-trip for every data operation vs. direct EF calls in server components
@@ -163,7 +170,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D008: Two EF Core DbContexts — app + identity
+## ADR-008: Two EF Core DbContexts — app + identity
 
 **Date:** 2026-05 — **Status:** Accepted
 
@@ -180,7 +187,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D009: Mapster over AutoMapper
+## ADR-009: Mapster over AutoMapper
 
 **Date:** 2026-05 — **Status:** Accepted
 
@@ -190,16 +197,16 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 **Consequences:**
 - ✅ Mapster benchmarks show significantly lower allocation overhead than AutoMapper at mapping time
-- ✅ `IRegister` pattern co-locates mapping configuration with the feature it belongs to — consistent with Vertical Slice (D004)
+- ✅ `IRegister` pattern co-locates mapping configuration with the feature it belongs to — consistent with Vertical Slice (ADR-004)
 - ✅ No dependency on AutoMapper's profile registration ceremony
 - ❌ Mapster is less widely known — developers familiar with AutoMapper need to learn the API
 - ❌ Fewer StackOverflow answers and community examples than AutoMapper
 
 ---
 
-## D010: Playwright CI auth — unauthenticated tests only in CI
+## ADR-010: Playwright CI auth — unauthenticated tests only in CI
 
-**Date:** 2026-06 — **Status:** Superseded by [D016](#d016-playwright-full-suite-pre-push-ci-smoke-test-only) — **Tracks:** [TD6](technical-debt.md#cicd--testing), [TD7](technical-debt.md#cicd--testing)
+**Date:** 2026-06 — **Status:** Superseded by [ADR-016](#adr-016-playwright-full-suite-pre-push-ci-smoke-test-only) — **Tracks:** [TD6](technical-debt.md#cicd--testing), [TD7](technical-debt.md#cicd--testing)
 
 **Context:** The app uses Google OAuth. The OAuth flow cannot be automated in CI. Auth state captured locally against `localhost` uses domain-scoped cookies that are never sent to `timetracker-zak.azurewebsites.net`. All 29 authenticated Playwright tests were failing in CI.
 
@@ -218,11 +225,11 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | Toggle token via Azure app settings per CI run | Two app restarts per deploy pipeline; same privileged endpoint concern |
 | Commit localhost auth state as a GitHub secret | Cookie `domain: localhost` is never sent to `timetracker-zak.azurewebsites.net` — was the previous broken approach |
 
-**Proper resolution:** Staging environment (D003 / TD3) with a dedicated Google OAuth app registration. Authenticated tests run against staging in CI.
+**Proper resolution:** Staging environment (ADR-003 / TD3) with a dedicated Google OAuth app registration. Authenticated tests run against staging in CI.
 
 ---
 
-## D011: Showcase — zero changes to TimeTracker.Client
+## ADR-011: Showcase — zero changes to TimeTracker.Client
 
 **Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
 
@@ -238,7 +245,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D012: Showcase — in-memory persistence
+## ADR-012: Showcase — in-memory persistence
 
 **Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
 
@@ -260,13 +267,13 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D013: Showcase — demo watermark in App.razor
+## ADR-013: Showcase — demo watermark in App.razor
 
 **Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
 
 **Context:** Showcase visitors need to know they are using mock data, not the live system.
 
-**Decision:** A "Demo Mode" banner is rendered above the `<Routes />` outlet in `TimeTracker.Showcase`'s own `App.razor`. Nothing in `TimeTracker.Client` is modified (see D011).
+**Decision:** A "Demo Mode" banner is rendered above the `<Routes />` outlet in `TimeTracker.Showcase`'s own `App.razor`. Nothing in `TimeTracker.Client` is modified (see ADR-011).
 
 **Consequences:**
 - ✅ Banner is entirely outside `Client` — zero regression risk to the production app
@@ -274,7 +281,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D015: Showcase static assets isolated to `wwwroot-showcase/`
+## ADR-015: Showcase static assets isolated to `wwwroot-showcase/`
 
 **Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 — **Tracks:** [TD22](technical-debt.md#cicd--testing)
 
@@ -299,7 +306,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D014: Showcase — GitHub Pages deployment
+## ADR-014: Showcase — GitHub Pages deployment
 
 **Date:** 2026-06 — **Status:** Accepted — **Phase:** 11 (not yet built)
 
@@ -320,11 +327,11 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D016: Playwright — full suite pre-push, CI smoke test only
+## ADR-016: Playwright — full suite pre-push, CI smoke test only
 
-**Date:** 2026-06 — **Status:** Accepted — **Supersedes:** [D010](#d010-playwright-ci-auth--unauthenticated-tests-only-in-ci) — **Tracks:** [TD6](technical-debt.md#cicd--testing)
+**Date:** 2026-06 — **Status:** Accepted — **Supersedes:** [ADR-010](#adr-010-playwright-ci-auth--unauthenticated-tests-only-in-ci) — **Tracks:** [TD6](technical-debt.md#cicd--testing)
 
-**Context:** D010's approach (unauthenticated tests only in CI, auth state captured manually) broke immediately — the 1-day cookie TTL meant the stored GitHub secret expired overnight, the `PLAYWRIGHT_AUTH_STATE_B64` secret had to be recaptured manually before every CI run, and all authenticated tests were silently skipped in CI regardless. There is no staging environment (D003); the only ASP.NET Core `Development` environment is `localhost`.
+**Context:** ADR-010's approach (unauthenticated tests only in CI, auth state captured manually) broke immediately — the 1-day cookie TTL meant the stored GitHub secret expired overnight, the `PLAYWRIGHT_AUTH_STATE_B64` secret had to be recaptured manually before every CI run, and all authenticated tests were silently skipped in CI regardless. There is no staging environment (ADR-003); the only ASP.NET Core `Development` environment is `localhost`.
 
 **Decision:** Full authenticated Playwright suite runs locally via the pre-push hook. CI runs a smoke test only — curl the production login page and assert HTTP 200. This is the correct split given the infrastructure constraints.
 
@@ -354,7 +361,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 
 ---
 
-## D018: Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens
+## ADR-018: Defence-in-depth for API query abuse — pagination cap + global rate limiting + cancellation tokens
 
 **Date:** 2026-06 — **Status:** Accepted
 
@@ -392,16 +399,16 @@ Each layer is independently valuable but they work together: the cap limits per-
 
 ---
 
-## D017: Cloudflare free plan over paid CDN/WAF
+## ADR-017: Cloudflare free plan over paid CDN/WAF
 
-**Date:** 2026-06 — **Status:** Superseded — **Tracks:** [TD21](technical-debt.md#cdn--networking)
+**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD21](technical-debt.md#cdn--networking)
 
 **Context:** This decision was based on the incorrect assumption that a custom domain (`timetracker.dzk.com.au`) could be pointed at the app via Cloudflare. Two blockers make this unworkable at zero cost: (1) Azure App Service F1 free tier does not natively support custom domains, and (2) Cloudflare free tier URL redirections do not function as needed. The production URL has always been `https://timetracker-zak.azurewebsites.net`.
 
 **Decision:** No CDN/WAF layer. The app is served directly from Azure App Service at `timetracker-zak.azurewebsites.net`. Azure provides TLS termination via the default `*.azurewebsites.net` certificate at no cost.
 
 **Consequences:**
-- ✅ Zero cost — consistent with D003 zero-cost hosting constraint
+- ✅ Zero cost — consistent with ADR-003 zero-cost hosting constraint
 - ❌ No CDN caching or DDoS mitigation
 - ❌ No WAF
 - ❌ No custom domain
@@ -410,11 +417,11 @@ Each layer is independently valuable but they work together: the cap limits per-
 
 ---
 
-## D019: Serilog + /health endpoint + UptimeRobot over Application Insights
+## ADR-019: Serilog + /health endpoint + UptimeRobot over Application Insights
 
-**Date:** 2026-06 — **Status:** Partially superseded — UptimeRobot disabled 2026-06 — **Tracks:** [TD23](technical-debt.md#observability), [TD26](technical-debt.md#infrastructure--compute)
+**Date:** 2026-06 — **Status:** Accepted — **Tracks:** [TD23](technical-debt.md#observability), [TD26](technical-debt.md#infrastructure--compute)
 
-**Context:** #97 required structured logging, a health check endpoint, and uptime monitoring. Application Insights is the natural Azure APM choice, but the current workspace-based model stores data in Log Analytics with pay-as-you-go pricing — no free monthly data allowance. Free hosting is a hard constraint ([D003](#d003-zero-cost-hosting-azure-f1--azure-sql-free)).
+**Context:** #97 required structured logging, a health check endpoint, and uptime monitoring. Application Insights is the natural Azure APM choice, but the current workspace-based model stores data in Log Analytics with pay-as-you-go pricing — no free monthly data allowance. Free hosting is a hard constraint ([ADR-003](#adr-003-zero-cost-hosting-azure-f1--azure-sql-free)).
 
 **Options considered:**
 
@@ -455,7 +462,7 @@ The `/health` liveness endpoint remains in place (correct to keep — useful for
 
 ---
 
-## D020: SQL Server Row-Level Security + audit trail
+## ADR-020: SQL Server Row-Level Security + audit trail
 
 **Date:** 2026-06 — **Status:** Accepted — **Supersedes:** [TD19](technical-debt.md#security)
 
@@ -478,7 +485,7 @@ SQL Server exempts `db_owner` and `sysadmin` members from RLS by design. Local d
 
 > **Correction (2026-07):** the paragraph above is factually wrong and is kept only as a record of what was believed at the time. SQL Server does **not** exempt `db_owner` or `sysadmin` from RLS filter predicates — [Microsoft's documentation](https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security) states that a `dbo` user, a `db_owner` member or the table owner is filtered like anyone else. This repository's own history proves it: the original migration (`20260615211758_AddAuditTrailAndRowLevelSecurity`) had no exemption clause, and `20260628064918_ExemptDbOwnerFromRls` was written specifically because `sa` *was* being filtered.
 >
-> The conclusion drawn ("local bypasses, production enforces") was nonetheless accurate — but because of a clause we wrote, not a property of SQL Server. That exemption has since been replaced by the explicit `rls_bypass` role, and local development now enforces RLS the same as production. See `docs/rls-security-model.md`.
+> The conclusion drawn ("local bypasses, production enforces") was nonetheless accurate — but because of a clause we wrote, not a property of SQL Server. That exemption has since been replaced by the explicit `rls_bypass` role — see [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption) — and local development now enforces RLS the same as production. See `docs/rls-security-model.md`.
 
 **Permission requirements for migration:**
 
@@ -515,11 +522,11 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 
 ---
 
-## D021: Nightly `.bacpac` export to private GitHub repo
+## ADR-021: Nightly `.bacpac` export to private GitHub repo
 
 **Date:** 2026-06 — **Status:** Accepted — **Closes:** [#104](https://github.com/zkarachiwala/TimeTracker/issues/104)
 
-**Context:** Azure SQL free tier provides only 7-day automated backup retention (see [D003](#d003-zero-cost-hosting-azure-f1--azure-sql-free), [TD4](technical-debt.md#infrastructure--compute)). A longer-lived export was needed. Free hosting is a hard constraint.
+**Context:** Azure SQL free tier provides only 7-day automated backup retention (see [ADR-003](#adr-003-zero-cost-hosting-azure-f1--azure-sql-free), [TD4](technical-debt.md#infrastructure--compute)). A longer-lived export was needed. Free hosting is a hard constraint.
 
 **Options considered:**
 
@@ -534,10 +541,10 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 
 **Credential model — why this specific setup:**
 
-- **OIDC instead of a client secret** — the deploy SP already uses OIDC (no stored secrets); consistency and no secret rotation burden.
+- **OIDC instead of a client secret** — the deploy SP already uses OIDC (no stored secrets, see [ADR-032](#adr-032-oidc-over-publish-profile-for-github-actions--azure-deploy-auth)); consistency and no secret rotation burden.
 - **Dedicated SP (`timetracker-github-backup`)** — separate from the deploy SP so that if the backup credential is ever compromised it cannot deploy code.
 - **Custom Azure RBAC role (firewall write/delete only)** — the SP needs to open and close a SQL firewall rule for the runner's ephemeral IP. The minimum built-in role that covers this (`SQL Server Contributor`) also grants the ability to modify the SQL server itself. A custom role with only `firewallRules/write` + `firewallRules/delete`, scoped to the SQL server resource, is the correct minimum.
-- **~~`db_owner` on the database~~ `db_ddladmin` + `db_datareader` + `rls_bypass`** *(revised 2026-07)* — two constraints drive this: (1) SqlPackage requires `DBCC SHOW_STATISTICS` to analyse indexes, which requires `db_owner` or `db_ddladmin`; `db_datareader` alone is insufficient. (2) RLS filter policies block all rows for a connection with no `SESSION_CONTEXT`, so the export needs an exemption or it produces empty tables.
+- **~~`db_owner` on the database~~ `db_ddladmin` + `db_datareader` + `rls_bypass`** *(revised 2026-07, see [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption))* — two constraints drive this: (1) SqlPackage requires `DBCC SHOW_STATISTICS` to analyse indexes, which requires `db_owner` or `db_ddladmin`; `db_datareader` alone is insufficient. (2) RLS filter policies block all rows for a connection with no `SESSION_CONTEXT`, so the export needs an exemption or it produces empty tables.
   <br><br>
   Constraint (2) was originally solved with `db_owner`, on the incorrect belief that `db_owner` is exempt from RLS by design — it is not; it was exempt only because the predicates named it. Membership of the `rls_bypass` role now covers (2) explicitly, leaving only (1), which `db_ddladmin` satisfies. This is a real reduction: `db_owner` can manage role membership and so could add itself to `rls_bypass`; `db_ddladmin` cannot self-elevate. It also resolves the "worth reviewing" caveat recorded below.
 - **Fine-grained PAT for the repo push** — OIDC cannot push to GitHub; a PAT is required. A fine-grained PAT scoped to `TimeTracker-backups` with `contents: write` only is the minimum possible credential. It cannot read or write any other repository.
@@ -553,11 +560,11 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 
 ---
 
-## D022: EF Core `MigrateAsync()` at startup
+## ADR-022: EF Core `MigrateAsync()` at startup
 
-**Date:** 2026-06 — **Status:** Superseded by [D031](#d031-pipeline-migrations--least-privilege-app-identity-supersedes-d022) (2026-07)
+**Date:** 2026-06 — **Status:** Superseded by [ADR-031](#adr-031-pipeline-migrations--least-privilege-app-identity-supersedes-adr-022) (2026-07)
 
-> **Superseded:** this decision's trade-off was accepted on the grounds of operational simplicity and being safe under Azure F1's single-instance hosting — the multi-instance race it flags below never occurred. It was superseded for an unrelated reason: keeping the app's runtime identity able to run `MigrateAsync()` required granting it `CREATE FUNCTION` and `ALTER ANY SECURITY POLICY`, which meant the app could disable the RLS policies protecting its own data (see D031). The original reasoning below is left intact for history.
+> **Superseded:** this decision's trade-off was accepted on the grounds of operational simplicity and being safe under Azure F1's single-instance hosting — the multi-instance race it flags below never occurred. It was superseded for an unrelated reason: keeping the app's runtime identity able to run `MigrateAsync()` required granting it `CREATE FUNCTION` and `ALTER ANY SECURITY POLICY`, which meant the app could disable the RLS policies protecting its own data (see ADR-031). The original reasoning below is left intact for history.
 
 **Context:** EF Core migrations need to reach the production database whenever schema changes are deployed. Options are: run migrations manually, add a migration step to the CI/CD pipeline, or call `MigrateAsync()` in `Program.cs` so the app migrates itself on startup.
 
@@ -582,7 +589,7 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 
 ---
 
-## D023: Single-tenant architecture — one company, shared data
+## ADR-023: Single-tenant architecture — one company, shared data
 
 **Date:** 2026-06 — **Status:** Accepted
 
@@ -603,7 +610,7 @@ This is a foundational change, not an incremental one. It is not justified for t
 - Projects and clients are not confidential between colleagues — all authenticated users can see all projects and clients
 - `ProjectUser` controls who can *log time* against a project, not who can *see* it
 - Reports and time entries remain user-scoped (you see your own time only)
-- User management (adding users, assigning roles) is handled by the Admin UI — see [D024](#d024-projectuser-as-time-allocation-gate--orphaned-reference-pattern)
+- User management (adding users, assigning roles) is handled by the Admin UI — see [ADR-024](#adr-024-projectuser-as-time-allocation-gate--orphaned-reference-pattern)
 
 **Consequences:**
 - ✅ Zero complexity overhead — no tenant ID on any query
@@ -612,7 +619,7 @@ This is a foundational change, not an incremental one. It is not justified for t
 
 ---
 
-## D024: `ProjectUser` as time-allocation gate + orphaned reference pattern
+## ADR-024: `ProjectUser` as time-allocation gate + orphaned reference pattern
 
 **Date:** 2026-06 — **Status:** Accepted — **Tracks:** [#95](https://github.com/zkarachiwala/TimeTracker/issues/95)
 
@@ -621,7 +628,7 @@ This is a foundational change, not an incremental one. It is not justified for t
 **Decision:** `ProjectUser` is a time-allocation gate only. All authenticated users can see all projects and clients. Only the time-entry project dropdown is restricted to assigned projects.
 
 **Rationale:**
-- Projects and clients are not confidential between colleagues (see [D023](#d023-single-tenant-architecture--one-company-shared-data))
+- Projects and clients are not confidential between colleagues (see [ADR-023](#adr-023-single-tenant-architecture--one-company-shared-data))
 - A user removed from a project must still be able to see their historical entries and navigate to the project — hiding it would create unexplained gaps in their records
 - Reports must reconcile — YTD totals and project breakdowns must account for all the user's entries including those on projects they are no longer assigned to
 
@@ -649,7 +656,7 @@ This pattern — showing a disabled placeholder for the current value when the r
 
 ---
 
-## D025: `PublicHoliday` for AU public holiday resolution
+## ADR-025: `PublicHoliday` for AU public holiday resolution
 
 **Date:** 2026-06 — **Status:** Accepted — **Closes:** [#137](https://github.com/zkarachiwala/TimeTracker/issues/137) — **Tracks:** [TD25](technical-debt.md#business-rules)
 
@@ -678,7 +685,7 @@ This pattern — showing a disabled placeholder for the current value when the r
 
 ---
 
-## D026: xUnit over NUnit for Playwright + new bUnit component layer
+## ADR-026: xUnit over NUnit for Playwright + new bUnit component layer
 
 **Date:** 2026-06 — **Status:** Accepted — **Issue:** [#155](https://github.com/zkarachiwala/TimeTracker/issues/155)
 
@@ -703,11 +710,11 @@ Separately, the service layer tests in `TimeTracker.Tests` already use xUnit —
 - ✅ bUnit component tests cover UI state and rendering logic without a browser — fast, deterministic
 - ❌ bUnit cannot test full user journeys or network behaviour — Playwright E2E remains necessary for those
 
-**Note on D010/D016:** Both decisions reference NUnit-specific implementation details (`[SetUpFixture]`, `[OneTimeSetUp]`, `Assert.Ignore()`). Those patterns are now superseded by the xUnit equivalents described above. The architectural decisions in D010/D016 (CI auth strategy, smoke test only in CI) are unchanged.
+**Note on ADR-010/ADR-016:** Both decisions reference NUnit-specific implementation details (`[SetUpFixture]`, `[OneTimeSetUp]`, `Assert.Ignore()`). Those patterns are now superseded by the xUnit equivalents described above. The architectural decisions in ADR-010/ADR-016 (CI auth strategy, smoke test only in CI) are unchanged.
 
 ---
 
-## D027: Showcase CSS unified via MSBuild
+## ADR-027: Showcase CSS unified via MSBuild
 
 **Date:** 2026-06 — **Status:** Accepted — **Issue:** [#159](https://github.com/zkarachiwala/TimeTracker/issues/159)
 
@@ -725,7 +732,7 @@ The structural problem: two files with no automated link. Every CSS change requi
 
 ---
 
-## D028: Testcontainers for RLS and migration smoke tests
+## ADR-028: Testcontainers for RLS and migration smoke tests
 
 **Date:** 2026-06 — **Status:** Accepted — **Issue:** [#161](https://github.com/zkarachiwala/TimeTracker/issues/161)
 
@@ -750,7 +757,7 @@ Both problems share the same root cause: the tests needed a real SQL Server inst
 
 ---
 
-## D029: Dev container + Docker Compose despite single-user app scope
+## ADR-029: Dev container + Docker Compose despite single-user app scope
 
 **Date:** 2026-06 — **Status:** Accepted — **Issue:** [#162](https://github.com/zkarachiwala/TimeTracker/issues/162)
 
@@ -763,7 +770,7 @@ However, this project has two equally weighted goals: building a practical app a
 This results in three SQL Server instances across the project lifecycle:
 - Local SQL Server — legacy local dev outside the container
 - Dev container SQL Server — primary dev environment going forward
-- Testcontainers SQL Server — container tests only (D028)
+- Testcontainers SQL Server — container tests only (ADR-028)
 
 **Alternatives considered:**
 - **Keep local-only dev:** Simpler, zero overhead, adequate for a personal app. Rejected because it offers no learning on industry-standard tooling.
@@ -777,7 +784,7 @@ This results in three SQL Server instances across the project lifecycle:
 
 ---
 
-## D030: HTTP-only inside the dev container
+## ADR-030: HTTP-only inside the dev container
 
 **Date:** 2026-06 — **Status:** Accepted — **Issue:** [#162](https://github.com/zkarachiwala/TimeTracker/issues/162)
 
@@ -800,18 +807,18 @@ Google OAuth is not affected: Google explicitly whitelists `http://localhost` (a
 
 ---
 
-## D031: Pipeline migrations + least-privilege app identity (supersedes D022)
+## ADR-031: Pipeline migrations + least-privilege app identity (supersedes ADR-022)
 
 **Date:** 2026-07 — **Status:** Accepted — **Issue:** [#322](https://github.com/zkarachiwala/TimeTracker/issues/322)
 
-**Context:** D022 chose to call `Database.MigrateAsync()` for both `TimeTrackerDataContext` and `IdentityDataContext` at app startup, running as the app's Managed Identity (`timetracker-zak`). That identity held only `db_datareader`/`db_datawriter`. When the RLS migration ([D020](#d020-sql-server-row-level-security--audit-trail)) landed, it needed to create SQL functions and security policies — DDL the identity didn't have — so the app threw during boot and stayed down. The fix applied at the time granted the runtime identity the DDL it needed:
+**Context:** ADR-022 chose to call `Database.MigrateAsync()` for both `TimeTrackerDataContext` and `IdentityDataContext` at app startup, running as the app's Managed Identity (`timetracker-zak`). That identity held only `db_datareader`/`db_datawriter`. When the RLS migration ([ADR-020](#adr-020-sql-server-row-level-security--audit-trail)) landed, it needed to create SQL functions and security policies — DDL the identity didn't have — so the app threw during boot and stayed down. The fix applied at the time granted the runtime identity the DDL it needed:
 
 ```sql
 GRANT CREATE FUNCTION TO [timetracker-zak];
 GRANT ALTER ANY SECURITY POLICY TO [timetracker-zak];
 ```
 
-That resolved the outage but inverted least privilege: the web app can disable the RLS policies protecting its own data. A compromised app tier could run `ALTER SECURITY POLICY ... WITH (STATE = OFF)` and read everything — directly undercutting the defence-in-depth rationale that justified RLS in D020. D022 already flagged startup migration as a poor operational fit (races across instances, blocks boot, no rollback) but accepted it because Azure F1 is single-instance by definition. **This decision supersedes D022 for a different reason — least privilege, not instance count.** The F1 single-instance reasoning in D022 still holds; it just isn't the deciding factor anymore.
+That resolved the outage but inverted least privilege: the web app can disable the RLS policies protecting its own data. A compromised app tier could run `ALTER SECURITY POLICY ... WITH (STATE = OFF)` and read everything — directly undercutting the defence-in-depth rationale that justified RLS in ADR-020. ADR-022 already flagged startup migration as a poor operational fit (races across instances, blocks boot, no rollback) but accepted it because Azure F1 is single-instance by definition. **This decision supersedes ADR-022 for a different reason — least privilege, not instance count.** The F1 single-instance reasoning in ADR-022 still holds; it just isn't the deciding factor anymore.
 
 **Decision:** Migrations run in the CI/CD pipeline, not at app startup, under a new dedicated principal — not the app identity, not the backup principal.
 
@@ -819,14 +826,95 @@ That resolved the outage but inverted least privilege: the web app can disable t
 - The job generates `dotnet ef migrations script --idempotent` for both contexts, uploads the script(s) as a build artifact **before** executing them, then runs that exact uploaded file against the database — not a fresh `dotnet ef database update`, so what's reviewable in the artifact is provably what ran.
 - `timetracker-github-migrations` holds `db_datareader`, `db_datawriter`, `db_ddladmin`, `ALTER ANY SECURITY POLICY`, and membership in `rls_bypass`. The `rls_bypass` membership matters even though this rollout adds no data migration: per `docs/rls-security-model.md`, a `FILTER` predicate applies to `UPDATE` as well as `SELECT`, so a future backfill run without the bypass would silently touch zero rows and report success.
 - `timetracker-zak` (the app identity) has `CREATE FUNCTION` and `ALTER ANY SECURITY POLICY` revoked, back to `db_datareader`/`db_datawriter` only.
-- `Program.cs` no longer calls `MigrateAsync()` for either context. It calls `GetPendingMigrationsAsync()` on both instead, and refuses to boot (throws) if either has pending migrations — a forgotten pipeline step now fails loudly instead of silently running against the wrong schema. `IdentityDataContext` moves to the pipeline alongside `TimeTrackerDataContext` for consistency, even though the `id` schema carries no RLS policies: D022's multi-instance race risk applies to it too, and leaving one context migrated-at-startup while the other isn't is an easy-to-forget inconsistency. The Identity role/admin seeding logic in `Program.cs` is unaffected — it doesn't need the DDL grants and stays exactly as-is.
+- `Program.cs` no longer calls `MigrateAsync()` for either context. It calls `GetPendingMigrationsAsync()` on both instead, and refuses to boot (throws) if either has pending migrations — a forgotten pipeline step now fails loudly instead of silently running against the wrong schema. `IdentityDataContext` moves to the pipeline alongside `TimeTrackerDataContext` for consistency, even though the `id` schema carries no RLS policies: ADR-022's multi-instance race risk applies to it too, and leaving one context migrated-at-startup while the other isn't is an easy-to-forget inconsistency. The Identity role/admin seeding logic in `Program.cs` is unaffected — it doesn't need the DDL grants and stays exactly as-is.
 
 **Rollout order matters.** The pipeline step is added and verified *before* the app identity's grants are revoked, and the grants are revoked *before* `MigrateAsync()` is removed from `Program.cs` — at every intermediate stage there is a safety net (either the app can still self-migrate, or nothing is pending so the revoke is harmless). Full sequencing in `docs/plans/migrations-principal-rollout.md`.
 
 **Consequences:**
-- ✅ The app's runtime identity can no longer disable the RLS policies protecting its own data — restores the least-privilege intent from D020
+- ✅ The app's runtime identity can no longer disable the RLS policies protecting its own data — restores the least-privilege intent from ADR-020
 - ✅ Migrations are reviewable before they run (uploaded artifact) and retained with the build, rather than implicit in a startup code path
 - ✅ No more startup migration race across instances, and boot no longer blocks on schema changes
 - ✅ Boot now fails fast and loudly on a stale schema, instead of an app silently migrating whatever it finds
 - ❌ A third SQL principal to provision and reason about, alongside the app identity and the backup principal — more moving parts, though each is now narrower in scope than the thing it replaces
 - ❌ CI now needs SQL Server firewall access for the migration step, same operational cost `backup.yml` already carries
+
+---
+
+## ADR-032: OIDC over publish-profile for GitHub Actions → Azure deploy auth
+
+**Date:** 2026-06 (PR #45) — **Status:** Accepted
+
+**Context:** The initial deploy workflow (`azure/webapps-deploy@v3`) authenticated with a publish profile — a credential exported from the App Service and stored as a GitHub secret. Every deploy attempt returned HTTP 401. Root cause: newly created Azure App Services have basic authentication disabled by default, and publish profiles authenticate over basic auth (a username/password pair embedded in the profile XML). Re-enabling basic auth on the App Service was available but would have meant deliberately turning a security control back off to accommodate the weaker credential type.
+
+**Decision:** Authenticate the deploy workflow via OpenID Connect (OIDC) federated credentials instead. `azure/login@v2` runs before the deploy step, exchanging a short-lived GitHub Actions OIDC token for an Azure AD token — no stored password or client secret at all. The backing service principal (`timetracker-github-deploy`) is scoped to `Website Contributor` on the App Service resource only, not `Contributor` on the resource group.
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **OIDC federated credential** | Accepted — no stored secret to leak or rotate, Microsoft's documented recommendation for GitHub Actions → Azure, and the credential can be scoped to exactly one resource via RBAC |
+| Re-enable basic auth on the App Service, keep the publish profile | Rejected — turns a security control back off to keep using a weaker, broader credential (the publish profile grants more than deploy access, and the secret itself is long-lived and must be manually rotated on exposure) |
+
+**Consequences:**
+- ✅ No long-lived credential stored in GitHub Secrets — nothing to leak, nothing to rotate on a schedule
+- ✅ Access is scoped to `Website Contributor` on one App Service, not broader `Contributor` on the resource group
+- ✅ Establishes the federated-credential pattern this repo later reused for the backup principal ([ADR-021](#adr-021-nightly-bacpac-export-to-private-github-repo)) and the migrations principal ([ADR-031](#adr-031-pipeline-migrations--least-privilege-app-identity-supersedes-adr-022))
+- ❌ Slightly more setup ceremony than a publish profile — requires creating an app registration, service principal, and federated credential via `az` CLI (documented in `docs/azure-deployment.md` Step 7) instead of downloading one file from the portal
+
+---
+
+## ADR-033: Named `rls_bypass` role over blanket `db_owner` RLS exemption
+
+**Date:** 2026-07 (PR #326) — **Status:** Accepted — **Supersedes:** the `db_owner` exemption clause recorded in [ADR-020](#adr-020-sql-server-row-level-security--audit-trail) and [ADR-021](#adr-021-nightly-bacpac-export-to-private-github-repo)
+
+**Context:** The RLS filter predicates from ADR-020 ended with `OR IS_MEMBER('db_owner') = 1`. That exemption is implicit and blanket: it silently covers `sa`, the deploy principal, and anyone who is ever granted admin, with no explicit grant to point to. Nobody grants it, so nobody can revoke or audit it. It also meant local development never exercised RLS at all (local dev connects as `sa`), so an RLS defect could only ever surface in production. The exemption cannot simply be deleted, though: the nightly `.bacpac` export ([ADR-021](#adr-021-nightly-bacpac-export-to-private-github-repo)) uses SqlPackage, which issues its own `SELECT`s with no way to set `SESSION_CONTEXT` — some principal must legitimately bypass the filter, or every nightly backup silently exports empty tables.
+
+**Decision:** Replace the `db_owner` clause with a dedicated `rls_bypass` database role that holds no permissions of its own — its only purpose is to satisfy the predicate. Exemption becomes something a principal is deliberately *granted*, not something it happens to inherit from a broader privilege.
+
+| Principal | Before | After |
+|-----------|--------|-------|
+| App (prod + local) | exempt if `db_owner` | never exempt — RLS always enforced |
+| Local `sa` | silently exempt | filtered by default, same as production |
+| Backup service principal | `db_owner` | `db_ddladmin` + `db_datareader` + `rls_bypass` |
+| Break-glass admin access | every admin, implicitly | must join `rls_bypass` deliberately |
+
+Rolled out as two migrations rather than one: `AddRlsBypassRole` creates the role and exempts **both** `rls_bypass` and `db_owner`, so there is no window where the backup principal loses access mid-rollout; `RemoveDbOwnerRlsExemption` then drops the `db_owner` clause once the backup principal is confirmed to hold `rls_bypass`. Full sequencing in `docs/plans/rls-bypass-rollout.md`.
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **Named `rls_bypass` role** | Accepted — exemption is explicit, auditable (`sys.database_role_members`), and independent of any other privilege level |
+| Keep the `db_owner` exemption | Rejected — implicit and unauditable; also meant local dev (`sa`) never exercised real RLS filtering, so defects were production-only by construction |
+| Remove the exemption entirely, give SqlPackage no bypass | Rejected — not viable; SqlPackage cannot set `SESSION_CONTEXT`, so the nightly export needs *some* legitimate bypass or it silently produces empty tables |
+
+**Consequences:**
+- ✅ RLS exemption is now a specific, revocable, auditable grant instead of a side effect of holding `db_owner`
+- ✅ Local development (`sa`) now enforces RLS by default — an RLS defect (e.g. the `GetProjectUsers` over-broad query this rollout caught) is reproducible locally instead of production-only
+- ✅ Backup principal keeps working (via `rls_bypass` membership) with no window of broken exports during rollout
+- ❌ One more named role to grant/audit membership of over time, though this is a strict improvement over auditing "everyone with `db_owner`"
+- ❌ Anything relying on `IS_MEMBER('db_owner')` implicitly bypassing RLS (e.g. ad hoc SSMS queries as `sa`) now needs explicit `rls_bypass` membership — see `docs/rls-security-model.md`
+
+---
+
+## ADR-034: `SecurityStamp` session revocation over a Redis-backed revocation list
+
+**Date:** 2026-06 (PR #120) — **Status:** Accepted — **Closes:** [#103](https://github.com/zkarachiwala/TimeTracker/issues/103)
+
+**Context:** Once issued, the auth cookie ([ADR-005](#adr-005-cookie-based-auth-over-jwt)) remained valid until its 1-day expiry with no way to invalidate it server-side. A stolen cookie could not be revoked; there was also no "log out everywhere" capability. The conventional way to support server-side session revocation at scale is a shared, fast-lookup store (typically Redis) holding revoked token/session IDs, checked on every request.
+
+**Decision:** Use ASP.NET Core Identity's built-in `SecurityStamp` mechanism instead of introducing Redis. `SecurityStamp` is already a column on the Identity user table. `UserManager.UpdateSecurityStampAsync()` rotates it on explicit logout; a new Admin-only `POST /api/auth/revoke-sessions` endpoint rotates it to force "log out everywhere" without ending the caller's own session. `SecurityStampValidator` is enabled with a 30-minute validation interval — on each request past that window, the cookie's embedded stamp is compared against the current database value, and a mismatch forces re-authentication.
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **`SecurityStamp` + `SecurityStampValidator`** | Accepted — this is ASP.NET Core Identity's standard, documented mechanism for single-instance session revocation; the stamp already lives in the Identity table this app already has, in the SQL database this app already has |
+| Redis-backed revocation list | Rejected — would add a new piece of infrastructure (with its own cost and operational burden) purely to track revocations, when the existing SQL database already provides a durable, already-provisioned place to store the equivalent state |
+
+**Consequences:**
+- ✅ Session revocation works with zero new infrastructure — no Redis instance to provision, pay for, or operate
+- ✅ Uses Identity's built-in, documented pattern rather than a custom-rolled token blacklist
+- ✅ Admin-only `revoke-sessions` endpoint gives a real "log out everywhere" capability without ending the admin's own session
+- ❌ Revocation is only checked every 30 minutes (the validation interval), not on every single request — a revoked cookie can still be used for up to that window. Acceptable trade-off for a personal app; a tighter interval increases DB round-trips per request
+- ❌ This approach does not generalise past a single logical database — if the app ever needed multi-region or cross-database session state, a shared store (Redis or similar) would become necessary again

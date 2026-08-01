@@ -5,14 +5,14 @@
 
 ## Decisions and tech debt to record
 
-- **D025** (decisions.md): Use `PublicHoliday` NuGet for AU public holiday resolution (`Nager.Date` rejected — requires paid license key)
+- **ADR-025** (decisions.md): Use `PublicHoliday` NuGet for AU public holiday resolution (`Nager.Date` rejected — requires paid license key)
 - **TD25** (technical-debt.md): Public holiday jurisdiction hardcoded to national AU — no user or client/project location tracked. Ambiguity unresolved: should the jurisdiction follow the user or the client/project? Needs external investigation before state-level holidays can be implemented.
 
 ---
 
 ## Phase 1 — Documentation
 
-- [x] Add D025 to `docs/decisions.md`
+- [x] Add ADR-025 to `docs/decisions.md`
 - [x] Add TD25 to `docs/technical-debt.md`
 
 ## Phase 2 — Data model

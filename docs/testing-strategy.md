@@ -8,7 +8,7 @@ Sources consulted: [Playwright Best Practices](https://playwright.dev/docs/best-
 
 # Part 1 — Playwright E2E tests (`TimeTracker.Playwright`)
 
-**Framework:** `Microsoft.Playwright.Xunit` — migrated from NUnit in issue #155 (see [D026](decisions.md#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer)). Test lifecycle uses xUnit's `IAsyncLifetime` (`InitializeAsync` / `DisposeAsync`) rather than NUnit's `[SetUp]`/`[TearDown]`.
+**Framework:** `Microsoft.Playwright.Xunit` — migrated from NUnit in issue #155 (see [ADR-026](decisions.md#adr-026-xunit-over-nunit-for-playwright--new-bunit-component-layer)). Test lifecycle uses xUnit's `IAsyncLifetime` (`InitializeAsync` / `DisposeAsync`) rather than NUnit's `[SetUp]`/`[TearDown]`.
 
 ---
 
@@ -290,7 +290,7 @@ These are distinct:
 
 When the project used NUnit, `BrowserTest.BrowserTearDown()` only closed browser contexts when `TestOk()` returned true (test passed or skipped). On any failure, contexts were left open — in-flight requests kept running and the process could not exit cleanly, causing an indefinite hang.
 
-The project was migrated to `Microsoft.Playwright.Xunit` (issue #155, [D026](decisions.md#d026-xunit-over-nunit-for-playwright--new-bunit-component-layer)) specifically to eliminate this class of problem. xUnit's `IAsyncLifetime.DisposeAsync()` is always called after each test regardless of pass/fail, with full async support.
+The project was migrated to `Microsoft.Playwright.Xunit` (issue #155, [ADR-026](decisions.md#adr-026-xunit-over-nunit-for-playwright--new-bunit-component-layer)) specifically to eliminate this class of problem. xUnit's `IAsyncLifetime.DisposeAsync()` is always called after each test regardless of pass/fail, with full async support.
 
 ### The fix — DisposeAsync in base classes
 
@@ -407,7 +407,7 @@ The showcase app (GitHub Pages) uses synchronous in-memory mock services — no 
 The showcase runs the same Blazor components as the main app (nav rail, calendar, all pages) with `MockAuthenticationStateProvider` always returning an Admin user. Without tests, two failure modes go undetected:
 
 1. **Broken routing** — a new `@page` directive added to the main app without a matching entry in the showcase mock services leaves the page blank or crashing.
-2. **CSS drift** — the showcase previously maintained a separate `showcase-app.css` that fell 51 lines behind `app.css`, breaking nav rail icon positioning. The CSS is now unified via MSBuild (see [D027](decisions.md#d027-showcase-css-unified-via-msbuild)), but smoke tests catch any future regression.
+2. **CSS drift** — the showcase previously maintained a separate `showcase-app.css` that fell 51 lines behind `app.css`, breaking nav rail icon positioning. The CSS is now unified via MSBuild (see [ADR-027](decisions.md#adr-027-showcase-css-unified-via-msbuild)), but smoke tests catch any future regression.
 
 ## How `ShowcaseFixture` works
 

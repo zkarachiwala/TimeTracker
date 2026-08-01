@@ -57,14 +57,14 @@ docker run --rm -v $(pwd):/workspace alpine sh -c "rm -rf /workspace/TimeTracker
 ## Active tech debt
 | # | Item | ADR |
 |---|------|-----|
-| TD1 | Global WASM rendering | D001, D003 |
-| TD2 | F1: single instance, no slots | D003 |
-| TD4 | Azure SQL free (auto-pause) | D003 |
-| TD6 | No staging environment | D016 |
-| TD17 | `unsafe-inline` CSP (MudBlazor) | D002 |
-| TD21 | Cloudflare free plan | D017 |
-| TD23 | No APM / distributed tracing | D019 |
-| TD25 | Award rate jurisdiction hardcoded to national AU | D025 |
+| TD1 | Global WASM rendering | ADR-001, ADR-003 |
+| TD2 | F1: single instance, no slots | ADR-003 |
+| TD4 | Azure SQL free (auto-pause) | ADR-003 |
+| TD6 | No staging environment | ADR-016 |
+| TD17 | `unsafe-inline` CSP (MudBlazor) | ADR-002 |
+| TD21 | Cloudflare free plan | ADR-017 |
+| TD23 | No APM / distributed tracing | ADR-019 |
+| TD25 | Award rate jurisdiction hardcoded to national AU | ADR-025 |
 
 ## How to resume
 ```bash

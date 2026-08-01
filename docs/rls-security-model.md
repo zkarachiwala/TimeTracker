@@ -55,7 +55,7 @@ identity.
 
 ## Which tables are protected, and by what rule
 
-Three tables carry a security policy. `Clients` deliberately does not (see D020).
+Three tables carry a security policy. `Clients` deliberately does not (see ADR-020).
 
 ```mermaid
 flowchart TD
@@ -113,7 +113,7 @@ Two consequences worth internalising:
 | `sa` / `db_owner` | Local dev, SSMS | **Yes** — no longer exempt |
 | Managed Identity (`db_datareader` + `db_datawriter`) | Production app | **Yes** |
 | Backup SP (`db_ddladmin` + `db_datareader` + `rls_bypass`) | Nightly `.bacpac` export | No — needs full rows to export |
-| Migrations SP `timetracker-github-migrations` (`db_datareader` + `db_datawriter` + `db_ddladmin` + `ALTER ANY SECURITY POLICY` + `rls_bypass`) | Pipeline migrations (D031) | No — a `FILTER` predicate applies to `UPDATE` too; without the bypass a future backfill would touch zero rows and report success |
+| Migrations SP `timetracker-github-migrations` (`db_datareader` + `db_datawriter` + `db_ddladmin` + `ALTER ANY SECURITY POLICY` + `rls_bypass`) | Pipeline migrations (ADR-031) | No — a `FILTER` predicate applies to `UPDATE` too; without the bypass a future backfill would touch zero rows and report success |
 | `timetracker_rls_test` (`db_datareader` + `db_datawriter`) | Container tests | **Yes** |
 | `timetracker_rls_bypass_test` (+ `rls_bypass`) | Container tests | No — proves the role works |
 
@@ -155,7 +155,7 @@ A migration connection sets no `SESSION_CONTEXT`, so unless its principal is in 
 `UPDATE` over a protected table touches **zero rows, reports success, and raises no error**. Any
 backfill against `TimeEntries`, `Projects` or `ProjectUsers` must run under the bypass, and should
 assert its own completeness rather than trusting the row count. This is concretely satisfied as of
-D031: the pipeline migrations principal (`timetracker-github-migrations`) is a member of
+ADR-031: the pipeline migrations principal (`timetracker-github-migrations`) is a member of
 `rls_bypass`, so this is no longer a hypothetical gap for any migration run through the deploy
 pipeline — it only remains a risk if migrations are ever run ad hoc through a different principal.
 
@@ -209,7 +209,7 @@ dropped.
 
 ## Related
 
-- `docs/decisions.md` — D020 (RLS + audit trail), D023 (single-tenant), D028 (Testcontainers), D031 (pipeline migrations)
+- `docs/decisions.md` — ADR-020 (RLS + audit trail), ADR-023 (single-tenant), ADR-028 (Testcontainers), ADR-031 (pipeline migrations)
 - `docs/architecture.md` — schema diagrams
 - `TimeTracker.Tests/Infrastructure/RlsIntegrationTests.cs` — proves the policies work
 - `TimeTracker.Tests/Infrastructure/RlsPredicateSpike.cs` — throwaway; answers the open questions
