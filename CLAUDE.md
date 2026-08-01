@@ -76,7 +76,7 @@ docker compose logs db        # SQL Server logs
 ```bash
 PLAYWRIGHT_WRITE_TESTS=true BROWSER= dotnet test TimeTracker.sln --logger "console;verbosity=normal" --blame-hang-timeout 60s
 ```
-Prerequisite: SQL Server running, user secrets set (`DbUser`, `DbPassword`). **Local only — not available in remote sessions.**
+Prerequisite: SQL Server running, user secrets set (`DbUser`/`DbPassword` for the app, `MigrationsDbUser`/`MigrationsDbPassword` for `dotnet ef` — see below). **Local only — not available in remote sessions.**
 
 **During development** (fast feedback, no DB or Docker needed):
 ```bash
@@ -172,10 +172,27 @@ dotnet ef migrations add <MigrationName> --context IdentityDataContext
 dotnet ef database update --context TimeTrackerDataContext
 dotnet ef database update --context IdentityDataContext
 
-# Set user secrets (required for local dev DB credentials)
+# One-time: create the low-privilege login the running app connects as (mirrors production's
+# timetracker-zak — db_datareader + db_datawriter only). Run against your local SQL Server via
+# sqlcmd/SSMS:
+#   IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'timetracker_app')
+#       CREATE LOGIN [timetracker_app] WITH PASSWORD = N'<local-only-password>';
+#   USE TimeTrackerDb;
+#   IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'timetracker_app')
+#   BEGIN
+#       CREATE USER [timetracker_app] FOR LOGIN [timetracker_app];
+#       ALTER ROLE db_datareader ADD MEMBER [timetracker_app];
+#       ALTER ROLE db_datawriter ADD MEMBER [timetracker_app];
+#   END
+
+# Set user secrets — two separate credential pairs (see ADR-035):
+#   DbUser/DbPassword            -> timetracker_app, used by the running app
+#   MigrationsDbUser/MigrationsDbPassword -> sa, used only by dotnet ef (needs DDL rights)
 cd TimeTracker.Web
-dotnet user-secrets set "DbUser" "<username>"
+dotnet user-secrets set "DbUser" "timetracker_app"
 dotnet user-secrets set "DbPassword" "<password>"
+dotnet user-secrets set "MigrationsDbUser" "sa"
+dotnet user-secrets set "MigrationsDbPassword" "<sa-password>"
 ```
 
 The app runs at `https://localhost:7006` (https) or `http://localhost:5019` (http). Swagger UI is available at `/swagger`.
@@ -210,7 +227,7 @@ All WASM pages (`@page` components in `TimeTracker.Wasm`) must carry `@attribute
 
 OAuth challenge links must use `data-enhance-nav="false"` to force a full-page navigation. Without it, Blazor's enhanced navigation turns the click into a fetch, which follows the redirect to `accounts.google.com` and is blocked by the CSP (`connect-src 'self'`).
 
-In development, DB credentials (`DbUser`, `DbPassword`) are injected via [.NET User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) and merged into the connection string at startup.
+In development, DB credentials (`DbUser`, `DbPassword`) are injected via [.NET User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) and merged into the connection string at startup. `dotnet ef` uses a separate, DDL-capable credential pair (`MigrationsDbUser`, `MigrationsDbPassword`) via `IDesignTimeDbContextFactory<T>` implementations in `TimeTracker.Web/Data/`, so the app's own runtime credential never needs schema-modification rights — see ADR-035.
 
 ### Contracts and DTOs
 

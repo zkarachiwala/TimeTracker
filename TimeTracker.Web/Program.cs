@@ -23,8 +23,8 @@ builder.Host.UseSerilog((context, services, config) =>
         .ReadFrom.Services(services)
         .Enrich.FromLogContext());
 
-var timeTrackerConnection = ConnectionStringBuilder.Build(builder, "TimeTrackerConnection", "DbUser", "DbPassword");
-var identityConnection = ConnectionStringBuilder.Build(builder, "IdentityConnection", "DbUser", "DbPassword");
+var timeTrackerConnection = ConnectionStringBuilder.Build(builder.Configuration, builder.Environment.IsDevelopment(), "TimeTrackerConnection", "DbUser", "DbPassword");
+var identityConnection = ConnectionStringBuilder.Build(builder.Configuration, builder.Environment.IsDevelopment(), "IdentityConnection", "DbUser", "DbPassword");
 
 builder.Services.AddMudServices();
 builder.Services.AddRazorComponents().AddInteractiveWebAssemblyComponents();

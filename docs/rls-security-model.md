@@ -110,7 +110,8 @@ Two consequences worth internalising:
 
 | Principal | Used by | RLS applies? |
 |---|---|---|
-| `sa` / `db_owner` | Local dev, SSMS | **Yes** — no longer exempt |
+| `timetracker_app` (`db_datareader` + `db_datawriter`) | Local dev app runtime (ADR-035) | **Yes** |
+| `sa` / `db_owner` | Local `dotnet ef` migrations only (ADR-035); ad hoc SSMS queries | **Yes** — no longer exempt |
 | Managed Identity (`db_datareader` + `db_datawriter`) | Production app | **Yes** |
 | Backup SP (`db_ddladmin` + `db_datareader` + `rls_bypass`) | Nightly `.bacpac` export | No — needs full rows to export |
 | Migrations SP `timetracker-github-migrations` (`db_datareader` + `db_datawriter` + `db_ddladmin` + `ALTER ANY SECURITY POLICY` + `rls_bypass`) | Pipeline migrations (ADR-031) | No — a `FILTER` predicate applies to `UPDATE` too; without the bypass a future backfill would touch zero rows and report success |
