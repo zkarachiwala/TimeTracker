@@ -27,7 +27,11 @@ The entry point is `SqlServerFixture` in `TimeTracker.Tests/Infrastructure/SqlSe
 ```csharp
 public class SqlServerFixture : IAsyncLifetime
 {
-    private readonly MsSqlContainer _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
+    // Must match the dev container image in docker-compose.yml.
+    // SqlServerVersionConsistencyTests fails the build if they diverge.
+    public const string SqlServerImage = "mcr.microsoft.com/mssql/server:2025-latest";
+
+    private readonly MsSqlContainer _container = new MsSqlBuilder(SqlServerImage)
         .WithAutoRemove(true)
         .Build();
 
@@ -55,6 +59,26 @@ public class SqlServerFixture : IAsyncLifetime
 You don't need to know the port — `GetConnectionString()` gives it to you.
 
 **`WithAutoRemove(true)`** tells Docker to delete the container when the process exits, even if `DisposeAsync` didn't run (e.g. the test runner crashed). Belt-and-suspenders cleanup.
+
+### Why the image version is pinned to a constant
+
+`RlsIntegrationTests` and `MigrationSmokeTests` are the only automated proof that the security
+policies behave. RLS behaviour is engine-version sensitive, so if those tests run against a
+different SQL Server than the one used for development, the proof is weaker than it looks — and
+nothing else in the suite would notice.
+
+That is exactly what happened: `docker-compose.yml` was upgraded from 2022 to 2025 (commit
+`77188e0`) and the fixture was never touched, so the container suite spent months validating an
+engine nobody develops against ([#323](https://github.com/zkarachiwala/TimeTracker/issues/323)).
+
+`SqlServerVersionConsistencyTests` now parses `docker-compose.yml` and asserts it matches
+`SqlServerFixture.SqlServerImage`. It needs no Docker and runs in the fast loop, so the two cannot
+silently diverge again. If you change one, that test tells you to change the other — and to update
+this document.
+
+**Production is Azure SQL Database, which matches neither container version exactly.** Pinning to
+the dev container image closes the dev/test gap; it does not close the test/production gap. That
+one is inherent to using a container to stand in for a managed service.
 
 ---
 
