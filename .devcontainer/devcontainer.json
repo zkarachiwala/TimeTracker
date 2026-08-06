@@ -20,7 +20,7 @@
       "onAutoForward": "silent"
     }
   },
-  "postCreateCommand": "dotnet tool install --global dotnet-ef && dotnet restore TimeTracker.sln && dotnet ef database update --project TimeTracker.Web --context TimeTrackerDataContext && dotnet ef database update --project TimeTracker.Web --context IdentityDataContext",
+  "postCreateCommand": "dotnet tool install --global dotnet-ef && dotnet restore TimeTracker.sln && bash .devcontainer/create-app-login.sh login && dotnet ef database update --project TimeTracker.Web --context TimeTrackerDataContext && dotnet ef database update --project TimeTracker.Web --context IdentityDataContext && bash .devcontainer/create-app-login.sh grant",
   "postStartCommand": "cd TimeTracker.Web && dotnet run --launch-profile container",
   "customizations": {
     "vscode": {

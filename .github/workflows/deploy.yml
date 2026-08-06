@@ -71,12 +71,13 @@ jobs:
       - name: Install dotnet-ef
         run: dotnet tool install --global dotnet-ef
 
-      # EF Core's design-time tooling defaults to the Development environment for design-time
-      # operations regardless of what the app would actually run as. That flips
-      # ConnectionStringBuilder.Build's IsDevelopment() check true, which then expects DbUser/
-      # DbPassword config that only exists as local user secrets - not in CI. Forcing Production
-      # keeps design-time operations on the same code path as the real app. Applies to both
-      # steps below, since both invoke dotnet-ef's design-time host building.
+      # dotnet-ef builds contexts via TimeTrackerDataContextFactory/IdentityDataContextFactory
+      # (IDesignTimeDbContextFactory<T> in TimeTracker.Web/Data/, see ADR-035), not by reflecting
+      # into Program.cs. Those factories default to Development-like behaviour (inject
+      # MigrationsDbUser/MigrationsDbPassword via ConnectionStringBuilder) unless
+      # ASPNETCORE_ENVIRONMENT is explicitly "Production" - forcing it here keeps CI on the
+      # Azure AD connection-string path instead of expecting local-only migrations secrets that
+      # don't exist in this environment. Applies to both steps below, since both invoke dotnet-ef.
       #
       # This script is generated purely as a reviewable audit artifact (uploaded below, before
       # the actual apply step) - it is never executed. Applying migrations goes through EF's own
