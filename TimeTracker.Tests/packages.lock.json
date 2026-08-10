@@ -166,8 +166,8 @@
       },
       "Heron.MudCalendar": {
         "type": "Transitive",
-        "resolved": "4.0.0",
-        "contentHash": "lYxPRtv5vxSaxU6fyZi92lF/jjOYKStGzobBdBEGqpTQKNETSAukothwiO5QwflmSoPVFJLddCRvk+F7DN2J0Q==",
+        "resolved": "4.0.1",
+        "contentHash": "VBZMfgAwdxH1D54sSc1IGBEQ4amcYDuK8lksMYgfb/xXp32Qk/3rKlNf91dHRQPO2zHBO1b5nFN7Jq6PceXNxg==",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "10.0.1",
           "Microsoft.AspNetCore.Components.Web": "10.0.1",
@@ -357,11 +357,6 @@
         "type": "Transitive",
         "resolved": "6.0.2",
         "contentHash": "f+pRODTWX7Y67jXO3T5S2dIPZ9qMJNySjlZT/TKmWVNWe19N8jcWmHaqHnnchaq3gxEKv1SWVY5EFzOD06l41w=="
-      },
-      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
-        "type": "Transitive",
-        "resolved": "10.0.110",
-        "contentHash": "v2QuCGg7GLcuILPU+S57gi2bnLMcROOBFvLjqFKb3fF420eimHOmmZdALkRkd+qMku83SaGLy2bsL8Z1WFWbVw=="
       },
       "Microsoft.EntityFrameworkCore": {
         "type": "Transitive",
@@ -982,11 +977,10 @@
       "timetracker.client": {
         "type": "Project",
         "dependencies": {
-          "Heron.MudCalendar": "[4.0.0, )",
+          "Heron.MudCalendar": "[4.0.1, )",
           "Heron.MudTotalCalendar": "[4.0.0, )",
           "Microsoft.AspNetCore.Components.Authorization": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.110, )",
           "MudBlazor": "[9.7.0, )",
           "TimeTracker.Contracts": "[1.0.0, )"
         }
