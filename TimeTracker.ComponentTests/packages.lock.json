@@ -46,9 +46,9 @@
       },
       "MudBlazor": {
         "type": "Direct",
-        "requested": "[9.7.0, )",
-        "resolved": "9.7.0",
-        "contentHash": "uWOgNn9B556J/TL8KFoSqpA3YD2heqOpK5etcofwlj1RiEX1IDy0NmwYE9urlTUQ8zProEK5GqwTBnoObFPN3g==",
+        "requested": "[9.8.0, )",
+        "resolved": "9.8.0",
+        "contentHash": "JLJ81j6cn5RUTbgpYAtjRfB3bTNweX0q8lkMS6B9v1oGzZsjVTxDDnWahD+rOtzJWPU6D9svsymiETe4G8bSLw==",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "10.0.1",
           "Microsoft.AspNetCore.Components.Web": "10.0.1",
@@ -198,8 +198,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.110",
-        "contentHash": "v2QuCGg7GLcuILPU+S57gi2bnLMcROOBFvLjqFKb3fF420eimHOmmZdALkRkd+qMku83SaGLy2bsL8Z1WFWbVw=="
+        "resolved": "10.0.109",
+        "contentHash": "LKdYZXWIbRvQc542PCFdr3krH2rvaHHn/1dbXMtS2pggvpoPCmqghAvhiyZnatk6WR4K+ZeR+wirEhwrgVnECw=="
       },
       "Microsoft.Extensions.Caching.Abstractions": {
         "type": "Transitive",
@@ -467,8 +467,8 @@
           "Heron.MudTotalCalendar": "[4.0.0, )",
           "Microsoft.AspNetCore.Components.Authorization": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.110, )",
-          "MudBlazor": "[9.7.0, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.109, )",
+          "MudBlazor": "[9.8.0, )",
           "TimeTracker.Contracts": "[1.0.0, )"
         }
       },
