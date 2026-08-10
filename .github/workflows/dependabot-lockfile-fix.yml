@@ -23,10 +23,33 @@ jobs:
         with:
           global-json-file: global.json
 
+      # Only the lock file of the project Dependabot directly edited is guaranteed
+      # consistent; a locked-mode restore is how we detect whether the transitive
+      # ProjectReference cascade bug (dependabot/dependabot-core#13950) actually
+      # affected this PR, instead of unconditionally regenerating every PR's lock
+      # files with --force-evaluate, which churns unrelated transitive versions too.
+      - name: Check if lock files are already consistent
+        id: check
+        run: dotnet restore TimeTracker.sln --locked-mode
+        continue-on-error: true
+
       - name: Regenerate lock files
+        if: steps.check.outcome == 'failure'
         run: dotnet restore TimeTracker.sln --force-evaluate
 
-      - name: Commit and push if lock files changed
+      # Verified in this same run (not a follow-up triggered run) because a push made
+      # here with GITHUB_TOKEN is treated as bot-authored, and any workflow run that
+      # push triggers afterward is held for manual approval in the Actions UI.
+      - name: Build (verify the regenerated lock files)
+        if: steps.check.outcome == 'failure'
+        run: dotnet build TimeTracker.sln --no-restore --configuration Release
+
+      - name: Test (verify the regenerated lock files)
+        if: steps.check.outcome == 'failure'
+        run: dotnet test TimeTracker.Tests/TimeTracker.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+
+      - name: Commit and push regenerated lock files
+        if: steps.check.outcome == 'failure'
         run: |
           if git diff --quiet -- '**/packages.lock.json'; then
             echo "Lock files already consistent - nothing to do."
