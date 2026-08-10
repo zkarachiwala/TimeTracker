@@ -4,9 +4,9 @@
     "net10.0": {
       "AngleSharp": {
         "type": "Direct",
-        "requested": "[1.7.0, )",
-        "resolved": "1.7.0",
-        "contentHash": "v1R++46dblGRBo2/fKFUfgtZOaFnDGQhqBM0AarxgZSJuumj1e1vexBbjlTv2hx3Olr3qeoJa2yUoWyv5fuJ5A=="
+        "requested": "[1.7.1, )",
+        "resolved": "1.7.1",
+        "contentHash": "QBblGpRB3SYD66Mls7fHyl1mWkP93n7ErWDWHc1vd9sPHhdlTkmUoY3CjgfjcWNxGF9m7xjNyztRfErXqoBKOA=="
       },
       "bunit": {
         "type": "Direct",
@@ -198,8 +198,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.110",
-        "contentHash": "v2QuCGg7GLcuILPU+S57gi2bnLMcROOBFvLjqFKb3fF420eimHOmmZdALkRkd+qMku83SaGLy2bsL8Z1WFWbVw=="
+        "resolved": "10.0.109",
+        "contentHash": "LKdYZXWIbRvQc542PCFdr3krH2rvaHHn/1dbXMtS2pggvpoPCmqghAvhiyZnatk6WR4K+ZeR+wirEhwrgVnECw=="
       },
       "Microsoft.Extensions.Caching.Abstractions": {
         "type": "Transitive",
@@ -467,7 +467,7 @@
           "Heron.MudTotalCalendar": "[4.0.0, )",
           "Microsoft.AspNetCore.Components.Authorization": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.110, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.109, )",
           "MudBlazor": "[9.7.0, )",
           "TimeTracker.Contracts": "[1.0.0, )"
         }
