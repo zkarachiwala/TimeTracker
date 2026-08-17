@@ -66,7 +66,7 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore TimeTracker.sln --locked-mode
+        run: dotnet restore TimeTracker.sln
 
       - name: Install dotnet-ef
         run: dotnet tool install --global dotnet-ef
@@ -171,7 +171,7 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore TimeTracker.sln --locked-mode
+        run: dotnet restore TimeTracker.sln
 
       - name: Publish
         run: >
