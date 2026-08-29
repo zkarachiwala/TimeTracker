@@ -21,7 +21,15 @@ public class SqlServerCollection : ICollectionFixture<SqlServerFixture> { }
 /// </summary>
 public class SqlServerFixture : IAsyncLifetime
 {
-    private readonly MsSqlContainer _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
+    /// <summary>
+    /// The SQL Server image these tests run against. Must match the dev container image in
+    /// docker-compose.yml — SqlServerVersionConsistencyTests fails the build if they diverge.
+    /// RLS behaviour is engine-version sensitive, so testing on a different engine to the one
+    /// used for development proves less than it appears to (see issue #323).
+    /// </summary>
+    public const string SqlServerImage = "mcr.microsoft.com/mssql/server:2025-latest";
+
+    private readonly MsSqlContainer _container = new MsSqlBuilder(SqlServerImage)
         .WithAutoRemove(true)
         .Build();
 
