@@ -40,6 +40,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [ADR-032](#adr-032-oidc-over-publish-profile-for-github-actions--azure-deploy-auth) | OIDC over publish-profile for GitHub Actions → Azure deploy auth | 2026-06 | Accepted |
 | [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption) | Named `rls_bypass` role over blanket `db_owner` RLS exemption | 2026-07 | Accepted |
 | [ADR-034](#adr-034-securitystamp-session-revocation-over-a-redis-backed-revocation-list) | `SecurityStamp` session revocation over a Redis-backed revocation list | 2026-06 | Accepted |
+| [ADR-035](#adr-035-idesigntimedbcontextfactory-for-a-least-privilege-local-app-login) | `IDesignTimeDbContextFactory` for a least-privilege local app login | 2026-08 | Accepted |
 
 ---
 
@@ -918,3 +919,32 @@ Rolled out as two migrations rather than one: `AddRlsBypassRole` creates the rol
 - ✅ Admin-only `revoke-sessions` endpoint gives a real "log out everywhere" capability without ending the admin's own session
 - ❌ Revocation is only checked every 30 minutes (the validation interval), not on every single request — a revoked cookie can still be used for up to that window. Acceptable trade-off for a personal app; a tighter interval increases DB round-trips per request
 - ❌ This approach does not generalise past a single logical database — if the app ever needed multi-region or cross-database session state, a shared store (Redis or similar) would become necessary again
+
+---
+
+## ADR-035: `IDesignTimeDbContextFactory` for a least-privilege local app login
+
+**Date:** 2026-08 — **Status:** Accepted — **Closes:** [#324](https://github.com/zkarachiwala/TimeTracker/issues/324)
+
+**Context:** The app and `dotnet ef` shared one connection string and one set of credentials (`DbUser`/`DbPassword`) — locally, `sa`. `dotnet ef` needs DDL rights to create and apply migrations, so the app's own runtime credential had to be privileged enough to satisfy that, with no mechanism to narrow it without also breaking migrations. This is the same problem [ADR-031](#adr-031-pipeline-migrations--least-privilege-app-identity-supersedes-adr-022) already solved for production, where the app's Managed Identity held `CREATE FUNCTION`/`ALTER ANY SECURITY POLICY` purely so it could self-migrate on startup — a compromised app tier could disable its own RLS policies. Locally, `sa` running the app meant every RLS/least-privilege guarantee documented in `docs/rls-security-model.md` for production had no local equivalent to actually exercise.
+
+`dotnet ef` prefers an `IDesignTimeDbContextFactory<T>` over reflecting into `Program.cs`'s host builder when one exists — the standard EF Core mechanism for giving tooling its own connection without the app ever holding those rights.
+
+**Decision:** Add `TimeTrackerDataContextFactory` and `IdentityDataContextFactory` (`TimeTracker.Web/Data/`), each an `IDesignTimeDbContextFactory<T>` that builds its own configuration (`appsettings.json` → `appsettings.{env}.json` → user secrets → environment variables) and resolves connection strings via a new `MigrationsDbUser`/`MigrationsDbPassword` credential pair — separate from the app's own `DbUser`/`DbPassword`. `ConnectionStringBuilder.Build` was refactored to take `IConfiguration`/`bool isDevelopment` instead of `WebApplicationBuilder` so both `Program.cs` and the new factories share the same pooling/credential-injection logic. A new low-privilege `timetracker_app` login (`db_datareader`+`db_datawriter` only, mirroring production's `timetracker-zak`) is what the app now connects as, both in WSL2 (documented manual one-time SQL step) and the dev container (automated via `.devcontainer/create-app-login.sh` in `postCreateCommand`). `sa` remains the migrations-only credential in both environments and deliberately does **not** join `rls_bypass` — `docs/rls-security-model.md` already states local dev should enforce RLS exactly like production, and there are no data-touching migrations today for the backfill gap [ADR-031](#adr-031-pipeline-migrations--least-privilege-app-identity-supersedes-adr-022) flagged for the production migrations principal to actually apply.
+
+**The environment-detection detail that made this non-trivial:** CI's `deploy.yml` `migrate` job already had to fight EF's design-time defaults — it sets `ASPNETCORE_ENVIRONMENT: Production` explicitly, because EF's tooling otherwise defaults design-time host-building to "Development" (which would flip `ConnectionStringBuilder`'s dev check true and expect local-only secrets that don't exist in CI). Replacing reflection-based host building with explicit factories means that implicit EF default no longer applies automatically — the factories replicate it themselves via `ConnectionStringBuilder.IsDevelopmentEnvironment`, defaulting to Development-like behaviour unless `ASPNETCORE_ENVIRONMENT` is explicitly `"Production"`. Getting this backwards would silently break local `dotnet ef` (can't authenticate) in a way that looks like a SQL config problem rather than a logic bug — covered by a unit test. A second, smaller CI-compatibility fix: the factories resolve config from `AppContext.BaseDirectory` (the build output directory, where `appsettings*.json` are already copied) rather than `Directory.GetCurrentDirectory()`, since CI invokes `dotnet-ef --project TimeTracker.Web/TimeTracker.Web.csproj` from the repo root, not from inside `TimeTracker.Web/`.
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **`IDesignTimeDbContextFactory<T>` + separate `MigrationsDbUser`/`MigrationsDbPassword`** | Accepted — the standard, documented EF Core mechanism for giving tooling its own connection; requires no changes to how the app itself resolves its connection at runtime |
+| Keep one shared credential, narrow it as far as both the app and migrations can tolerate | Rejected — DDL rights (`db_ddladmin` or `db_owner`) are strictly broader than the app ever needs (`db_datareader`+`db_datawriter`); any shared credential is only as narrow as the more privileged consumer requires |
+| Give `sa` `rls_bypass` locally, for symmetry with the production migrations principal | Rejected — no data-touching (backfill) migrations exist today, so the gap this would close doesn't currently apply; granting it pre-emptively would quietly reopen the bypass [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption) closed, for no present benefit |
+
+**Consequences:**
+- ✅ The local running app can finally hold the same minimal grant set as production (`db_datareader`+`db_datawriter` only) — local dev now exercises the same least-privilege guarantees `docs/rls-security-model.md` documents for production, instead of running everything as `sa`
+- ✅ `dotnet ef` keeps the DDL rights it needs (`sa`) without the app ever holding them
+- ✅ Both WSL2 (primary) and the dev container (secondary) get the same credential split, via a manual documented step and an automated bootstrap script respectively
+- ❌ Two credential pairs to manage locally instead of one (`DbUser`/`DbPassword` and `MigrationsDbUser`/`MigrationsDbPassword`) — mirrors the production split already established by ADR-031, so not a new pattern, just a second place it now applies
+- ❌ The dev container's login-creation script depends on `docker compose` being callable from inside the `app` container via the `docker-outside-of-docker` feature, and on the exact `mssql-tools18` path in the `db` image — both verified against the current image but a future base-image bump could shift either

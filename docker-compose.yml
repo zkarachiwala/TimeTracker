@@ -25,8 +25,10 @@ services:
       ASPNETCORE_URLS: http://+:5019
       ConnectionStrings__TimeTrackerConnection: "Server=db,1433;Database=TimeTrackerDb;TrustServerCertificate=True"
       ConnectionStrings__IdentityConnection: "Server=db,1433;Database=TimeTrackerDb;TrustServerCertificate=True"
-      DbUser: "${DB_USER}"
-      DbPassword: "${DB_PASSWORD}"
+      DbUser: "timetracker_app"
+      DbPassword: "${APP_DB_PASSWORD}"
+      MigrationsDbUser: "sa"
+      MigrationsDbPassword: "${SA_PASSWORD}"
     ports:
       - "5019:5019"
     volumes:
