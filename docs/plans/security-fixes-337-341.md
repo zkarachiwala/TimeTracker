@@ -4,7 +4,7 @@ Working through five independently-filed security defects, one branch/PR per iss
 
 ## Order and status
 
-1. **#337** — Drop `app.ProjectsUserPolicy` (RLS contradicts ADR-024; project visibility belongs in app tier). Migration removing the policy/predicate. — pending
+1. **#337** — Drop `app.ProjectsUserPolicy` (RLS contradicts ADR-024; project visibility belongs in app tier). Migration removing the policy/predicate. — **PR #375 open**
 2. **#338** — Enforce `ProjectUser` membership check in `TimeEntryService.CreateTimeEntry`/`UpdateTimeEntry` before assigning `ProjectId`. Reuse `ProjectService.GetAssignedProjects` predicate. Unit test: unassigned user rejected on create + update. — pending
 3. **#341** — Three small endpoint auth fixes (grouped by the issue itself):
    - `/api/dev/login` needs a non-guessable token check in addition to environment gate
