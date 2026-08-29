@@ -42,7 +42,7 @@ jobs:
 
       - name: Restore
         if: steps.changes.outputs.code == 'true'
-        run: dotnet restore TimeTracker.sln --locked-mode
+        run: dotnet restore TimeTracker.sln
 
       - name: Build
         if: steps.changes.outputs.code == 'true'
@@ -54,4 +54,10 @@ jobs:
 
       - name: Check for vulnerable packages
         if: steps.changes.outputs.code == 'true'
-        run: dotnet list package --vulnerable --include-transitive
+        run: |
+          output=$(dotnet list package --vulnerable --include-transitive 2>&1)
+          echo "$output"
+          if echo "$output" | grep -q "has the following vulnerable packages"; then
+            echo "::error::Vulnerable packages detected - see output above."
+            exit 1
+          fi

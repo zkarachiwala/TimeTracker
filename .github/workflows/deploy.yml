@@ -66,7 +66,7 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore TimeTracker.sln --locked-mode
+        run: dotnet restore TimeTracker.sln
 
       - name: Install dotnet-ef
         run: dotnet tool install --global dotnet-ef
@@ -97,7 +97,7 @@ jobs:
             --output ./migrations-artifact/IdentityDataContext.sql
 
       - name: Upload migration scripts artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: migration-scripts-${{ github.sha }}
           path: ./migrations-artifact/*.sql
@@ -171,7 +171,7 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore TimeTracker.sln --locked-mode
+        run: dotnet restore TimeTracker.sln
 
       - name: Publish
         run: >

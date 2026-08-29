@@ -32,11 +32,19 @@ updates:
           - "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"
       # The rest of the ASP.NET Core packages ship together in .NET's monthly patch
       # releases (e.g. 10.0.9 -> 10.0.10 across Web, Client and ComponentTests on the
-      # same day). Grouping avoids 4-6 near-identical separate PRs each month. Listed
-      # after entity-framework-core so those packages keep going to that group instead.
+      # same day). Grouping avoids 4-6 near-identical separate PRs each month.
+      #
+      # exclude-patterns is required, not just listing entity-framework-core first:
+      # in practice Dependabot has proposed Microsoft.AspNetCore.Identity.EntityFrameworkCore
+      # in *both* group PRs in the same run (see #356 vs #357), which breaks the
+      # aspnetcore-runtime PR with a NU1605 downgrade error since it bumps that one
+      # EF-Core-coupled package without its lock-step siblings. The explicit exclude
+      # guarantees this package can only ever go to entity-framework-core.
       aspnetcore-runtime:
         patterns:
           - "Microsoft.AspNetCore.*"
+        exclude-patterns:
+          - "Microsoft.AspNetCore.Identity.EntityFrameworkCore"
     ignore:
       # Microsoft.AspNetCore.OpenApi 10.0.9 pins Microsoft.OpenApi >= 2.0.0 and has not
       # been updated for the 3.x line yet (upstream release notes: 3.x support lands in
