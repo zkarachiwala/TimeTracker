@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Data.Common;
 using TimeTracker.Web.Infrastructure;
 using Xunit;
@@ -161,6 +162,46 @@ public class DatabaseWarmupMiddlewareTests
         await middleware.InvokeAsync(context);
 
         Assert.Equal(503, context.Response.StatusCode);
+    }
+
+    // 40613 is what Azure SQL serverless returns while compute resumes from auto-pause - the exact
+    // scenario this middleware exists for. It was missing from the recognised set, so it fell
+    // through to a raw 500 instead of the "waking up" page. See ADR-036.
+    [Theory]
+    [InlineData(40613)] // Database is not currently available (serverless resume)
+    [InlineData(40197)] // Service error processing the request
+    [InlineData(40501)] // Service is busy
+    [InlineData(49918)] // Cannot process request - not enough resources
+    [InlineData(49919)] // Cannot process create or update request - too many operations
+    [InlineData(49920)] // Cannot process request - too many operations
+    public async Task Returns503ForAzureTransientError(int number)
+    {
+        var context = CreateContext();
+        var middleware = new DatabaseWarmupMiddleware(_ =>
+            throw CreateSqlException(number, "Database is not currently available"));
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(503, context.Response.StatusCode);
+        Assert.Contains("text/html", context.Response.ContentType);
+        Assert.Contains("Waking up", await ReadResponseBody(context));
+    }
+
+    // Once SqlServerRetryPolicy exhausts its budget EF Core surfaces RetryLimitExceededException
+    // with the original SqlException inside, so the middleware has to unwrap it to show the
+    // friendly page rather than a raw 500.
+    [Fact]
+    public async Task Returns503WhenRetryLimitExceededWrapsResumeError()
+    {
+        var context = CreateContext();
+        var middleware = new DatabaseWarmupMiddleware(_ =>
+            throw new RetryLimitExceededException("retries exhausted",
+                CreateSqlException(number: 40613, message: "Database is not currently available")));
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(503, context.Response.StatusCode);
+        Assert.Contains("Waking up", await ReadResponseBody(context));
     }
 
     private static SqlException CreateSqlException(int number, string message = "A network-related error occurred")

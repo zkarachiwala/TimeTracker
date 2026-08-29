@@ -90,6 +90,6 @@ UptimeRobot can generate a free public status page (e.g. `stats.uptimerobot.com/
 
 `GET /health` is a **liveness check only** — it confirms the app process is running and returns `{"status":"Healthy"}` with HTTP 200. It deliberately does **not** ping the database.
 
-**Why no DB check?** The Azure SQL free tier includes 100,000 vCore seconds per month. At the serverless minimum of 0.5 vCores, that's ~55 hours of active uptime. A database ping every 5 minutes prevents Azure SQL from auto-pausing, which would exhaust the free allowance in ~2 days and either pause the DB until the next billing month or start incurring charges.
+**Why no DB check?** The Azure SQL free tier includes 100,000 vCore seconds per month. At the serverless minimum of 0.5 vCores, that's ~55 hours of active uptime. A database ping every 5 minutes prevents Azure SQL from auto-pausing, which would exhaust the free allowance in ~2 days and either pause the DB until the next billing month or start incurring charges. This is not a matter of picking a slower interval — the minimum auto-pause delay is 15 minutes, so any ping that actually prevents a pause keeps the database online round the clock. See [ADR-036](decisions.md#adr-036-bounded-connection-retry-over-keeping-the-database-warm).
 
 **For manual DB diagnostics**, `GET /health/detail` runs the full connectivity check against both DbContexts and requires authentication. Use this to confirm the database is reachable when troubleshooting, but never point an external monitor at it.

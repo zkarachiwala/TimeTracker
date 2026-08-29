@@ -40,6 +40,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [ADR-032](#adr-032-oidc-over-publish-profile-for-github-actions--azure-deploy-auth) | OIDC over publish-profile for GitHub Actions → Azure deploy auth | 2026-06 | Accepted |
 | [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption) | Named `rls_bypass` role over blanket `db_owner` RLS exemption | 2026-07 | Accepted |
 | [ADR-034](#adr-034-securitystamp-session-revocation-over-a-redis-backed-revocation-list) | `SecurityStamp` session revocation over a Redis-backed revocation list | 2026-06 | Accepted |
+| [ADR-036](#adr-036-bounded-connection-retry-over-keeping-the-database-warm) | Bounded connection retry over keeping the database warm | 2026-08 | Accepted |
 
 ---
 
@@ -918,3 +919,48 @@ Rolled out as two migrations rather than one: `AddRlsBypassRole` creates the rol
 - ✅ Admin-only `revoke-sessions` endpoint gives a real "log out everywhere" capability without ending the admin's own session
 - ❌ Revocation is only checked every 30 minutes (the validation interval), not on every single request — a revoked cookie can still be used for up to that window. Acceptable trade-off for a personal app; a tighter interval increases DB round-trips per request
 - ❌ This approach does not generalise past a single logical database — if the app ever needed multi-region or cross-database session state, a shared store (Redis or similar) would become necessary again
+
+
+---
+
+## ADR-036: Bounded connection retry over keeping the database warm
+
+**Date:** 2026-08 — **Status:** Accepted
+
+**Context:** The production database is the Azure SQL free offer — serverless, General Purpose, auto-pausing when idle ([ADR-003](#adr-003-zero-cost-hosting-azure-f1--azure-sql-free), [TD4](technical-debt.md#infrastructure--compute)). The first connection after a pause returns error 40613, "Database is not currently available", while compute resumes; a resume takes roughly 60–90 seconds. EF Core's default `SqlServerExecutionStrategy` performs no retries at all, so that first connection simply fails.
+
+This surfaced when the `migrate` job of `deploy.yml` failed on the merge of [#336](https://github.com/zkarachiwala/TimeTracker/pull/336). `dotnet ef database update` is the pipeline's first contact with the database — `migrations script` generates offline and never connects — so it takes the cold hit every time. `Publish & Deploy` and `Production Smoke Test` are gated on that job, so a paused database blocks the whole deployment. The running app had the same gap: the first user request after a pause hit an unretried 40613.
+
+The obvious-looking fix — keep the database warm with a periodic ping — is not viable, and the arithmetic is worth recording so it is not proposed again. Preventing a pause requires pinging more often than the auto-pause delay, whose minimum is 15 minutes. Any such schedule keeps the database online continuously:
+
+| | vCore seconds/month |
+|---|---|
+| Free allowance | 100,000 |
+| Online 24/7 at the 0.5 vCore floor | 30 × 86,400 × 0.5 = **1,296,000** |
+
+That is roughly 13× the allowance, exhausting it in about 2.3 days. Because the database was provisioned with `--free-limit-exhaustion-behavior AutoPause` ([`docs/azure-deployment.md`](azure-deployment.md)), exhaustion does not produce a bill — it makes the database **inaccessible until the first of the next calendar month**. A keep-alive ping would take the app offline for weeks. This is the same reasoning that already keeps the DB check out of `/health` ([ADR-019](#adr-019-serilog--health-endpoint--uptimerobot-over-application-insights), [`docs/architecture.md`](architecture.md)).
+
+**Decision:** Do not attempt to keep the database warm. Tolerate the resume instead: enable EF Core connection resiliency via `SqlServerRetryPolicy` (`TimeTracker.Web/Infrastructure/`), applied to both `UseSqlServer` calls in `Program.cs`. This swaps in `SqlServerRetryingExecutionStrategy`, which already classifies 40613 as transient.
+
+Retrying costs no additional vCore seconds — the database is resuming regardless, and the resume is paid for the moment anything connects. The retry budget is nonetheless bounded deliberately: 8 attempts with a 20-second backoff cap, roughly 105 seconds in total. That covers the upper end of a resume while sitting inside Azure App Service's 230-second request timeout, so a waking request completes rather than being cut off. It is bounded rather than open-ended because once the monthly allowance is gone the database cannot come back until the next month, and grinding away at it would achieve nothing.
+
+`DatabaseWarmupMiddleware` is the fallback when a resume outlasts that budget. Its recognised error set did not include 40613 — the `SqlException` branch returned before the general `DbException` fallback could catch it — so the precise scenario the middleware was written for produced a raw 500 instead of the "waking up" page. 40613 and Azure's related transient codes are now recognised, including when EF Core wraps them in `RetryLimitExceededException`.
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **Bounded `EnableRetryOnFailure` + warm-up middleware fallback** | Accepted — costs no extra vCore seconds, fixes CI and the running app from one definition, and fails over to a friendly page when a resume runs long |
+| Keep-alive ping (scheduled job, external monitor, or warm-up step in CI) | Rejected — the minimum 15-minute auto-pause delay means any effective ping keeps the database online permanently, blowing a 100,000 vCore-second allowance ~13× over and taking the app offline until the next calendar month |
+| Disable auto-pause (`-1`) | Rejected — the same arithmetic, stated outright |
+| Lower the auto-pause delay to reduce the idle tail | Not taken here; a separate, orthogonal lever. Shortening the delay cuts the per-wake cost (1,800 vCore seconds at 60 minutes, 450 at 15) but increases cold-start frequency for the user. Worth revisiting against measured consumption, and only tolerable because retry now exists |
+| Unbounded retry | Rejected — cannot succeed once the monthly allowance is exhausted, and would hang requests past App Service's timeout |
+
+**Consequences:**
+- ✅ The deploy pipeline survives a paused database instead of failing the migrate job and blocking deployment
+- ✅ The first user request after a pause now waits for the resume and succeeds, rather than erroring
+- ✅ 40613 finally reaches `DatabaseWarmupMiddleware`, so a long resume shows the "waking up" page instead of a raw 500
+- ✅ One shared definition covers the app and EF Core's design-time tooling
+- ❌ A request arriving during a resume can now block for up to ~105 seconds before failing. That is the cost of the free tier's auto-pause; the alternative is failing immediately
+- ❌ Retry cannot help if the monthly vCore allowance is exhausted — the database is then unavailable until the next calendar month regardless. Consumption still needs watching
+- ❌ The retry budget is a fixed constant, not derived from measured resume times. If Azure's resume latency changes materially, the number needs revisiting
