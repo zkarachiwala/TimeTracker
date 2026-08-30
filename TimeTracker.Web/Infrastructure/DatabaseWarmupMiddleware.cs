@@ -101,9 +101,17 @@ public class DatabaseWarmupMiddleware(RequestDelegate next)
                 // -2 = timeout, 2 = network-related, 53 = transport-level,
                 // 4060 = cannot open database, 10054 = connection reset,
                 // 10060 = connection timeout, 11001 = host unknown
+                //
+                // Azure SQL transient errors. 40613 is the one serverless auto-pause actually
+                // produces - it is what the database returns while compute resumes - so omitting
+                // it meant the exact scenario this middleware exists for fell through to a raw
+                // 500. The rest are Azure's documented "retry shortly" throttling codes.
+                // SqlServerRetryPolicy retries these first; this is the fallback for when a
+                // resume outlasts the retry budget. See ADR-036.
                 return sqlEx.Number switch
                 {
                     -2 or 2 or 53 or 4060 or 10054 or 10060 or 11001 => true,
+                    40613 or 40197 or 40501 or 49918 or 49919 or 49920 => true,
                     _ => false
                 };
             }

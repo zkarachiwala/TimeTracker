@@ -34,10 +34,10 @@ builder.Services.AddControllers();
 builder.Services.AddSingleton<UserSessionContextInterceptor>();
 builder.Services.AddDbContextFactory<TimeTrackerDataContext>((sp, o) =>
 {
-    o.UseSqlServer(timeTrackerConnection);
+    o.UseSqlServer(timeTrackerConnection, SqlServerRetryPolicy.Apply);
     o.AddInterceptors(sp.GetRequiredService<UserSessionContextInterceptor>());
 });
-builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityConnection));
+builder.Services.AddDbContext<IdentityDataContext>(o => o.UseSqlServer(identityConnection, SqlServerRetryPolicy.Apply));
 
 builder.Services.AddApplicationAuth(builder.Configuration);
 builder.Services.AddApplicationRateLimiting(builder.Configuration);

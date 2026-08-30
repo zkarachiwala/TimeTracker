@@ -237,7 +237,7 @@ Two endpoints, separated by intent:
 | `GET /health` | Anonymous | ❌ | Liveness — process is running. Safe for UptimeRobot every 5 min. |
 | `GET /health/detail` | Required | ✅ | Readiness — EF Core connectivity check on both DbContexts. Manual use only. |
 
-`/health` deliberately omits the DB ping. The Azure SQL free tier allows 100,000 vCore seconds/month (~55 hours at minimum 0.5 vCores). An external monitor pinging the DB every 5 minutes would prevent auto-pause and exhaust the free allowance in ~2 days.
+`/health` deliberately omits the DB ping. The Azure SQL free tier allows 100,000 vCore seconds/month (~55 hours at minimum 0.5 vCores). An external monitor pinging the DB every 5 minutes would prevent auto-pause and exhaust the free allowance in ~2 days. The same holds at any interval: the minimum auto-pause delay is 15 minutes, so any ping frequent enough to prevent a pause keeps the database online permanently — and because the database is provisioned with `--free-limit-exhaustion-behavior AutoPause`, exhausting the allowance makes it inaccessible until the next calendar month. Cold starts are absorbed by bounded connection retry instead — see [ADR-036](decisions.md#adr-036-bounded-connection-retry-over-keeping-the-database-warm).
 
 UptimeRobot monitors `/health` every 5 minutes — see [`docs/uptimerobot-setup.md`](uptimerobot-setup.md).
 
