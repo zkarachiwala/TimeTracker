@@ -50,7 +50,9 @@ public static class ProjectEndpoints
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
 
-        group.MapGet("/{id:int}/users", async (int id, IProjectService svc, CancellationToken ct) =>
+        // Returns colleague email addresses — every sibling project-user operation
+        // (POST/DELETE .../users) is already admin-only. See #341.
+        adminGroup.MapGet("/{id:int}/users", async (int id, IProjectService svc, CancellationToken ct) =>
             Results.Ok(await svc.GetProjectUsers(id, ct)));
 
         adminGroup.MapPost("/{id:int}/users", async (int id, AssignUserRequest request, IProjectService svc, CancellationToken ct) =>

@@ -70,6 +70,9 @@ public static class AuthEndpoints
             return Results.Redirect("/login");
         });
 
+        // Self-service: revokes the caller's own sessions (e.g. after a suspected stolen cookie).
+        // Not an Admin-only operation — every authenticated user must be able to do this for
+        // themselves, and it never touches any other user's SecurityStamp. See #341.
         app.MapPost("/api/auth/revoke-sessions", async (
             UserManager<User> userManager,
             ClaimsPrincipal principal,
@@ -81,9 +84,7 @@ public static class AuthEndpoints
             await userManager.UpdateSecurityStampAsync(user);
             logger.LogInformation("Auth: all sessions revoked");
             return Results.Ok();
-        }).RequireAuthorization(
-            new AuthorizationPolicyBuilder().RequireAuthenticatedUser().RequireRole("Admin").Build()
-        ).RequireRateLimiting("write");
+        }).RequireAuthorization().RequireRateLimiting("write");
 
         app.MapGet("/api/auth/providers", async (IAuthenticationSchemeProvider schemeProvider) =>
         {

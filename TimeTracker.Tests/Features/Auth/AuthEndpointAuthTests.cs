@@ -48,13 +48,16 @@ public class AuthEndpointAuthTests
                 e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Contains(method) == true);
 
     [Fact]
-    public void RevokeSessionsEndpoint_RequiresAdminRole()
+    public void RevokeSessionsEndpoint_RequiresAuthenticationButNotAdminRole()
     {
+        // Self-service operation: it only ever revokes the caller's own sessions, so any
+        // authenticated user must be able to call it — not just Admins. See #341.
         var endpoints = BuildEndpoints();
         var endpoint = Find(endpoints, "POST", "/api/auth/revoke-sessions");
         Assert.NotNull(endpoint);
-        Assert.True(HasAdminRole(endpoint),
-            "POST /api/auth/revoke-sessions must require the Admin role but does not.");
+        Assert.NotEmpty(endpoint.Metadata.OfType<IAuthorizeData>());
+        Assert.False(HasAdminRole(endpoint),
+            "POST /api/auth/revoke-sessions should not require the Admin role — it is a self-service operation.");
     }
 
     private sealed class StubExternalLoginService : IExternalLoginService

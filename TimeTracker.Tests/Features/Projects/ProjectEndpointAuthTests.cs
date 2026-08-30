@@ -43,7 +43,8 @@ public class ProjectEndpointAuthTests
     [InlineData("POST",   "/api/projects/")]
     [InlineData("PUT",    "/api/projects/{id:int}")]
     [InlineData("DELETE", "/api/projects/{id:int}")]
-    public void MutationEndpoints_RequireAdminRole(string method, string pattern)
+    [InlineData("GET",    "/api/projects/{id:int}/users")] // returns colleague emails — see #341
+    public void AdminGatedEndpoints_RequireAdminRole(string method, string pattern)
     {
         var endpoints = BuildEndpoints();
         var endpoint = Find(endpoints, method, pattern);
