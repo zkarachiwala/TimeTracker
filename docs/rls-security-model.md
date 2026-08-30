@@ -55,7 +55,12 @@ identity.
 
 ## Which tables are protected, and by what rule
 
-Three tables carry a security policy. `Clients` deliberately does not (see ADR-020).
+Two tables carry a security policy. `Clients` and `Projects` deliberately do not — see ADR-020
+and ADR-024 respectively. `Projects` carried a membership-based policy until #337: it filtered
+project visibility to `ProjectUsers` membership, which contradicted ADR-024 ("`ProjectUser` is a
+time-allocation gate only — all authenticated users can see all projects") and left admins unable
+to see projects they were not personally assigned to. Project visibility is a permission with
+legitimate exceptions, not an isolation boundary, so it belongs in the application tier instead.
 
 ```mermaid
 flowchart TD
@@ -63,17 +68,12 @@ flowchart TD
 
     S --> TEP["<b>app.TimeEntries</b><br/>TimeEntriesUserPolicy<br/>visible when UserId = you"]
     S --> PUP["<b>app.ProjectUsers</b><br/>ProjectUsersUserPolicy<br/>visible when UserId = you"]
-    S --> PP["<b>app.Projects</b><br/>ProjectsUserPolicy<br/>visible when you have a<br/>ProjectUsers row for it"]
-
-    PUP -.->|"membership decides<br/>project visibility"| PP
 ```
 
-`app.ProjectUsers` is the hinge: it is both protected in its own right *and* the lookup that
-decides which projects you can see. `app.TimeEntries` is filtered directly on its own `UserId`
-column — it does not go via the project.
+`app.TimeEntries` and `app.ProjectUsers` are both filtered directly on their own `UserId` column.
 
-Both rules live in inline table-valued functions, `app.fn_filter_by_user_id` and
-`app.fn_filter_projects_by_user`, created in the RLS migrations under `TimeTracker.Web/Migrations/`.
+The rule lives in an inline table-valued function, `app.fn_filter_by_user_id`, created in the RLS
+migrations under `TimeTracker.Web/Migrations/`.
 
 ---
 

@@ -72,20 +72,23 @@ public class RlsIntegrationTests(SqlServerFixture fixture)
     }
 
     [Fact]
-    public async Task Projects_UserA_CannotSeeUserB_Projects()
+    public async Task Projects_UserA_CanSeeUserB_Projects()
     {
+        // ADR-024: ProjectUser is a time-allocation gate only, not a visibility boundary.
+        // app.Projects deliberately carries no RLS policy (see #337) — every authenticated
+        // user, regardless of project membership, sees every non-deleted project.
         await using var setup = await SetupAsync();
 
         await using var ctx = new TimeTrackerDataContext(OptionsForTestUser());
         await SetSessionContextAsync(ctx, UserA);
 
         var visible = await ctx.Projects
-            .IgnoreQueryFilters()  // bypass soft-delete filter; RLS should still apply
+            .IgnoreQueryFilters()  // bypass soft-delete filter; no RLS applies to app.Projects
             .ToListAsync();
 
         var visibleIds = visible.Select(p => p.Id).ToHashSet();
         Assert.Contains(setup.ProjectA.Id, visibleIds);
-        Assert.DoesNotContain(setup.ProjectB.Id, visibleIds);
+        Assert.Contains(setup.ProjectB.Id, visibleIds);
     }
 
     [Fact]
