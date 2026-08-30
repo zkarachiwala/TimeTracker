@@ -224,6 +224,22 @@ public class TimeEntryServiceTests
     }
 
     [Fact]
+    public async Task CreateTimeEntry_ThrowsEntityNotFoundException_WhenUserNotAssignedToProject()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(OtherUserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            CreateService(options).CreateTimeEntry(new TimeEntryCreateRequest { ProjectId = project.Id, Start = DateTime.Now }));
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Empty(context.TimeEntries);
+    }
+
+    [Fact]
     public async Task UpdateTimeEntry_UpdatesFields()
     {
         var options = CreateOptions();
@@ -251,6 +267,26 @@ public class TimeEntryServiceTests
         var options = CreateOptions();
         await Assert.ThrowsAsync<EntityNotFoundException>(() =>
             CreateService(options).UpdateTimeEntry(999, new TimeEntryUpdateRequest { Start = DateTime.Now }));
+    }
+
+    [Fact]
+    public async Task UpdateTimeEntry_ThrowsEntityNotFoundException_WhenReassignedToProjectUserIsNotAssignedTo()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var ownProject = MakeProject(UserId, "Own");
+        var otherProject = MakeProject(OtherUserId, "Other");
+        seed.Projects.AddRange(ownProject, otherProject);
+        await seed.SaveChangesAsync();
+        var entry = new TimeEntry { ProjectId = ownProject.Id, UserId = UserId, Start = DateTime.Now };
+        seed.TimeEntries.Add(entry);
+        await seed.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            CreateService(options).UpdateTimeEntry(entry.Id, new TimeEntryUpdateRequest { ProjectId = otherProject.Id, Start = DateTime.Now }));
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(ownProject.Id, context.TimeEntries.Single().ProjectId);
     }
 
     [Fact]

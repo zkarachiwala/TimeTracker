@@ -29,6 +29,20 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
                 .ThenInclude(p => p.Client)
             .Where(te => te.UserId == userId && !te.IsDeleted && !te.Project.IsDeleted);
 
+    // ADR-024: ProjectUser is a time-allocation gate — the project dropdown restricts choice to
+    // assigned projects, and writes must enforce the same rule server-side rather than trusting
+    // the client to only ever submit an assigned ProjectId. See #338. A null ProjectId (no project
+    // assignment change) has nothing to check.
+    private static async Task EnsureAssignedToProjectAsync(TimeTrackerDataContext ctx, string userId, int? projectId, CancellationToken ct)
+    {
+        if (projectId is null) return;
+
+        var isAssigned = await ctx.ProjectUsers
+            .AnyAsync(pu => pu.ProjectId == projectId && pu.UserId == userId, ct);
+        if (!isAssigned)
+            throw new EntityNotFoundException($"Project {projectId} not found.");
+    }
+
     private TimeEntryResponse Enrich(TimeEntry entry)
     {
         var dto = entry.Adapt<TimeEntryResponse>();
@@ -57,6 +71,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
     {
         var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+        await EnsureAssignedToProjectAsync(ctx, userId, request.ProjectId, ct);
         var entry = new TimeEntry
         {
             ProjectId = request.ProjectId,
@@ -77,6 +92,7 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         var entry = await ctx.TimeEntries
             .FirstOrDefaultAsync(te => te.Id == id && te.UserId == userId && !te.IsDeleted, ct)
             ?? throw new EntityNotFoundException($"Time entry {id} not found.");
+        await EnsureAssignedToProjectAsync(ctx, userId, request.ProjectId, ct);
 
         entry.ProjectId = request.ProjectId;
         entry.Start = request.Start;
