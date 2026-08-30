@@ -204,9 +204,9 @@ Vertical Slice Architecture — no controllers, no repositories. Feature service
 
 ### Authentication
 
-Cookie-based auth via ASP.NET Identity (HTTP-only, Secure, SameSite=Strict) with Google OAuth. `CookieCredentialHandler` in `TimeTracker.Wasm` forwards the auth cookie with every WASM HTTP request (`BrowserRequestCredentials.Include`).
+Cookie-based auth via ASP.NET Identity (HTTP-only, Secure, SameSite=Strict) with Google OAuth. `CookieCredentialHandler` in `TimeTracker.Client` forwards the auth cookie with every WASM HTTP request (`BrowserRequestCredentials.Include`).
 
-All WASM pages (`@page` components in `TimeTracker.Wasm`) must carry `@attribute [Authorize]` so the SSR `AuthorizeRouteView` redirects unauthenticated users before WASM loads. Each page's data-loading method must also catch `HttpRequestException` with status 401 and call `Nav.NavigateTo("/login", forceLoad: true)` to handle mid-session expiry.
+All WASM pages (`@page` components in `TimeTracker.Client`) must carry `@attribute [Authorize]` so the SSR `AuthorizeRouteView` redirects unauthenticated users before WASM loads. Each page's data-loading method must also catch `HttpRequestException` with status 401 and call `Nav.NavigateTo("/login", forceLoad: true)` to handle mid-session expiry.
 
 OAuth challenge links must use `data-enhance-nav="false"` to force a full-page navigation. Without it, Blazor's enhanced navigation turns the click into a fetch, which follows the redirect to `accounts.google.com` and is blocked by the CSP (`connect-src 'self'`).
 
@@ -214,7 +214,7 @@ In development, DB credentials (`DbUser`, `DbPassword`) are injected via [.NET U
 
 ### Contracts and DTOs
 
-All request/response DTOs live in `TimeTracker.Contracts/`. Never define DTOs inline in `TimeTracker.Web` or `TimeTracker.Wasm`. Mapster mapping is done via per-feature `IRegister` classes inside each `Features/` folder in `TimeTracker.Web`, scanned at startup.
+All request/response DTOs live in `TimeTracker.Contracts/`. Never define DTOs inline in `TimeTracker.Web` or `TimeTracker.Client`. Mapster mapping is done via per-feature `IRegister` classes inside each `Features/` folder in `TimeTracker.Web`, scanned at startup.
 
 ### Security headers
 
