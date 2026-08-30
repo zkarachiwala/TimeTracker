@@ -336,7 +336,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 **Decision:** Full authenticated Playwright suite runs locally via the pre-push hook. CI runs a smoke test only — curl the production login page and assert HTTP 200. This is the correct split given the infrastructure constraints.
 
 **How it works:**
-- `GlobalSetup.cs` (`[SetUpFixture]`) starts the app automatically if not running, then calls `/api/dev/login` (a Development-only endpoint) via Playwright's `APIRequestContext` to obtain a fresh auth cookie. `dotnet test` is the only command needed — no manual steps, no pre-generated tokens.
+- `GlobalSetup.cs` (`[SetUpFixture]`) starts the app automatically if not running, then calls `/api/dev/login` (a Development-only endpoint) via Playwright's `APIRequestContext` to obtain a fresh auth cookie. `dotnet test` is the only command needed — no manual steps, no pre-generated tokens to capture or rotate by hand. (As of #341, the endpoint additionally requires a `DevTools:LoginToken` header as defense-in-depth against a misconfigured `ASPNETCORE_ENVIRONMENT`; `AppFixture.cs` reads the same config value the app does, so this remains fully automated — nothing for a human to type or keep in sync.)
 - The pre-push hook runs the full suite when app code changes. Doc-only or test-only pushes skip it.
 - CI (`deploy.yml` `smoke` job) curls `https://timetracker-zak.azurewebsites.net/login` after deploy and fails the pipeline if it does not return HTTP 200.
 

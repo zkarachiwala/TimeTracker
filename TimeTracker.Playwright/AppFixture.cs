@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace TimeTracker.Playwright;
 
@@ -79,10 +80,14 @@ public sealed class AppFixture : IAsyncLifetime
                 IgnoreHTTPSErrors = true,
             });
 
-            var response = await request.GetAsync("/api/dev/login");
+            var response = await request.GetAsync("/api/dev/login", new()
+            {
+                Headers = new Dictionary<string, string> { ["X-Dev-Login-Token"] = ReadDevLoginToken() }
+            });
             if (!response.Ok)
                 throw new Exception(
-                    $"Dev login failed ({response.Status}). App must run with ASPNETCORE_ENVIRONMENT=Development.");
+                    $"Dev login failed ({response.Status}). App must run with ASPNETCORE_ENVIRONMENT=Development " +
+                    "and DevTools:LoginToken in appsettings.Development.json must match this test project's copy.");
 
             Directory.CreateDirectory(Path.GetDirectoryName(TestConfig.AuthStatePath)!);
             await request.StorageStateAsync(new() { Path = TestConfig.AuthStatePath });
@@ -109,6 +114,16 @@ public sealed class AppFixture : IAsyncLifetime
             await Task.Delay(1000);
         }
         throw new TimeoutException($"App did not start within {timeoutSeconds}s at {TestBaseUrl}");
+    }
+
+    // Reads the same appsettings.Development.json the app itself loads, rather than duplicating
+    // the token as a second hardcoded copy that could drift. See #341.
+    private static string ReadDevLoginToken()
+    {
+        var path = Path.Combine(FindRepoRoot(), "TimeTracker.Web", "appsettings.Development.json");
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        return doc.RootElement.GetProperty("DevTools").GetProperty("LoginToken").GetString()
+            ?? throw new InvalidOperationException($"DevTools:LoginToken missing from {path}.");
     }
 
     private static string FindRepoRoot()

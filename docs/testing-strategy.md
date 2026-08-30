@@ -54,8 +54,13 @@ Both base classes also set `Page.SetDefaultTimeout(30_000)` in `InitializeAsync`
 
 ```csharp
 // TimeTracker.Web/Infrastructure/DevEndpointExtensions.cs
-app.MapGet("/api/dev/login", async (UserManager<User> userManager, SignInManager<User> signInManager) =>
+app.MapGet("/api/dev/login", async (HttpRequest request, IConfiguration configuration,
+    UserManager<User> userManager, SignInManager<User> signInManager) =>
 {
+    var expectedToken = configuration["DevTools:LoginToken"];
+    if (string.IsNullOrEmpty(expectedToken) || !HasMatchingToken(request, expectedToken))
+        return Results.NotFound();
+
     var admins = await userManager.GetUsersInRoleAsync("Admin");
     var user = admins.FirstOrDefault();
     if (user is null)
@@ -73,11 +78,23 @@ if (app.Environment.IsDevelopment())
 }
 ```
 
+**Two layers of defense (#341):** the `IsDevelopment()` registration guard was the only thing
+stopping this endpoint from handing out a full admin session — if `ASPNETCORE_ENVIRONMENT` were
+ever misconfigured on a reachable instance, anyone could call it. A `DevTools:LoginToken` header
+check (`X-Dev-Login-Token`) is required in addition, fixed-time-compared, and fails closed if the
+config key is absent — so a non-Development environment without that key configured can't be
+tricked into serving this endpoint even if the environment check itself somehow failed.
+
+The token is not a secret from developers — it's checked into `appsettings.Development.json` for
+local convenience — its only job is to be *absent* everywhere except Development. `AppFixture.cs`
+reads the same file (`ReadDevLoginToken()`) rather than hardcoding a second copy, so the two never
+drift out of sync.
+
 ### Common failure modes
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Dev login failed (404)` | App not running as `Development` | Use the `https` launch profile; check `ASPNETCORE_ENVIRONMENT` |
+| `Dev login failed (404)` | App not running as `Development`, or `DevTools:LoginToken` missing/mismatched | Use the `https` launch profile; check `ASPNETCORE_ENVIRONMENT`; confirm `appsettings.Development.json` has `DevTools:LoginToken` |
 | `No admin user found` | DB empty or `Authentication:AdminEmail` not set | Set the user secret and restart the app so the seed runs |
 | `user.json` missing / auth redirects to `/login` in tests | GlobalSetup didn't run or was skipped | Always run the full test project via `dotnet test`, not individual test classes |
 | App startup timeout (180s exceeded) | DB not running or cold-start pause | Ensure SQL Server container is running; visit the app manually first |

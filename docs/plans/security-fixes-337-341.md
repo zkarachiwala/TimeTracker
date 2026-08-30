@@ -5,7 +5,7 @@ Working through five independently-filed security defects, one branch/PR per iss
 ## Order and status
 
 1. **#337** — Drop `app.ProjectsUserPolicy` (RLS contradicts ADR-024; project visibility belongs in app tier). Migration removing the policy/predicate. — **PR #375 merged**
-2. **#338** — Enforce `ProjectUser` membership check in `TimeEntryService.CreateTimeEntry`/`UpdateTimeEntry` before assigning `ProjectId`. Reuse `ProjectService.GetAssignedProjects` predicate. Unit test: unassigned user rejected on create + update. — **PR #376 open**
+2. **#338** — Enforce `ProjectUser` membership check in `TimeEntryService.CreateTimeEntry`/`UpdateTimeEntry` before assigning `ProjectId`. Reuse `ProjectService.GetAssignedProjects` predicate. Unit test: unassigned user rejected on create + update. — **PR #376 merged**
 3. **#341** — Three small endpoint auth fixes (grouped by the issue itself):
    - `/api/dev/login` needs a non-guessable token check in addition to environment gate — done, with `DevTools:LoginToken` config + fixed-time comparison; `AppFixture.cs` updated to send it automatically (preserves ADR-016's fully-automated auth flow)
    - `/api/auth/revoke-sessions` dropped from Admin-only to `RequireAuthorization()` (self-service op) — done
@@ -19,4 +19,4 @@ Working through five independently-filed security defects, one branch/PR per iss
 - Each fix ships with its own test per the issue's "Verification" section.
 - #340 needs the container test suite (Docker) — verify with `dotnet test TimeTracker.Tests --filter "Category=Container"`.
 - Fast suite (`Category!=Container` + ComponentTests) run after every fix; full Playwright suite is the user's to run before merge, per project convention.
-- This plan file was independently created on the #337, #338, and #341 branches (each branched from `main` before the others merged) — resolved via merge as each PR merged; no further conflicts expected once #376 also merges.
+- **On future branches for #339/#340:** don't edit this file until the branch is about to be pushed for review — branch from `main`, do the code work, and update this file's status table as the very last commit. That minimizes the window where a concurrent PR's edit to this same file can cause a conflict.

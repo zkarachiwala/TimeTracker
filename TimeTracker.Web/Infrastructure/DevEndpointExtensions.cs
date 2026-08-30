@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
+using System.Security.Cryptography;
+using System.Text;
 using TimeTracker.Web.Data;
 using TimeTracker.Web.Dev;
 using TimeTracker.Shared.Entities;
@@ -15,11 +17,24 @@ public static class DevEndpointExtensions
         app.MapGet("/dev/db-wakeup-demo", _ =>
             throw CreateFakeConnectivityException());
 
-        // Signs in the first Admin user — dev/CI only, never deployed to production
+        // Signs in the first Admin user — dev/CI only. This endpoint's only guard used to be that
+        // MapDevEndpoints is called inside `if (app.Environment.IsDevelopment())`; anyone reaching a
+        // dev/CI instance, or any environment where ASPNETCORE_ENVIRONMENT is misconfigured, got a
+        // full admin session for free. The token below is defense-in-depth against that
+        // misconfiguration case — it does not replace the environment check. See #341.
+        //
+        // Fails closed: if DevTools:LoginToken isn't configured at all, the endpoint is unreachable.
         app.MapGet("/api/dev/login", async (
+            HttpRequest request,
+            IConfiguration configuration,
             UserManager<User> userManager,
             SignInManager<User> signInManager) =>
         {
+            var expectedToken = configuration["DevTools:LoginToken"];
+            var providedToken = request.Headers[LoginTokenHeader].ToString();
+            if (string.IsNullOrEmpty(expectedToken) || !IsValidToken(providedToken, expectedToken))
+                return Results.NotFound();
+
             var admins = await userManager.GetUsersInRoleAsync("Admin");
             var user = admins.FirstOrDefault();
             if (user is null)
@@ -54,6 +69,21 @@ public static class DevEndpointExtensions
         }).RequireAuthorization(adminPolicy);
 
         return app;
+    }
+
+    public const string LoginTokenHeader = "X-Dev-Login-Token";
+
+    // Fixed-time comparison — this guards a real admin session, so it shouldn't leak match-length
+    // via a timing side channel even though the token itself isn't a long-lived secret. Public
+    // (not private) so it can be unit-tested directly without standing up the full endpoint pipeline.
+    public static bool IsValidToken(string providedToken, string expectedToken)
+    {
+        if (providedToken.Length == 0) return false;
+
+        var providedBytes = Encoding.UTF8.GetBytes(providedToken);
+        var expectedBytes = Encoding.UTF8.GetBytes(expectedToken);
+        return providedBytes.Length == expectedBytes.Length
+            && CryptographicOperations.FixedTimeEquals(providedBytes, expectedBytes);
     }
 
     private static SqlException CreateFakeConnectivityException()
