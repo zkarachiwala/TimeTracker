@@ -2,10 +2,11 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using TimeTracker.Client.Features.Admin;
-using TimeTracker.Client.Features.Auth;
 using TimeTracker.Client.Features.Clients;
 using TimeTracker.Client.Features.Projects;
 using TimeTracker.Client.Features.TimeEntries;
+using TimeTracker.Client.Features.Timer;
+using TimeTracker.Client.Shared;
 using TimeTracker.Contracts.Features.Admin;
 using TimeTracker.Contracts.Features.Clients;
 using TimeTracker.Contracts.Features.Projects;
@@ -16,6 +17,15 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
+builder.Services.AddScoped<ILocalStore, LocalStore>();
+builder.Services.AddScoped<PendingStopSync>();
+
+#if !SHOWCASE
+// Reads the AuthenticationState the server already computed (via AddAuthenticationStateSerialization
+// in TimeTracker.Web/Program.cs) out of PersistentComponentState instead of re-checking over the
+// network. See ADR-037.
+builder.Services.AddAuthenticationStateDeserialization();
+#endif
 
 #if SHOWCASE
 builder.RootComponents.Add<TimeTracker.Client.Routes>("#app");
@@ -28,7 +38,6 @@ builder.Services.AddScoped<IProjectService, TimeTracker.Client.Mock.MockProjectS
 builder.Services.AddScoped<IClientService, TimeTracker.Client.Mock.MockClientService>();
 builder.Services.AddScoped<IUserManagementService, TimeTracker.Client.Mock.MockUserManagementService>();
 #else
-builder.Services.AddScoped<AuthenticationStateProvider, CookieAuthenticationStateProvider>();
 builder.Services.AddScoped(sp =>
     new HttpClient(new TimeTracker.Client.CookieCredentialHandler())
     {

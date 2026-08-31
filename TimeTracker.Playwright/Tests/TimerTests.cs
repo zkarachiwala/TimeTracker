@@ -56,4 +56,54 @@ public class TimerTests : AuthenticatedPageTest
         await Page.GetByRole(AriaRole.Button, new() { Name = "Stop & save" }).ClickAsync();
         await Expect(Page.GetByText("Timer saved")).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
+
+    [SkippableFact]
+    public async Task StopTimer_WhenSaveFails_ShowsSyncCardAndRetryPreservesOriginalStopTime()
+    {
+        Skip.If(!WriteTestsEnabled, "Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");
+        Skip.If(await Page.GetByText("Tracking now").IsVisibleAsync(), "Timer already running — skipping offline-stop test");
+
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Start timer" }).ClickAsync();
+        await Expect(Page.GetByText("Tracking now")).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        // Fail the first PUT (the actual Stop save) with a real 500 — matches what the backend
+        // returns when the database is unreachable — then let the retry through normally.
+        var failedOnce = false;
+        await Page.RouteAsync("**/api/timeentries/*", async route =>
+        {
+            if (route.Request.Method == "PUT" && !failedOnce)
+            {
+                failedOnce = true;
+                await route.FulfillAsync(new RouteFulfillOptions { Status = 500 });
+            }
+            else
+            {
+                await route.ContinueAsync();
+            }
+        });
+
+        try
+        {
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Stop & save" }).ClickAsync();
+
+            // The ticker must freeze immediately on click, not wait on the failed network round
+            // trip — regression coverage for the timer continuing to count after Stop.
+            await Expect(Page.GetByText("Tracking now")).Not.ToBeVisibleAsync(new() { Timeout = 2_000 });
+            await Expect(Page.GetByText("Stopped — not yet saved")).ToBeVisibleAsync(new() { Timeout = 10_000 });
+            await Expect(Page.GetByText("Couldn't reach the server — click Sync to retry")).ToBeVisibleAsync();
+
+            var syncButton = Page.GetByRole(AriaRole.Button, new() { Name = "Sync" });
+            await Expect(syncButton).ToBeVisibleAsync();
+            await syncButton.ClickAsync();
+
+            // Retry must resend the original stop time, not a fresh one — regression coverage
+            // for the second-click data-corruption bug.
+            await Expect(Page.GetByText("Timer saved")).ToBeVisibleAsync(new() { Timeout = 10_000 });
+            await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start timer" })).ToBeVisibleAsync();
+        }
+        finally
+        {
+            await Page.UnrouteAsync("**/api/timeentries/*");
+        }
+    }
 }

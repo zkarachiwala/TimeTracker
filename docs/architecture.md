@@ -60,7 +60,7 @@ TimeTracker.Web/
 TimeTracker.Client/
   Routes.razor     — WASM router; must live here for WASM to boot it
   Features/
-    Auth/          — CookieAuthenticationStateProvider
+    Auth/          — Login/AccessDenied pages
     Clients/       — Pages/, Components/, HttpClientService
     Projects/      — Pages/, Components/, HttpProjectService
     TimeEntries/   — Pages/, Components/, HttpTimeEntryService
@@ -126,7 +126,7 @@ RLS is applied to `app.TimeEntries`, `app.ProjectUsers`, and `app.Projects` via 
 **Cookie-based** with ASP.NET Identity + Google OAuth:
 - HTTP-only, Secure, SameSite=Strict cookies; 1-day expiration
 - `CookieCredentialHandler` in Client sends `BrowserRequestCredentials.Include` with every HTTP request so the auth cookie is forwarded
-- `CookieAuthenticationStateProvider` calls `/api/auth/user` on first load to hydrate WASM auth state; result cached per circuit
+- WASM auth state comes from the server's SSR-computed `AuthenticationState`, flowed via `PersistentComponentState` — `AddAuthenticationStateSerialization()` (Web) / `AddAuthenticationStateDeserialization()` (Client), no client-side API call. See [ADR-037](decisions.md#adr-037-persistent-component-state-for-wasm-auth-instead-of-a-client-side-api-call)
 - On 401 mid-session, pages call `Nav.NavigateTo("login", forceLoad: true)` to force full reload and reset WASM state
 - Google OAuth via `Microsoft.AspNetCore.Authentication.Google`; provider-agnostic callback via `SignInManager`
 - OAuth challenge links use `data-enhance-nav="false"` to force full-page navigation (Blazor enhanced nav would turn it into a fetch, blocked by CSP)
@@ -214,13 +214,8 @@ All policies are driven from `RateLimiting` config in `appsettings.json` so limi
 | `"write"` | Mutating endpoints (POST/PUT/DELETE on data) | 60 req/min | — |
 | `"all-entries"` | `/year/{year}/all`, `/project/{id}/all` | 10 req/min | — |
 | `"auth"` | `/auth/challenge`, `/auth/callback` | 10 req/min | — (same) |
-| `"auth-status"` | `/api/auth/user` | 10 req/min | 200 req/min |
 
 **Why global default over per-endpoint decoration:** New endpoints are covered automatically; named policies override where tighter limits are needed. Per-endpoint decoration risks missing a new endpoint.
-
-**Why the auth split:** OWASP rate limiting guidance targets credential submission endpoints to prevent brute force. `/api/auth/user` is a read-only cookie validation; applying the same 10/min limit caused the Playwright test suite to fail mid-run with 429s. Reference: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
-
-**Dev override location:** `appsettings.Development.json` → `RateLimiting:AuthStatus:PermitLimit = 200`. Production `appsettings.json` keeps both at 10.
 
 ### Logging
 

@@ -4,15 +4,47 @@
 @inject IProjectService ProjectService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject PendingStopSync PendingStopSync
 @implements IAsyncDisposable
 
 @using TimeTracker.Client.Features.TimeEntries.Components
-@using TimeTracker.Client.Shared
+@using TimeTracker.Client.Features.Timer
 
 <PageTitle>Timer — TimeTracker</PageTitle>
 
+@* ── Pending-sync card: a stop was queued locally but hasn't reached the server yet ── *@
+@if (pendingStop is not null)
+{
+    <MudCard Class="timer-card-running mb-4" Style="border-radius:16px">
+        <MudCardContent Style="padding:20px">
+            <div class="d-flex justify-space-between align-start mb-2">
+                <div class="d-flex align-center gap-2">
+                    <span class="project-dot"
+                          style="background:@ProjectColors.ForProject(pendingStop.ProjectId); box-shadow:0 0 0 3px rgba(255,255,255,.25)"></span>
+                    <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,.8)">Stopped — not yet saved</MudText>
+                </div>
+            </div>
+
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500; margin:8px 0 2px">
+                @PendingProjectName
+            </MudText>
+            <MudText Class="tabnum" Style="font-size:3.2rem; font-weight:300; letter-spacing:1px; line-height:1.1">
+                @PendingElapsedDisplay
+            </MudText>
+            <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.7); margin-bottom:16px">
+                Couldn't reach the server — will retry automatically, or sync now
+            </MudText>
+
+            <MudButton FullWidth="true" Size="Size.Large" OnClick="SyncPendingStop"
+                       Variant="Variant.Filled" Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.Sync">
+                Sync
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+}
 @* ── Running timer card ── *@
-@if (activeEntry is not null)
+else if (activeEntry is not null)
 {
     <MudCard Class="timer-card-running mb-4" Style="border-radius:16px">
         <MudCardContent Style="padding:20px">
@@ -134,6 +166,7 @@ else if (_providersReady)
     private List<ProjectResponse> projects = [];
     private List<TimeEntryResponse> todaysEntries = [];
     private TimeEntryResponse? activeEntry;
+    private PendingStopSync.PendingStop? pendingStop;
     private int selectedProjectId;
     private bool sheetOpen;
     private TimeEntryResponse? sheetEntry;
@@ -166,7 +199,33 @@ else if (_providersReady)
         }
     }
 
-    protected override async Task OnInitializedAsync() => await LoadData();
+    private string PendingElapsedDisplay
+    {
+        get
+        {
+            if (pendingStop is null) return "00:00:00";
+            var elapsed = pendingStop.StopUtc - pendingStop.Start;
+            return $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+        }
+    }
+
+    private string PendingProjectName =>
+        projects.FirstOrDefault(p => p.Id == pendingStop?.ProjectId)?.Name ?? "Project";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Local storage (ILocalStore -> IJSRuntime) is only reachable once WASM has hydrated in
+        // the browser — calling it during SSR prerender throws. This method also runs a second
+        // time post-hydration (OnInitializedAsync re-runs in WASM), which is when this actually executes.
+        if (OperatingSystem.IsBrowser())
+        {
+            pendingStop = await PendingStopSync.GetPendingAsync();
+            if (pendingStop is not null && await PendingStopSync.RetryIfAnyAsync())
+                pendingStop = null;
+        }
+
+        await LoadData();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -187,7 +246,9 @@ else if (_providersReady)
             todaysEntries = await TimeEntryService.GetTodaysTimeEntries();
             selectedProjectId = projects.FirstOrDefault(p => !p.EndDate.HasValue)?.Id ?? 0;
 
-            if (activeEntry is not null) StartTicker();
+            // A pending stop means this entry is locally stopped even if the server still
+            // reports it active (the save hasn't landed yet) — don't resurrect the running card.
+            if (activeEntry is not null && pendingStop is null) StartTicker();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
@@ -238,15 +299,41 @@ else if (_providersReady)
     private async Task StopTimer()
     {
         if (activeEntry is null) return;
-        await TimeEntryService.UpdateTimeEntry(activeEntry.Id, new TimeEntryUpdateRequest
+
+        // Reflect "stopped" immediately and locally — don't wait on the network round trip to
+        // decide what to show. Otherwise a slow/failed save leaves the running card (and its
+        // ticker) showing as if Stop was never pressed, inviting a confusing second click.
+        var stopUtc = DateTime.UtcNow;
+        pendingStop = new PendingStopSync.PendingStop(activeEntry.Id, activeEntry.Project.Id, activeEntry.Start, stopUtc, activeEntry.Note);
+        StopTicker();
+        StateHasChanged();
+
+        var saved = await PendingStopSync.StopAsync(activeEntry, stopUtc);
+        if (saved)
         {
-            ProjectId = activeEntry.Project.Id,
-            Start = activeEntry.Start,
-            End = DateTime.UtcNow,
-            Note = activeEntry.Note
-        });
-        Snackbar.Add("Timer saved", Severity.Success);
-        await Reload();
+            pendingStop = null;
+            Snackbar.Add("Timer saved", Severity.Success);
+            await Reload();
+        }
+        else
+        {
+            Snackbar.Add("Couldn't reach the server — click Sync to retry", Severity.Warning);
+        }
+    }
+
+    private async Task SyncPendingStop()
+    {
+        var saved = await PendingStopSync.RetryIfAnyAsync();
+        if (saved)
+        {
+            pendingStop = null;
+            Snackbar.Add("Timer saved", Severity.Success);
+            await Reload();
+        }
+        else
+        {
+            Snackbar.Add("Still couldn't reach the server", Severity.Warning);
+        }
     }
 
     private async Task LogBlock(int minutes)
