@@ -12,21 +12,34 @@ public class CookieAuthenticationStateProvider(HttpClient http) : Authentication
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         if (_cached is not null) return _cached;
+
+        UserInfoResponse? info;
         try
         {
-            var info = await http.GetFromJsonAsync<UserInfoResponse>("/api/auth/user");
-            if (info is null || !info.IsAuthenticated)
-                return _cached = Anonymous();
-
-            var claims = new List<Claim> { new(ClaimTypes.Name, info.Email!) };
-            claims.AddRange(info.Roles.Select(r => new Claim(ClaimTypes.Role, r)));
-            var identity = new ClaimsIdentity(claims, "Cookie");
-            return _cached = new AuthenticationState(new ClaimsPrincipal(identity));
+            info = await http.GetFromJsonAsync<UserInfoResponse>("/api/auth/user");
         }
         catch
         {
-            return _cached = Anonymous();
+            // Transport failure (backend asleep/unreachable) is not a definitive answer —
+            // leave state uncached so the next call retries instead of permanently locking
+            // this page load into Anonymous once the backend wakes back up.
+            return Anonymous();
         }
+
+        if (info is null || !info.IsAuthenticated)
+            return _cached = Anonymous();
+
+        var claims = new List<Claim> { new(ClaimTypes.Name, info.Email!) };
+        claims.AddRange(info.Roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        var identity = new ClaimsIdentity(claims, "Cookie");
+        return _cached = new AuthenticationState(new ClaimsPrincipal(identity));
+    }
+
+    /// <summary>Clears the cached auth state and re-notifies subscribers once connectivity returns.</summary>
+    public void Refresh()
+    {
+        _cached = null;
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
     private static AuthenticationState Anonymous() =>

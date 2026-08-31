@@ -4,7 +4,9 @@
 @inject IProjectService ProjectService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject ILocalStore LocalStore
 @implements IAsyncDisposable
+@using System.Text.Json
 
 @using TimeTracker.Client.Features.TimeEntries.Components
 @using TimeTracker.Client.Shared
@@ -141,6 +143,10 @@ else if (_providersReady)
     private Task? tickTask;
     private bool _providersReady;
 
+    private const string PendingStopKey = "timetracker.pendingStop";
+
+    private record PendingStop(int EntryId, int ProjectId, DateTime Start, DateTime StopUtc, string? Note);
+
     private double TodayMinutes => todaysEntries
         .Where(e => e.End.HasValue)
         .Sum(e => (e.End!.Value - e.Start).TotalMinutes);
@@ -166,7 +172,11 @@ else if (_providersReady)
         }
     }
 
-    protected override async Task OnInitializedAsync() => await LoadData();
+    protected override async Task OnInitializedAsync()
+    {
+        await RetryPendingStopIfAny();
+        await LoadData();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -238,15 +248,55 @@ else if (_providersReady)
     private async Task StopTimer()
     {
         if (activeEntry is null) return;
-        await TimeEntryService.UpdateTimeEntry(activeEntry.Id, new TimeEntryUpdateRequest
+
+        var pending = new PendingStop(activeEntry.Id, activeEntry.Project.Id, activeEntry.Start,
+            DateTime.UtcNow, activeEntry.Note);
+        await LocalStore.SetItemAsync(PendingStopKey, JsonSerializer.Serialize(pending));
+
+        try
         {
-            ProjectId = activeEntry.Project.Id,
-            Start = activeEntry.Start,
-            End = DateTime.UtcNow,
-            Note = activeEntry.Note
-        });
-        Snackbar.Add("Timer saved", Severity.Success);
+            await SendPendingStop(pending);
+            Snackbar.Add("Timer saved", Severity.Success);
+        }
+        catch (HttpRequestException)
+        {
+            // Stays queued in local storage; a later reload of this page retries it.
+            Snackbar.Add("Couldn't reach the server — will save once it's back", Severity.Warning);
+        }
+
         await Reload();
+    }
+
+    /// <summary>Sends the stop to the server and clears it from local storage on success.
+    /// Update-by-id is idempotent, so replaying it after a failed attempt is safe.</summary>
+    private async Task SendPendingStop(PendingStop pending)
+    {
+        await TimeEntryService.UpdateTimeEntry(pending.EntryId, new TimeEntryUpdateRequest
+        {
+            ProjectId = pending.ProjectId,
+            Start = pending.Start,
+            End = pending.StopUtc,
+            Note = pending.Note
+        });
+        await LocalStore.RemoveItemAsync(PendingStopKey);
+    }
+
+    private async Task RetryPendingStopIfAny()
+    {
+        var json = await LocalStore.GetItemAsync(PendingStopKey);
+        if (json is null) return;
+
+        var pending = JsonSerializer.Deserialize<PendingStop>(json);
+        if (pending is null) return;
+
+        try
+        {
+            await SendPendingStop(pending);
+        }
+        catch (HttpRequestException)
+        {
+            // Still offline — stays queued for the next page load.
+        }
     }
 
     private async Task LogBlock(int minutes)

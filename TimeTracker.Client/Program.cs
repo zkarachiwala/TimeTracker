@@ -6,6 +6,7 @@ using TimeTracker.Client.Features.Auth;
 using TimeTracker.Client.Features.Clients;
 using TimeTracker.Client.Features.Projects;
 using TimeTracker.Client.Features.TimeEntries;
+using TimeTracker.Client.Shared;
 using TimeTracker.Contracts.Features.Admin;
 using TimeTracker.Contracts.Features.Clients;
 using TimeTracker.Contracts.Features.Projects;
@@ -16,6 +17,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
+builder.Services.AddScoped<ILocalStore, LocalStore>();
 
 #if SHOWCASE
 builder.RootComponents.Add<TimeTracker.Client.Routes>("#app");
