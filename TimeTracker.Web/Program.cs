@@ -14,6 +14,8 @@ using TimeTracker.Web.Features.TimeEntries;
 using TimeTracker.Web.Infrastructure;
 using TimeTracker.Web.Shared;
 using TimeTracker.Shared.Entities;
+using TimeTracker.Client.Features.Timer;
+using TimeTracker.Client.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +29,9 @@ var timeTrackerConnection = ConnectionStringBuilder.Build(builder, "TimeTrackerC
 var identityConnection = ConnectionStringBuilder.Build(builder, "IdentityConnection", "DbUser", "DbPassword");
 
 builder.Services.AddMudServices();
-builder.Services.AddRazorComponents().AddInteractiveWebAssemblyComponents();
+builder.Services.AddRazorComponents()
+    .AddInteractiveWebAssemblyComponents()
+    .AddAuthenticationStateSerialization();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
@@ -64,6 +68,13 @@ builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddSingleton<IAwardRateResolver, AwardRateResolver>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
 builder.Services.AddScoped<TimeTracker.Contracts.Features.Admin.IUserManagementService, UserManagementService>();
+
+// TimerPage (TimeTracker.Client) injects ILocalStore/PendingStopSync and is SSR-prerendered on
+// the server before WASM hydrates. DI must be able to resolve them here even though the local
+// storage calls are never actually made server-side — TimerPage guards those calls with
+// OperatingSystem.IsBrowser().
+builder.Services.AddScoped<ILocalStore, LocalStore>();
+builder.Services.AddScoped<PendingStopSync>();
 
 var app = builder.Build();
 

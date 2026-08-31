@@ -41,6 +41,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption) | Named `rls_bypass` role over blanket `db_owner` RLS exemption | 2026-07 | Accepted |
 | [ADR-034](#adr-034-securitystamp-session-revocation-over-a-redis-backed-revocation-list) | `SecurityStamp` session revocation over a Redis-backed revocation list | 2026-06 | Accepted |
 | [ADR-036](#adr-036-bounded-connection-retry-over-keeping-the-database-warm) | Bounded connection retry over keeping the database warm | 2026-08 | Accepted |
+| [ADR-037](#adr-037-persistent-component-state-for-wasm-auth-instead-of-a-client-side-api-call) | Persistent Component State for WASM auth instead of a client-side API call | 2026-08 | Accepted |
 
 ---
 
@@ -964,3 +965,38 @@ Retrying costs no additional vCore seconds — the database is resuming regardle
 - ❌ A request arriving during a resume can now block for up to ~105 seconds before failing. That is the cost of the free tier's auto-pause; the alternative is failing immediately
 - ❌ Retry cannot help if the monthly vCore allowance is exhausted — the database is then unavailable until the next calendar month regardless. Consumption still needs watching
 - ❌ The retry budget is a fixed constant, not derived from measured resume times. If Azure's resume latency changes materially, the number needs revisiting
+
+---
+
+## ADR-037: Persistent Component State for WASM auth instead of a client-side API call
+
+**Date:** 2026-08 — **Status:** Accepted
+
+**Context:** The app is a Blazor Web App with global `InteractiveWebAssembly` rendering ([ADR-001](#adr-001-global-wasm-rendering-over-ssr--wasm-islands)) using ASP.NET Core Identity cookie auth ([ADR-005](#adr-005-cookie-based-auth-over-jwt)). Every page is server-rendered once (SSR prerender) and then hydrated by the WASM client. Determining the WASM client's `AuthenticationState` was hand-rolled: `CookieAuthenticationStateProvider` (`TimeTracker.Client`) called `GET /api/auth/user` over `HttpClient` on every page load, re-deriving from scratch an answer the server had already computed moments earlier during SSR.
+
+This was flaky in practice — the symptom reported was needing to close the browser or flush cache to log back in, recurring across sessions. Investigation found two compounding causes:
+
+1. `CookieAuthenticationStateProvider` originally cached `Anonymous()` on *any* exception from that call, including a transient one, permanently locking the page into "logged out" for that load (fixed separately in the offline-resilience work, see [offline-resilience-plan.md](plans/offline-resilience-plan.md)).
+2. Structurally, the call itself is a live network round trip on every page load, gated by the `auth-status` rate-limit policy (`RateLimitingServiceExtensions`, 10 requests/minute) whose partition key falls back to the request host for anonymous callers — meaning it isn't even scoped per browser session — and it races against the SSR pass that already has the correct answer.
+
+Fixing the caching bug alone left the underlying round trip in place — still a source of transient failures, still redundant with SSR. Microsoft's own guidance for this exact scenario (Blazor Web App, global WASM, Identity cookies) is not "call an API from the client" — it's `AddAuthenticationStateSerialization()`/`AddAuthenticationStateDeserialization()` with `PersistentComponentState`, documented at <https://learn.microsoft.com/en-us/aspnet/core/blazor/security/index?view=aspnetcore-10.0>:
+
+> "Authenticating on the server rather than the client allows the app to access authentication state during prerendering and before the .NET WebAssembly runtime is initialized. The custom `AuthenticationStateProvider` implementations use the Persistent Component State service (`PersistentComponentState`) to serialize the authentication state into HTML comments and then read it back from WebAssembly to create a new `AuthenticationState` instance."
+
+**Decision:** Adopt the documented pattern. `TimeTracker.Web/Program.cs` calls `.AddAuthenticationStateSerialization()` after `AddInteractiveWebAssemblyComponents()`, serializing the `AuthenticationState` the server already computed into the prerendered HTML. `TimeTracker.Client/Program.cs` calls `.AddAuthenticationStateDeserialization()`, which registers a framework-supplied `AuthenticationStateProvider` that reads that embedded state back out of `PersistentComponentState` on hydration — no network call. `CookieAuthenticationStateProvider` is deleted; it has no remaining purpose.
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **`AddAuthenticationStateSerialization`/`Deserialization` + `PersistentComponentState`** | Accepted — Microsoft's documented pattern for this exact render mode + auth combination; zero extra network round trips; removes the rate-limit and race-condition exposure entirely rather than patching around it |
+| Keep `CookieAuthenticationStateProvider`, just harden its error handling | Rejected — this is what the offline-resilience work's Stage A initially did; it stops a failed check from permanently sticking, but the check itself remains a live, rate-limited, redundant network call. Treats the symptom, not the structural cause |
+| Standalone Blazor WASM auth library (`Microsoft.AspNetCore.Components.WebAssembly.Authentication`'s full OIDC/MSAL flow, `RemoteAuthenticatorView`) | Rejected — that's Microsoft's guidance for *standalone* WASM apps calling a separate API with token-based auth. This app is hosted, cookie-based, and already has server-side Identity; adopting the full OIDC client flow would mean re-architecting authentication, not fixing a bug. (The `AddAuthenticationStateDeserialization` extension method used here does live in that same NuGet package, but it's the narrow persistent-state piece, not the OIDC flow) |
+
+**Consequences:**
+- ✅ WASM hydration no longer depends on a live network call to determine auth state — removes an entire class of "backend is briefly unreachable → app looks logged out" failure, independent of the offline-resilience work's other stages
+- ✅ Removes redundant work: the server's SSR-computed `AuthenticationState` is reused instead of re-derived
+- ✅ No longer subject to the `auth-status` rate-limit policy at all for this check
+- ✅ Less code to maintain — `CookieAuthenticationStateProvider` and its tests are deleted; the framework owns this now
+- ❌ `GET /api/auth/user` and `CookieCredentialHandler` remain in place for other purposes (the `/api/auth/providers` call on the login page still needs a live request, since that page has no authenticated user to serialize) — this ADR only removes the round trip for *authenticated-state detection*, not every auth-adjacent client call
+- ❌ Adds a new package dependency (`Microsoft.AspNetCore.Components.WebAssembly.Authentication`) to `TimeTracker.Client` solely for this one extension method

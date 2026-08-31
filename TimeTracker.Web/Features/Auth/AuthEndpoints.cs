@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-using TimeTracker.Contracts.Auth;
 using TimeTracker.Shared.Entities;
 
 namespace TimeTracker.Web.Features.Auth;
@@ -94,18 +93,5 @@ public static class AuthEndpoints
                 .Select(s => new { s.Name, s.DisplayName });
             return Results.Ok(external);
         });
-
-        app.MapGet("/api/auth/user", (HttpContext ctx) =>
-        {
-            if (ctx.User.Identity?.IsAuthenticated != true)
-                return Results.Ok(new UserInfoResponse(false, null, []));
-
-            var email = ctx.User.Identity.Name;
-            var roles = ctx.User.Claims
-                .Where(c => c.Type == System.Security.Claims.ClaimTypes.Role)
-                .Select(c => c.Value)
-                .ToArray();
-            return Results.Ok(new UserInfoResponse(true, email, roles));
-        }).RequireRateLimiting("auth-status");
     }
 }

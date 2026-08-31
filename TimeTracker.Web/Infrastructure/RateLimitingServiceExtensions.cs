@@ -44,14 +44,6 @@ public static class RateLimitingServiceExtensions
                 policy.QueueLimit = 0;
             });
 
-            options.AddFixedWindowLimiter("auth-status", policy =>
-            {
-                policy.PermitLimit = configuration.GetValue<int>("RateLimiting:AuthStatus:PermitLimit", 10);
-                policy.Window = TimeSpan.FromMinutes(configuration.GetValue<int>("RateLimiting:AuthStatus:WindowMinutes", 1));
-                policy.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                policy.QueueLimit = 0;
-            });
-
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         });
 

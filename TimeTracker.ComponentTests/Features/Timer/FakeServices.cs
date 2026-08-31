@@ -1,26 +1,7 @@
 using TimeTracker.Client.Shared;
-using TimeTracker.Contracts.Features.Projects;
 using TimeTracker.Contracts.Features.TimeEntries;
 
 namespace TimeTracker.ComponentTests.Features.Timer;
-
-internal class FakeProjectService(List<ProjectResponse> projects) : IProjectService
-{
-    public Task<List<ProjectResponse>> GetAllProjects(CancellationToken ct = default) => Task.FromResult(projects);
-    public Task<List<ProjectResponse>> GetAssignedProjects(CancellationToken ct = default) => Task.FromResult(projects);
-    public Task<ProjectResponse?> GetProjectById(int id, CancellationToken ct = default) =>
-        Task.FromResult(projects.FirstOrDefault(p => p.Id == id));
-    public Task CreateProject(ProjectCreateRequest request, CancellationToken ct = default) => Task.CompletedTask;
-    public Task UpdateProject(int id, ProjectUpdateRequest request, CancellationToken ct = default) => Task.CompletedTask;
-    public Task DeleteProject(int id, CancellationToken ct = default) => Task.CompletedTask;
-    public Task<List<DeletedProjectResponse>> GetDeletedProjects(CancellationToken ct = default) =>
-        Task.FromResult(new List<DeletedProjectResponse>());
-    public Task RestoreProject(int id, CancellationToken ct = default) => Task.CompletedTask;
-    public Task<List<ProjectUserResponse>> GetProjectUsers(int projectId, CancellationToken ct = default) =>
-        Task.FromResult(new List<ProjectUserResponse>());
-    public Task AssignUserToProject(int projectId, string userId, CancellationToken ct = default) => Task.CompletedTask;
-    public Task UnassignUserFromProject(int projectId, string userId, CancellationToken ct = default) => Task.CompletedTask;
-}
 
 /// <summary>Test double for ITimeEntryService whose UpdateTimeEntry can be made to fail
 /// (simulating a backend that is asleep/unreachable) and records every call it receives.</summary>
