@@ -240,6 +240,83 @@ public class TimeEntryServiceTests
     }
 
     [Fact]
+    public async Task CreateTimeEntry_ReturnsTheCreatedEntry()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId, name: "Acme");
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        var start = DateTime.Now;
+        var result = await CreateService(options).CreateTimeEntry(
+            new TimeEntryCreateRequest { ProjectId = project.Id, Start = start, Note = "Hello" });
+
+        Assert.Equal("Acme", result.Project.Name);
+        Assert.Equal(start, result.Start);
+        Assert.Equal("Hello", result.Note);
+    }
+
+    [Fact]
+    public async Task CreateTimeEntry_CalledTwiceWithSameClientRequestId_InsertsOnlyOneRow()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        var clientRequestId = Guid.NewGuid();
+        var request = new TimeEntryCreateRequest { ProjectId = project.Id, Start = DateTime.Now, ClientRequestId = clientRequestId };
+
+        var first = await CreateService(options).CreateTimeEntry(request);
+        var second = await CreateService(options).CreateTimeEntry(request);
+
+        Assert.Equal(first.Id, second.Id);
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Single(context.TimeEntries);
+    }
+
+    [Fact]
+    public async Task CreateTimeEntry_WithDifferentClientRequestIds_InsertsSeparateRows()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        var service = CreateService(options);
+        await service.CreateTimeEntry(new TimeEntryCreateRequest
+            { ProjectId = project.Id, Start = DateTime.Now, ClientRequestId = Guid.NewGuid() });
+        await service.CreateTimeEntry(new TimeEntryCreateRequest
+            { ProjectId = project.Id, Start = DateTime.Now, ClientRequestId = Guid.NewGuid() });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(2, context.TimeEntries.Count());
+    }
+
+    [Fact]
+    public async Task CreateTimeEntry_WithNoClientRequestId_NeverDeduplicates()
+    {
+        // The normal, always-online path — ClientRequestId is null, so every call is a genuine
+        // new entry, even with otherwise-identical fields.
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+
+        var start = DateTime.Now;
+        var service = CreateService(options);
+        await service.CreateTimeEntry(new TimeEntryCreateRequest { ProjectId = project.Id, Start = start });
+        await service.CreateTimeEntry(new TimeEntryCreateRequest { ProjectId = project.Id, Start = start });
+
+        using var context = new TimeTrackerDataContext(options);
+        Assert.Equal(2, context.TimeEntries.Count());
+    }
+
+    [Fact]
     public async Task UpdateTimeEntry_UpdatesFields()
     {
         var options = CreateOptions();

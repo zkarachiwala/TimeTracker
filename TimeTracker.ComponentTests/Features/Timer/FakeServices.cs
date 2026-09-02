@@ -19,7 +19,24 @@ internal class FakeTimeEntryService : ITimeEntryService
     public Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId, CancellationToken ct = default) =>
         Task.FromResult(new List<TimeEntryResponse>());
     public Task<TimeEntryResponse?> GetTimeEntryById(int id, CancellationToken ct = default) => Task.FromResult(ActiveEntry);
-    public Task CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default) => Task.CompletedTask;
+    public List<TimeEntryCreateRequest> CreateCalls { get; } = [];
+    private readonly Dictionary<Guid, TimeEntryResponse> _createdByClientRequestId = [];
+    private int _nextId = 1000;
+
+    public Task<TimeEntryResponse> CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
+    {
+        CreateCalls.Add(request);
+
+        // Mirrors the real server's idempotency: a repeated ClientRequestId returns the entry
+        // already created instead of a new one.
+        if (request.ClientRequestId is { } tag && _createdByClientRequestId.TryGetValue(tag, out var existing))
+            return Task.FromResult(existing);
+
+        var entry = new TimeEntryResponse(_nextId++, new ProjectSummary(request.ProjectId, "Project"),
+            request.Start, request.End, request.Note, null, null);
+        if (request.ClientRequestId is { } newTag) _createdByClientRequestId[newTag] = entry;
+        return Task.FromResult(entry);
+    }
 
     public Task UpdateTimeEntry(int id, TimeEntryUpdateRequest request, CancellationToken ct = default)
     {
