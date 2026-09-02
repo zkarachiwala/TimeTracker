@@ -4,7 +4,7 @@
 @inject IProjectService ProjectService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
-@inject PendingStopSync PendingStopSync
+@inject PendingTimerSync PendingTimerSync
 @implements IAsyncDisposable
 
 @using TimeTracker.Client.Features.TimeEntries.Components
@@ -166,7 +166,7 @@ else if (_providersReady)
     private List<ProjectResponse> projects = [];
     private List<TimeEntryResponse> todaysEntries = [];
     private TimeEntryResponse? activeEntry;
-    private PendingStopSync.PendingStop? pendingStop;
+    private PendingTimerSync.PendingStop? pendingStop;
     private int selectedProjectId;
     private bool sheetOpen;
     private TimeEntryResponse? sheetEntry;
@@ -219,8 +219,8 @@ else if (_providersReady)
         // time post-hydration (OnInitializedAsync re-runs in WASM), which is when this actually executes.
         if (OperatingSystem.IsBrowser())
         {
-            pendingStop = await PendingStopSync.GetPendingAsync();
-            if (pendingStop is not null && await PendingStopSync.RetryIfAnyAsync())
+            pendingStop = await PendingTimerSync.GetPendingStopAsync();
+            if (pendingStop is not null && await PendingTimerSync.RetryIfAnyAsync())
                 pendingStop = null;
         }
 
@@ -304,11 +304,11 @@ else if (_providersReady)
         // decide what to show. Otherwise a slow/failed save leaves the running card (and its
         // ticker) showing as if Stop was never pressed, inviting a confusing second click.
         var stopUtc = DateTime.UtcNow;
-        pendingStop = new PendingStopSync.PendingStop(activeEntry.Id, activeEntry.Project.Id, activeEntry.Start, stopUtc, activeEntry.Note);
+        pendingStop = new PendingTimerSync.PendingStop(activeEntry.Id, activeEntry.Project.Id, activeEntry.Start, stopUtc, activeEntry.Note);
         StopTicker();
         StateHasChanged();
 
-        var saved = await PendingStopSync.StopAsync(activeEntry, stopUtc);
+        var saved = await PendingTimerSync.StopAsync(activeEntry, stopUtc);
         if (saved)
         {
             pendingStop = null;
@@ -323,7 +323,7 @@ else if (_providersReady)
 
     private async Task SyncPendingStop()
     {
-        var saved = await PendingStopSync.RetryIfAnyAsync();
+        var saved = await PendingTimerSync.RetryIfAnyAsync();
         if (saved)
         {
             pendingStop = null;
