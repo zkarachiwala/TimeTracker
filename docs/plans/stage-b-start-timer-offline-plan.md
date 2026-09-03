@@ -123,10 +123,11 @@ Block's offline piece is actually implemented, not decided in the abstract now.
 6. ✅ On load: reconciles both queue shapes — locally-started-unsynced (`pendingCreate`), and
    synced-stop-pending (`pendingStop`) — folded into step 5's `OnInitializedAsync` change rather than
    a separate step, since both needed the same field additions.
-7. Shared "disable → spinner-after-1s → orange-on-failure" helper, applied to Stop, Start, and Log
-   Block uniformly (see UX section above). Log Block has no `EntryRow` failure-state indicator to
-   design now, per the decision above — a plain warning snackbar covers it until offline persistence
-   is added.
+7. ✅ Shared "disable → spinner-after-1s" helper (`BusyState`, `e6cb431`), applied to Stop, Start,
+   Sync, and each Log Block chip independently. The "orange-on-failure" half was already built in
+   step 5 (the pending-save card) — this step only added the in-flight feedback on top of it. Log
+   Block has no `EntryRow` failure-state indicator, per the decision above — a plain warning
+   snackbar covers it until offline persistence is added.
 8. Tests: EF migration/idempotency container test (unique index under RLS, per the original plan's
    own Verification section), client-side unit tests for the new sync-state logic (plain class +
    fakes, no bUnit — same approach as `PendingStopSyncTests`) — done in step 4 — Playwright
