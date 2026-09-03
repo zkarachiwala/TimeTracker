@@ -316,20 +316,24 @@ else if (_providersReady)
             activeEntry = await TimeEntryService.GetActiveTimeEntry();
             todaysEntries = await TimeEntryService.GetTodaysTimeEntries();
             selectedProjectId = projects.FirstOrDefault(p => !p.EndDate.HasValue)?.Id ?? 0;
-
-            // A pending stop means this entry is locally stopped even if the server still
-            // reports it active (the save hasn't landed yet) — don't resurrect the running card.
-            // A locally-running-but-unsynced timer (pendingCreate, no End) also needs the ticker.
-            if (RunningStartUtc is not null && !HasPendingSaveIssue) StartTicker();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             Nav.NavigateTo("login", forceLoad: true);
+            return;
         }
         catch (HttpRequestException)
         {
-            // Request aborted during page teardown — not a real error
+            // Offline, or request aborted during page teardown — not a real error. projects/
+            // activeEntry/todaysEntries simply keep whatever they already held.
         }
+
+        // Must run whether or not the refresh above succeeded — a locally-running-but-unsynced
+        // timer (pendingCreate, no End) is known from local state alone and needs its ticker even
+        // while fully offline. A pending stop means the entry is locally stopped even if the
+        // server still reports it active (the save hasn't landed yet) — don't resurrect the
+        // running card in that case.
+        if (RunningStartUtc is not null && !HasPendingSaveIssue) StartTicker();
     }
 
     private async Task Reload()
