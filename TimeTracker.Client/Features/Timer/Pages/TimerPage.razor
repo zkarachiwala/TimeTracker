@@ -438,10 +438,16 @@ else if (_providersReady)
     private async Task SyncPending()
     {
         var saved = await PendingTimerSync.RetryIfAnyAsync();
+
+        // Re-fetch rather than trust the combined bool — same reasoning as OnInitializedAsync:
+        // a create and a stop are never queued for the same timer at once in practice, but each
+        // resolves independently, so a false result here shouldn't leave a since-cleared queue's
+        // stale in-memory value still driving the UI.
+        pendingStop = await PendingTimerSync.GetPendingStopAsync();
+        pendingCreate = await PendingTimerSync.GetPendingCreateAsync();
+
         if (saved)
         {
-            pendingStop = null;
-            pendingCreate = null;
             Snackbar.Add("Timer saved", Severity.Success);
             await Reload();
         }
