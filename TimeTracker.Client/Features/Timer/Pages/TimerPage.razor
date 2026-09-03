@@ -12,15 +12,17 @@
 
 <PageTitle>Timer — TimeTracker</PageTitle>
 
-@* ── Pending-sync card: a stop was queued locally but hasn't reached the server yet ── *@
-@if (pendingStop is not null)
+@* ── Pending-sync card: a stop was queued locally but hasn't reached the server yet ──
+     Covers both shapes: a synced entry whose stop failed (pendingStop), and an entry that
+     never synced at all and was then stopped (pendingCreate with End set). ── *@
+@if (HasPendingSaveIssue)
 {
     <MudCard Class="timer-card-running mb-4" Style="border-radius:16px">
         <MudCardContent Style="padding:20px">
             <div class="d-flex justify-space-between align-start mb-2">
                 <div class="d-flex align-center gap-2">
                     <span class="project-dot"
-                          style="background:@ProjectColors.ForProject(pendingStop.ProjectId); box-shadow:0 0 0 3px rgba(255,255,255,.25)"></span>
+                          style="background:@ProjectColors.ForProject(PendingCardProjectId); box-shadow:0 0 0 3px rgba(255,255,255,.25)"></span>
                     <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,.8)">Stopped — not yet saved</MudText>
                 </div>
             </div>
@@ -35,7 +37,7 @@
                 Couldn't reach the server — will retry automatically, or sync now
             </MudText>
 
-            <MudButton FullWidth="true" Size="Size.Large" OnClick="SyncPendingStop"
+            <MudButton FullWidth="true" Size="Size.Large" OnClick="SyncPending"
                        Variant="Variant.Filled" Color="Color.Warning"
                        StartIcon="@Icons.Material.Filled.Sync">
                 Sync
@@ -43,15 +45,16 @@
         </MudCardContent>
     </MudCard>
 }
-@* ── Running timer card ── *@
-else if (activeEntry is not null)
+@* ── Running timer card — covers both a synced entry (activeEntry) and one still only
+     local, never synced (pendingCreate with no End yet). ── *@
+else if (activeEntry is not null || IsRunningLocally)
 {
     <MudCard Class="timer-card-running mb-4" Style="border-radius:16px">
         <MudCardContent Style="padding:20px">
             <div class="d-flex justify-space-between align-start mb-2">
                 <div class="d-flex align-center gap-2">
                     <span class="project-dot"
-                          style="background:@ProjectColors.ForProject(activeEntry.Project.Id); box-shadow:0 0 0 3px rgba(255,255,255,.25)"></span>
+                          style="background:@ProjectColors.ForProject(RunningProjectId); box-shadow:0 0 0 3px rgba(255,255,255,.25)"></span>
                     <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,.8)">Tracking now</MudText>
                 </div>
                 <div class="d-flex align-center gap-1">
@@ -61,13 +64,13 @@ else if (activeEntry is not null)
             </div>
 
             <MudText Typo="Typo.subtitle1" Style="font-weight:500; margin:8px 0 2px">
-                @activeEntry.Project.Name
+                @RunningProjectName
             </MudText>
             <MudText Class="tabnum" Style="font-size:3.2rem; font-weight:300; letter-spacing:1px; line-height:1.1">
                 @ElapsedDisplay
             </MudText>
             <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.7); margin-bottom:16px">
-                Started @activeEntry.Start.ToLocalTime().ToString("h:mm tt")
+                Started @RunningStartUtc!.Value.ToLocalTime().ToString("h:mm tt")
             </MudText>
 
             <MudButton FullWidth="true" Size="Size.Large" OnClick="StopTimer"
@@ -167,6 +170,7 @@ else if (_providersReady)
     private List<TimeEntryResponse> todaysEntries = [];
     private TimeEntryResponse? activeEntry;
     private PendingTimerSync.PendingStop? pendingStop;
+    private PendingTimerSync.PendingCreate? pendingCreate;
     private int selectedProjectId;
     private bool sheetOpen;
     private TimeEntryResponse? sheetEntry;
@@ -189,12 +193,29 @@ else if (_providersReady)
 
     private double TodayProgress => Math.Min(100, TodayMinutes / 480 * 100);
 
+    // A create that's still queued locally and hasn't been stopped yet is a timer running
+    // without a server Id — same "tracking now" state as activeEntry, just not synced.
+    private bool IsRunningLocally => pendingCreate is not null && pendingCreate.End is null;
+
+    // A stop failed to save — either for an already-synced entry (pendingStop) or one that
+    // never synced at all and was collapsed into a single create (pendingCreate with End set).
+    private bool HasPendingSaveIssue => pendingStop is not null || pendingCreate?.End is not null;
+
+    private DateTime? RunningStartUtc => activeEntry?.Start ?? (IsRunningLocally ? pendingCreate!.Start : null);
+    private int RunningProjectId => activeEntry?.Project.Id ?? pendingCreate?.ProjectId ?? 0;
+    private string RunningProjectName => activeEntry?.Project.Name
+        ?? projects.FirstOrDefault(p => p.Id == pendingCreate?.ProjectId)?.Name ?? "Project";
+
+    private int PendingCardProjectId => pendingStop?.ProjectId ?? pendingCreate?.ProjectId ?? 0;
+    private DateTime PendingCardStart => pendingStop?.Start ?? pendingCreate?.Start ?? DateTime.UtcNow;
+    private DateTime? PendingCardEnd => pendingStop?.StopUtc ?? pendingCreate?.End;
+
     private string ElapsedDisplay
     {
         get
         {
-            if (activeEntry is null) return "00:00:00";
-            var elapsed = DateTime.UtcNow - activeEntry.Start;
+            if (RunningStartUtc is null) return "00:00:00";
+            var elapsed = DateTime.UtcNow - RunningStartUtc.Value;
             return $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
         }
     }
@@ -203,14 +224,14 @@ else if (_providersReady)
     {
         get
         {
-            if (pendingStop is null) return "00:00:00";
-            var elapsed = pendingStop.StopUtc - pendingStop.Start;
+            if (PendingCardEnd is null) return "00:00:00";
+            var elapsed = PendingCardEnd.Value - PendingCardStart;
             return $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
         }
     }
 
     private string PendingProjectName =>
-        projects.FirstOrDefault(p => p.Id == pendingStop?.ProjectId)?.Name ?? "Project";
+        projects.FirstOrDefault(p => p.Id == PendingCardProjectId)?.Name ?? "Project";
 
     protected override async Task OnInitializedAsync()
     {
@@ -220,8 +241,15 @@ else if (_providersReady)
         if (OperatingSystem.IsBrowser())
         {
             pendingStop = await PendingTimerSync.GetPendingStopAsync();
-            if (pendingStop is not null && await PendingTimerSync.RetryIfAnyAsync())
-                pendingStop = null;
+            pendingCreate = await PendingTimerSync.GetPendingCreateAsync();
+            if (pendingStop is not null || pendingCreate is not null)
+            {
+                await PendingTimerSync.RetryIfAnyAsync();
+                // Re-fetch rather than trust the combined bool — a create and a stop are never
+                // queued for the same timer at once in practice, but each resolves independently.
+                pendingStop = await PendingTimerSync.GetPendingStopAsync();
+                pendingCreate = await PendingTimerSync.GetPendingCreateAsync();
+            }
         }
 
         await LoadData();
@@ -248,7 +276,8 @@ else if (_providersReady)
 
             // A pending stop means this entry is locally stopped even if the server still
             // reports it active (the save hasn't landed yet) — don't resurrect the running card.
-            if (activeEntry is not null && pendingStop is null) StartTicker();
+            // A locally-running-but-unsynced timer (pendingCreate, no End) also needs the ticker.
+            if (RunningStartUtc is not null && !HasPendingSaveIssue) StartTicker();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
@@ -287,46 +316,69 @@ else if (_providersReady)
     private async Task StartTimer()
     {
         if (selectedProjectId <= 0) return;
-        await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
-        {
-            ProjectId = selectedProjectId,
-            Start = DateTime.UtcNow,
-            End = null
-        });
+
+        // Local-first: PendingTimerSync queues the create in local storage before attempting the
+        // network call, so the running card can render immediately below regardless of outcome.
+        var synced = await PendingTimerSync.StartAsync(selectedProjectId, DateTime.UtcNow);
+        pendingCreate = synced is null ? await PendingTimerSync.GetPendingCreateAsync() : null;
         await Reload();
     }
 
     private async Task StopTimer()
     {
-        if (activeEntry is null) return;
-
-        // Reflect "stopped" immediately and locally — don't wait on the network round trip to
-        // decide what to show. Otherwise a slow/failed save leaves the running card (and its
-        // ticker) showing as if Stop was never pressed, inviting a confusing second click.
         var stopUtc = DateTime.UtcNow;
-        pendingStop = new PendingTimerSync.PendingStop(activeEntry.Id, activeEntry.Project.Id, activeEntry.Start, stopUtc, activeEntry.Note);
-        StopTicker();
-        StateHasChanged();
 
-        var saved = await PendingTimerSync.StopAsync(activeEntry, stopUtc);
-        if (saved)
+        if (activeEntry is not null)
         {
-            pendingStop = null;
-            Snackbar.Add("Timer saved", Severity.Success);
-            await Reload();
+            // Already synced — Stage A's original stop-by-id flow, unchanged.
+            // Reflect "stopped" immediately and locally — don't wait on the network round trip to
+            // decide what to show. Otherwise a slow/failed save leaves the running card (and its
+            // ticker) showing as if Stop was never pressed, inviting a confusing second click.
+            pendingStop = new PendingTimerSync.PendingStop(activeEntry.Id, activeEntry.Project.Id, activeEntry.Start, stopUtc, activeEntry.Note);
+            StopTicker();
+            StateHasChanged();
+
+            var saved = await PendingTimerSync.StopAsync(activeEntry, stopUtc);
+            if (saved)
+            {
+                pendingStop = null;
+                Snackbar.Add("Timer saved", Severity.Success);
+                await Reload();
+            }
+            else
+            {
+                Snackbar.Add("Couldn't reach the server — click Sync to retry", Severity.Warning);
+            }
         }
-        else
+        else if (IsRunningLocally)
         {
-            Snackbar.Add("Couldn't reach the server — click Sync to retry", Severity.Warning);
+            // Never synced — collapse into a single create carrying both Start and End, rather
+            // than a create followed by an update (there's no server Id to update by yet).
+            pendingCreate = pendingCreate! with { End = stopUtc };
+            StopTicker();
+            StateHasChanged();
+
+            var synced = await PendingTimerSync.StopUnsyncedAsync(stopUtc);
+            if (synced is not null)
+            {
+                pendingCreate = null;
+                Snackbar.Add("Timer saved", Severity.Success);
+                await Reload();
+            }
+            else
+            {
+                Snackbar.Add("Couldn't reach the server — click Sync to retry", Severity.Warning);
+            }
         }
     }
 
-    private async Task SyncPendingStop()
+    private async Task SyncPending()
     {
         var saved = await PendingTimerSync.RetryIfAnyAsync();
         if (saved)
         {
             pendingStop = null;
+            pendingCreate = null;
             Snackbar.Add("Timer saved", Severity.Success);
             await Reload();
         }
@@ -340,14 +392,26 @@ else if (_providersReady)
     {
         if (selectedProjectId <= 0) return;
         var start = DateTime.UtcNow.AddMinutes(-minutes);
-        await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
+        try
         {
-            ProjectId = selectedProjectId,
-            Start = start,
-            End = DateTime.UtcNow
-        });
-        Snackbar.Add($"{minutes}m logged", Severity.Success);
-        await Reload();
+            // ClientRequestId makes a retried submit idempotency-safe server-side, but this isn't
+            // persisted locally — a failed block log doesn't survive a reload (manual retry only,
+            // see docs/plans/stage-b-start-timer-offline-plan.md). Full offline persistence for
+            // this can be added later without reworking this call, if it's ever needed.
+            await TimeEntryService.CreateTimeEntry(new TimeEntryCreateRequest
+            {
+                ProjectId = selectedProjectId,
+                Start = start,
+                End = DateTime.UtcNow,
+                ClientRequestId = Guid.NewGuid()
+            });
+            Snackbar.Add($"{minutes}m logged", Severity.Success);
+            await Reload();
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("Couldn't reach the server — try again", Severity.Warning);
+        }
     }
 
     private void OpenNewSheet()
