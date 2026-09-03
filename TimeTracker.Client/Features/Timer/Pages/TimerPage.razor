@@ -37,9 +37,16 @@
                 Couldn't reach the server — will retry automatically, or sync now
             </MudText>
 
-            <MudButton FullWidth="true" Size="Size.Large" OnClick="SyncPending"
-                       Variant="Variant.Filled" Color="Color.Warning"
-                       StartIcon="@Icons.Material.Filled.Sync">
+            <MudButton FullWidth="true" Size="Size.Large" OnClick="RunSync" Disabled="@syncBusy.IsBusy"
+                       Variant="Variant.Filled" Color="Color.Warning">
+                @if (syncBusy.ShowSpinner)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Sync" Class="mr-2" />
+                }
                 Sync
             </MudButton>
         </MudCardContent>
@@ -73,9 +80,16 @@ else if (activeEntry is not null || IsRunningLocally)
                 Started @RunningStartUtc!.Value.ToLocalTime().ToString("h:mm tt")
             </MudText>
 
-            <MudButton FullWidth="true" Size="Size.Large" OnClick="StopTimer"
-                       Style="background:#fff; color:var(--mud-palette-secondary); box-shadow:var(--mud-elevation-4)"
-                       StartIcon="@Icons.Material.Filled.Stop">
+            <MudButton FullWidth="true" Size="Size.Large" OnClick="RunStop" Disabled="@stopBusy.IsBusy"
+                       Style="background:#fff; color:var(--mud-palette-secondary); box-shadow:var(--mud-elevation-4)">
+                @if (stopBusy.ShowSpinner)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Stop" Class="mr-2" />
+                }
                 Stop &amp; save
             </MudButton>
         </MudCardContent>
@@ -98,8 +112,16 @@ else if (_providersReady)
             </MudSelect>
 
             <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary"
-                       Size="Size.Large" OnClick="StartTimer" Style="height:52px; margin-bottom:12px"
-                       StartIcon="@Icons.Material.Filled.PlayArrow">
+                       Size="Size.Large" OnClick="RunStart" Disabled="@startBusy.IsBusy"
+                       Style="height:52px; margin-bottom:12px">
+                @if (startBusy.ShowSpinner)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" />
+                }
                 Start timer
             </MudButton>
 
@@ -110,9 +132,19 @@ else if (_providersReady)
             <div class="d-flex flex-wrap justify-center gap-2">
                 @foreach (var mins in new[] { 15, 30, 60, 90 })
                 {
-                    <MudChip T="string" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Bolt"
-                             OnClick="() => LogBlock(mins)">
-                        @(mins % 60 == 0 ? $"{mins / 60}h" : $"{mins}m")
+                    var busy = LogBlockBusy(mins);
+                    <MudChip T="string" Variant="Variant.Outlined"
+                             Icon="@(busy.ShowSpinner ? null : Icons.Material.Filled.Bolt)"
+                             Disabled="@busy.IsBusy"
+                             OnClick="() => RunLogBlock(mins)">
+                        @if (busy.ShowSpinner)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
+                        else
+                        {
+                            @(mins % 60 == 0 ? $"{mins / 60}h" : $"{mins}m")
+                        }
                     </MudChip>
                 }
             </div>
@@ -177,6 +209,17 @@ else if (_providersReady)
     private PeriodicTimer? ticker;
     private Task? tickTask;
     private bool _providersReady;
+
+    // Disable-immediately / spinner-after-~1s / clear-on-completion state for each independently
+    // clickable save action (see BusyState). One per Log Block duration so clicking one doesn't
+    // disable or spin the others.
+    private readonly BusyState stopBusy = new();
+    private readonly BusyState startBusy = new();
+    private readonly BusyState syncBusy = new();
+    private readonly Dictionary<int, BusyState> logBlockBusy = [];
+
+    private BusyState LogBlockBusy(int minutes) =>
+        logBlockBusy.TryGetValue(minutes, out var busy) ? busy : logBlockBusy[minutes] = new BusyState();
 
     private double TodayMinutes => todaysEntries
         .Where(e => e.End.HasValue)
@@ -312,6 +355,11 @@ else if (_providersReady)
         ticker?.Dispose();
         ticker = null;
     }
+
+    private Task RunStart() => startBusy.RunAsync(StartTimer, StateHasChanged);
+    private Task RunStop() => stopBusy.RunAsync(StopTimer, StateHasChanged);
+    private Task RunSync() => syncBusy.RunAsync(SyncPending, StateHasChanged);
+    private Task RunLogBlock(int minutes) => LogBlockBusy(minutes).RunAsync(() => LogBlock(minutes), StateHasChanged);
 
     private async Task StartTimer()
     {
