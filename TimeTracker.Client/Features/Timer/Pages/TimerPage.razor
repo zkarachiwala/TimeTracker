@@ -370,10 +370,21 @@ else if (_providersReady)
         if (selectedProjectId <= 0) return;
 
         // Local-first: PendingTimerSync queues the create in local storage before attempting the
-        // network call, so the running card can render immediately below regardless of outcome.
+        // network call. Only refresh from the server when the create actually landed — nothing
+        // changed server-side otherwise, and Reload()'s network calls would still have to fail
+        // (or time out) before the running card starts ticking, defeating the "instant" premise.
         var synced = await PendingTimerSync.StartAsync(selectedProjectId, DateTime.UtcNow);
-        pendingCreate = synced is null ? await PendingTimerSync.GetPendingCreateAsync() : null;
-        await Reload();
+        if (synced is not null)
+        {
+            pendingCreate = null;
+            await Reload();
+        }
+        else
+        {
+            pendingCreate = await PendingTimerSync.GetPendingCreateAsync();
+            StartTicker();
+            StateHasChanged();
+        }
     }
 
     private async Task StopTimer()
