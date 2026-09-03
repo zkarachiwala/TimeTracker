@@ -103,21 +103,32 @@ Block's offline piece is actually implemented, not decided in the abstract now.
 
 ## Task breakdown (sequenced)
 
-1. Schema: `ClientRequestId` (nullable `Guid`) on `TimeEntry` + filtered unique index + EF migration
-   on `TimeTrackerDataContext`.
-2. Contracts: `ClientRequestId` on `TimeEntryCreateRequest`.
-3. Server: `TimeEntryService.CreateTimeEntry` becomes idempotent, returns `TimeEntryResponse`.
-   Update `ITimeEntryService`, `HttpTimeEntryService`, `MockTimeEntryService` to match.
-4. Client: local-timer-session model (extend `PendingStopSync` or new class per decision above).
-5. `TimerPage`: `StartTimer` becomes local-first/instant; `StopTimer` branches on whether the entry
-   it's stopping has a server `Id` yet (existing Stage A flow) or is still local-only (collapse into
-   a single `Create` with `End` set).
-6. On load: reconcile both queue shapes — locally-started-unsynced, and synced-stop-pending.
+1. ✅ Schema: `ClientRequestId` (nullable `Guid`) on `TimeEntry` + filtered unique index + EF migration
+   on `TimeTrackerDataContext`. (`b9aadd4`)
+2. ✅ Contracts: `ClientRequestId` on `TimeEntryCreateRequest`. (`8fb2d74`)
+3. ✅ Server: `TimeEntryService.CreateTimeEntry` becomes idempotent, returns `TimeEntryResponse`.
+   Update `ITimeEntryService`, `HttpTimeEntryService`, `MockTimeEntryService` to match. (`a00c410`)
+4. ✅ Client: local-timer-session model — extended `PendingStopSync` into `PendingTimerSync`
+   (`6d5ca68`), per decision #2 below.
+5. ✅ `TimerPage`: `StartTimer` is local-first/instant via `PendingTimerSync.StartAsync`; `StopTimer`
+   branches on whether the entry it's stopping has a server `Id` yet (existing Stage A flow via
+   `activeEntry`) or is still local-only (`IsRunningLocally` → `StopUnsyncedAsync`, collapsing into a
+   single `Create` with `End` set). (`c865ca5`)
+   - **Log Block decision**: attaches a `ClientRequestId` for idempotency-safe retries, but is
+     deliberately *not* persisted to local storage — `PendingTimerSync` has exactly one create-slot,
+     sized for the current timer session, and Log Block is an independent, possibly-concurrent
+     create. Manual retry only for now (warning snackbar, no reload-survival). Confirmed this
+     doesn't foreclose adding a persisted queue for it later — same `ClientRequestId`-tagged create
+     call either way, purely additive.
+6. ✅ On load: reconciles both queue shapes — locally-started-unsynced (`pendingCreate`), and
+   synced-stop-pending (`pendingStop`) — folded into step 5's `OnInitializedAsync` change rather than
+   a separate step, since both needed the same field additions.
 7. Shared "disable → spinner-after-1s → orange-on-failure" helper, applied to Stop, Start, and Log
-   Block uniformly (see UX section above). Log Block's failure-state indicator on `EntryRow` is its
-   own small design task within this step, not pre-specified.
+   Block uniformly (see UX section above). Log Block has no `EntryRow` failure-state indicator to
+   design now, per the decision above — a plain warning snackbar covers it until offline persistence
+   is added.
 8. Tests: EF migration/idempotency container test (unique index under RLS, per the original plan's
    own Verification section), client-side unit tests for the new sync-state logic (plain class +
-   fakes, no bUnit — same approach as `PendingStopSyncTests`), Playwright regression coverage
-   mirroring `TimerTests.StopTimer_WhenSaveFails_...`, plus new coverage for Start-while-offline and
-   Log-Block-while-offline.
+   fakes, no bUnit — same approach as `PendingStopSyncTests`) — done in step 4 — Playwright
+   regression coverage mirroring `TimerTests.StopTimer_WhenSaveFails_...`, plus new coverage for
+   Start-while-offline.
