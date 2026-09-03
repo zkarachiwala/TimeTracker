@@ -128,8 +128,28 @@ Block's offline piece is actually implemented, not decided in the abstract now.
    step 5 (the pending-save card) — this step only added the in-flight feedback on top of it. Log
    Block has no `EntryRow` failure-state indicator, per the decision above — a plain warning
    snackbar covers it until offline persistence is added.
-8. Tests: EF migration/idempotency container test (unique index under RLS, per the original plan's
-   own Verification section), client-side unit tests for the new sync-state logic (plain class +
-   fakes, no bUnit — same approach as `PendingStopSyncTests`) — done in step 4 — Playwright
-   regression coverage mirroring `TimerTests.StopTimer_WhenSaveFails_...`, plus new coverage for
-   Start-while-offline.
+8. ✅ Tests, all done:
+   - Client-side unit tests for the new sync-state logic (`PendingTimerSyncTests`) and the busy/
+     spinner state machine (`BusyStateTests`) — done in steps 4 and 7 respectively.
+   - Playwright regression coverage for Start-while-offline
+     (`StartTimer_WhenCreateFailsOnce_ShowsRunningCardImmediatelyAndTicksAndSyncsOnStop`, `98c073b`),
+     mirroring the existing `StopTimer_WhenSaveFails_...`. Verified 8/8 passing locally.
+   - Container test for the `ClientRequestId` filtered unique index under a real SQL Server engine
+     (`ClientRequestIdUniqueIndexTests`, `8f2e724`) — unique-violation on a repeated tag, both
+     succeed on distinct tags, both succeed on a null tag (the actual SQL Server gotcha). Verified
+     12/12 Category=Container tests passing locally.
+   - Log-Block-while-offline coverage intentionally dropped — Log Block is manual-retry-only (no
+     local persistence), so there's no reload-survival behavior to assert beyond the snackbar.
+
+## Bugs found during manual verification (2026-09-03)
+
+Two real bugs surfaced only by clicking through the offline scenarios by hand — bUnit can't reach
+this code (`OnInitializedAsync`'s `OperatingSystem.IsBrowser()` guard is always false there), so
+Playwright/manual testing was the only layer that could have caught them. Both fixed and now
+covered by the new Playwright test above:
+- Ticker never started for a local-only running timer, because the start-ticker check sat inside
+  the same `try` as the network refresh calls and never ran when those calls threw (`169def1`).
+- `StartTimer` always called `Reload()` (a full network refresh) even when the create failed to
+  sync, so the ticker sat frozen for however long those doomed requests took to fail (`ec1042f`).
+A third, not-yet-manually-reachable staleness bug (`SyncPending` trusting `RetryIfAnyAsync`'s
+combined bool) was caught by code review and fixed alongside them (`c07dd52`).
