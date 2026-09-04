@@ -67,10 +67,24 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         return entry is null ? null : Enrich(entry);
     }
 
-    public async Task CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
+    public async Task<TimeEntryResponse> CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
     {
         var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+
+        // Idempotency for the offline sync queue (Stage B): a replayed create (e.g. a retry after
+        // the original response was lost) with the same ClientRequestId returns the row already
+        // created instead of inserting a duplicate. Check-then-insert, not atomic — a true
+        // concurrent double-send with the same tag would hit the unique index and throw rather than
+        // being silently deduplicated, but the client only ever sends one tag from one place at a
+        // time, so that race is not expected in practice.
+        if (request.ClientRequestId is not null)
+        {
+            var existing = await UserEntries(ctx, userId)
+                .FirstOrDefaultAsync(te => te.ClientRequestId == request.ClientRequestId, ct);
+            if (existing is not null) return Enrich(existing);
+        }
+
         await EnsureAssignedToProjectAsync(ctx, userId, request.ProjectId, ct);
         var entry = new TimeEntry
         {
@@ -79,10 +93,17 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
             End = request.End,
             Note = request.Note,
             UserId = userId,
+            ClientRequestId = request.ClientRequestId,
             DateCreated = DateTime.Now
         };
         ctx.TimeEntries.Add(entry);
         await ctx.SaveChangesAsync(ct);
+
+        // Enrich needs entry.Project (and Project.Client) for the award-rate calc, which a freshly
+        // Add()-ed entity doesn't have populated — re-fetch via the same query shape used everywhere
+        // else in this service, which already includes both.
+        var saved = await UserEntries(ctx, userId).FirstAsync(te => te.Id == entry.Id, ct);
+        return Enrich(saved);
     }
 
     public async Task UpdateTimeEntry(int id, TimeEntryUpdateRequest request, CancellationToken ct = default)

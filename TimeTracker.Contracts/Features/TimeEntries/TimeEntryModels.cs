@@ -31,6 +31,11 @@ public class TimeEntryCreateRequest
     public DateTime Start { get; set; }
     public DateTime? End { get; set; }
     public string? Note { get; set; }
+
+    /// <summary>Client-generated idempotency tag for the offline sync queue (Stage B). Null for a
+    /// normal, already-online create. When set, a replayed create with the same tag returns the
+    /// existing row instead of inserting a duplicate.</summary>
+    public Guid? ClientRequestId { get; set; }
 }
 
 public class TimeEntryUpdateRequest
