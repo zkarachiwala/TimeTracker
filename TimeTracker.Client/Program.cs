@@ -18,7 +18,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
 builder.Services.AddScoped<ILocalStore, LocalStore>();
-builder.Services.AddScoped<PendingStopSync>();
+builder.Services.AddScoped<PendingTimerSync>();
 
 #if !SHOWCASE
 // Reads the AuthenticationState the server already computed (via AddAuthenticationStateSerialization

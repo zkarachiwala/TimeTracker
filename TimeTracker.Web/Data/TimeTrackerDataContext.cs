@@ -17,6 +17,11 @@ public class TimeTrackerDataContext : DbContext
     {
         modelBuilder.HasDefaultSchema("app");
         modelBuilder.Entity<TimeEntry>().Navigation(c => c.Project).AutoInclude();
+        // Filtered, not plain — most rows have ClientRequestId = NULL (every entry created the
+        // normal online way), and a plain unique index in SQL Server only tolerates a single NULL.
+        modelBuilder.Entity<TimeEntry>().HasIndex(e => e.ClientRequestId)
+            .IsUnique()
+            .HasFilter("[ClientRequestId] IS NOT NULL");
         modelBuilder.Entity<Project>().Navigation(c => c.ProjectUsers).AutoInclude();
         modelBuilder.Entity<Project>().Navigation(c => c.Client).AutoInclude();
         modelBuilder.Entity<Project>().HasMany(p => p.ProjectUsers).WithOne(pu => pu.Project).HasForeignKey(pu => pu.ProjectId).IsRequired();

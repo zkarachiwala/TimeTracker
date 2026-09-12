@@ -106,4 +106,54 @@ public class TimerTests : AuthenticatedPageTest
             await Page.UnrouteAsync("**/api/timeentries/*");
         }
     }
+
+    [SkippableFact]
+    public async Task StartTimer_WhenCreateFailsOnce_ShowsRunningCardImmediatelyAndTicksAndSyncsOnStop()
+    {
+        Skip.If(!WriteTestsEnabled, "Write tests disabled — set PLAYWRIGHT_WRITE_TESTS=true to run locally");
+        Skip.If(await Page.GetByText("Tracking now").IsVisibleAsync(), "Timer already running — skipping offline-start test");
+
+        // Fail the first POST (the actual Start save) with a real 500 — matches what the backend
+        // returns when the database is unreachable — then let the retry through normally. The
+        // exact-path pattern (no trailing wildcard) only matches the create endpoint, not
+        // /api/timeentries/active or /api/timeentries/today.
+        var failedOnce = false;
+        await Page.RouteAsync("**/api/timeentries/", async route =>
+        {
+            if (route.Request.Method == "POST" && !failedOnce)
+            {
+                failedOnce = true;
+                await route.FulfillAsync(new RouteFulfillOptions { Status = 500 });
+            }
+            else
+            {
+                await route.ContinueAsync();
+            }
+        });
+
+        try
+        {
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Start timer" }).ClickAsync();
+
+            // Regression coverage: the running card must appear immediately from local state, not
+            // wait on the failed create (or any network refresh) to resolve first.
+            await Expect(Page.GetByText("Tracking now")).ToBeVisibleAsync(new() { Timeout = 3_000 });
+
+            // Regression coverage: the ticker must actually start counting while still unsynced,
+            // not sit frozen until a (failing) network call finally gives up.
+            var elapsedLocator = Page.Locator(".tabnum").First;
+            var firstReading = await elapsedLocator.InnerTextAsync();
+            await Expect(elapsedLocator).Not.ToHaveTextAsync(firstReading, new() { Timeout = 5_000 });
+
+            // Stopping now collapses the still-unsynced create into a single Create carrying both
+            // Start and End (the route only fails once, so this retry reaches the server).
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Stop & save" }).ClickAsync();
+            await Expect(Page.GetByText("Timer saved")).ToBeVisibleAsync(new() { Timeout = 10_000 });
+            await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start timer" })).ToBeVisibleAsync();
+        }
+        finally
+        {
+            await Page.UnrouteAsync("**/api/timeentries/");
+        }
+    }
 }

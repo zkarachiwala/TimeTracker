@@ -69,12 +69,12 @@ builder.Services.AddSingleton<IAwardRateResolver, AwardRateResolver>();
 builder.Services.AddScoped<IExternalLoginService, ExternalLoginService>();
 builder.Services.AddScoped<TimeTracker.Contracts.Features.Admin.IUserManagementService, UserManagementService>();
 
-// TimerPage (TimeTracker.Client) injects ILocalStore/PendingStopSync and is SSR-prerendered on
+// TimerPage (TimeTracker.Client) injects ILocalStore/PendingTimerSync and is SSR-prerendered on
 // the server before WASM hydrates. DI must be able to resolve them here even though the local
 // storage calls are never actually made server-side — TimerPage guards those calls with
 // OperatingSystem.IsBrowser().
 builder.Services.AddScoped<ILocalStore, LocalStore>();
-builder.Services.AddScoped<PendingStopSync>();
+builder.Services.AddScoped<PendingTimerSync>();
 
 var app = builder.Build();
 
