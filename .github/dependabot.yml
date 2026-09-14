@@ -11,6 +11,16 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    groups:
+      # Bundle every routine GitHub Actions bump into one weekly PR instead of one
+      # PR per action. Major version bumps for an action are excluded (semver-major
+      # isn't in update-types below) so they still surface individually for review.
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "nuget"
     directory: "/"
@@ -56,6 +66,17 @@ updates:
       test-tooling:
         patterns:
           - "Microsoft.NET.Test.Sdk"
+      # Catch-all for every other NuGet package's routine bumps: one PR a week instead
+      # of one per package. Listed last so the more specific groups above still claim
+      # their packages first. Major version bumps aren't included (semver-major isn't
+      # in update-types), so a breaking change like the bUnit 1.x -> 2.x migration still
+      # surfaces as its own individually-reviewed PR.
+      nuget-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       # Microsoft.AspNetCore.OpenApi 10.0.9 pins Microsoft.OpenApi >= 2.0.0 and has not
       # been updated for the 3.x line yet (upstream release notes: 3.x support lands in
