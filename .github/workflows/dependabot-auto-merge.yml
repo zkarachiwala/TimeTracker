@@ -1,0 +1,40 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto-merge routine Dependabot bumps
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      # Never auto-merge dotnet-sdk bumps: CI installs whatever SDK global.json asks
+      # for directly from Microsoft's CDN, so a green build here proves nothing about
+      # whether apt (the SDK source for remote Claude Code sessions) can actually
+      # satisfy that version - the exact gap that let the floor drift to an
+      # unsatisfiable feature band twice before (#328, #355, #409 fixed it each time).
+      # Minor/patch bumps to everything else are safe to auto-merge once CI passes.
+      - name: Wait for checks and merge if minor/patch
+        if: |
+          steps.metadata.outputs.package-ecosystem != 'dotnet_sdk' &&
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr checks "$PR_URL" --watch
+          gh pr merge "$PR_URL" --squash --delete-branch
