@@ -5,6 +5,18 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    ignore:
+      # Ubuntu's dotnet-sdk-10.0 apt package - the only SDK source in remote Claude
+      # Code sessions - is permanently pinned to the .1xx feature band by Canonical
+      # policy (dotnet/core#9258) and will never carry 2xx/3xx/4xx+. A version-bump
+      # PR past 10.0.2xx is therefore never mergeable here regardless of what CI
+      # says (actions/setup-dotnet downloads the SDK directly, so CI can't catch
+      # this). This exact trap has recurred three times (#328, #355, #409/#410) -
+      # ignoring it here stops Dependabot proposing it at all instead of relying on
+      # someone noticing and closing it each time. Patches within the 1xx band
+      # (e.g. 10.0.110 -> 10.0.112) are unaffected and still come through normally.
+      - dependency-name: "dotnet-sdk"
+        versions: [">= 10.0.200"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
