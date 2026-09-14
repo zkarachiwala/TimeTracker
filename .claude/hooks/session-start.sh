@@ -5,18 +5,11 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
-# Install .NET 10 via apt if not already present
-if ! command -v dotnet &> /dev/null || [[ "$(dotnet --version 2>/dev/null)" != 10.* ]]; then
-  echo "Installing .NET 10 SDK..."
-  # Add the Microsoft package feed (required for dotnet-sdk-10.0 on Ubuntu 24.04)
-  . /etc/os-release
-  curl -fsSL "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" \
-    -o /tmp/packages-microsoft-prod.deb
-  dpkg -i /tmp/packages-microsoft-prod.deb
-  rm /tmp/packages-microsoft-prod.deb
-  apt-get update -qq 2>/dev/null || true
-  apt-get install -y dotnet-sdk-10.0 -qq
-fi
+# Install the exact SDK global.json pins, pulled from Microsoft Container
+# Registry (works around apt's frozen 1xx feature band and the sandbox
+# network policy blocking Microsoft's SDK CDN directly - see
+# .claude/hooks/install-dotnet-sdk.py for the full explanation).
+python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/install-dotnet-sdk.py" "$CLAUDE_PROJECT_DIR"
 
 echo ".NET version: $(dotnet --version)"
 
