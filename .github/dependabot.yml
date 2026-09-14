@@ -45,6 +45,17 @@ updates:
           - "Microsoft.AspNetCore.*"
         exclude-patterns:
           - "Microsoft.AspNetCore.Identity.EntityFrameworkCore"
+      # MudBlazor and Microsoft.NET.Test.Sdk are each a direct PackageReference in three
+      # separate projects. Without a group, Dependabot creates one PR per project file it
+      # edits for an ungrouped dependency - three near-identical PRs bumping the same
+      # version, which can also conflict with each other's project-file diffs depending
+      # on timing. Grouping bundles each into a single PR across all three projects.
+      mudblazor:
+        patterns:
+          - "MudBlazor"
+      test-tooling:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
     ignore:
       # Microsoft.AspNetCore.OpenApi 10.0.9 pins Microsoft.OpenApi >= 2.0.0 and has not
       # been updated for the 3.x line yet (upstream release notes: 3.x support lands in
