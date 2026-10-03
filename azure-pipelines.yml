@@ -40,3 +40,10 @@ stages:
         projects: '$(solution)'
         arguments: '--configuration $(buildConfiguration) --no-restore'
         feedsToUse: 'select'
+      
+    - task: DotNetCoreCLI@2
+      displayName: 'Run tests'
+      inputs:
+        command: 'test'
+        projects: '$(solution)'
+        arguments: '--configuration $(buildConfiguration) --no-restore'
