@@ -6,11 +6,16 @@
 trigger:
 - main
 
+pr:
+- main
+
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
   solution: '**/*.sln'
+  testProject: 'TimeTracker.Tests/*.csproj'
+  appProject: 'TimeTracker.Web/*.csproj'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
@@ -45,5 +50,22 @@ stages:
       displayName: 'Run tests'
       inputs:
         command: 'test'
-        projects: '$(solution)'
-        arguments: '--configuration $(buildConfiguration) --no-restore'
+        projects: '$(testProject)'
+        arguments: '--configuration $(buildConfiguration) --no-build'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Application'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: '$(appProject)'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
+        zipAfterPublish: true
+    
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish artifact'
+      condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifact: 'drop'
+
