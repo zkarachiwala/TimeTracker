@@ -56,6 +56,9 @@ stages:
         }' \
         "$TEAMS_URL"    
       displayName: 'Send notification to Microsoft Teams'
+      condition: succeeded()
+      env:
+        TEAMS_URL: $(TEAMS_URL)      
 
 
     - task: DotNetCoreCLI@2
