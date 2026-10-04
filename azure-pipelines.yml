@@ -33,13 +33,32 @@ stages:
         version: 10.x
     
     - bash: |
-        curl -H "Content-Type: application/json" \
-        -d '{"text": "Pipeline $(Build.DefinitionName) status: $(Build.Reason)"}' \
-        "$TEAMS_URL"
+        curl -v -H "Content-Type: application/json" \
+        -d '{
+          "type": "message",
+          "attachments": [
+            {
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "body": [
+                  {
+                    "type": "TextBlock",
+                    "text": "Pipeline $(Build.DefinitionName) status: $(Build.Reason)",
+                    "wrap": true
+                  }
+                ]
+              }
+            }
+          ]
+        }' \
+        "$TEAMS_URL"    
       displayName: 'Send notification to Microsoft Teams'
       condition: succeeded()
       env:
-        TEAMS_URL: $(TEAMS_URL)
+        TEAMS_URL: $(TEAMS_URL)      
 
 
     - task: DotNetCoreCLI@2
