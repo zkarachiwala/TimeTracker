@@ -31,7 +31,13 @@ stages:
       inputs:
         packageType: 'sdk'
         version: 10.x
-        
+    - bash: |
+        curl -H "Content-Type: application/json" \
+        -d '{"text": "Pipeline $(Build.DefinitionName) status: $(Build.Reason)"}' \
+        "$(TEAMS_URL)"
+      displayName: 'Send notification to Microsoft Teams'
+
+
     - task: DotNetCoreCLI@2
       displayName: 'Restore NuGet Packages'
       inputs:
