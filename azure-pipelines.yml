@@ -31,11 +31,15 @@ stages:
       inputs:
         packageType: 'sdk'
         version: 10.x
+    
     - bash: |
         curl -H "Content-Type: application/json" \
         -d '{"text": "Pipeline $(Build.DefinitionName) status: $(Build.Reason)"}' \
-        "$(TEAMS_URL)"
+        "$TEAMS_URL"
       displayName: 'Send notification to Microsoft Teams'
+      condition: succeeded()
+      env:
+        TEAMS_URL: $(TEAMS_URL)
 
 
     - task: DotNetCoreCLI@2
