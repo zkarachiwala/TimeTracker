@@ -20,10 +20,11 @@ public class HttpTimeEntryService(HttpClient http) : ITimeEntryService
     public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, CancellationToken ct = default) =>
         http.GetFromJsonAsync<List<TimeEntryResponse>>($"api/timeentries/year/{year}/all", ct)!;
 
-    public async Task CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
+    public async Task<TimeEntryResponse> CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
     {
         var response = await http.PostAsJsonAsync("api/timeentries/", request, ct);
         response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<TimeEntryResponse>(ct))!;
     }
 
     public async Task UpdateTimeEntry(int id, TimeEntryUpdateRequest request, CancellationToken ct = default)

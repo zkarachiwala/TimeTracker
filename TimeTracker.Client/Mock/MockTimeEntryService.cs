@@ -29,18 +29,19 @@ public class MockTimeEntryService(MockDataStore store) : ITimeEntryService
     public Task<TimeEntryResponse?> GetTimeEntryById(int id, CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries.FirstOrDefault(e => e.Id == id));
 
-    public Task CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
+    public Task<TimeEntryResponse> CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
     {
         var project = store.Projects.First(p => p.Id == request.ProjectId);
-        store.TimeEntries.Add(new TimeEntryResponse(
+        var entry = new TimeEntryResponse(
             store.NextEntryId(),
             new ProjectSummary(project.Id, project.Name),
             request.Start,
             request.End,
             request.Note,
             null,
-            null));
-        return Task.CompletedTask;
+            null);
+        store.TimeEntries.Add(entry);
+        return Task.FromResult(entry);
     }
 
     public Task UpdateTimeEntry(int id, TimeEntryUpdateRequest request, CancellationToken ct = default)

@@ -46,7 +46,11 @@ public static class TimeEntryEndpoints
 
         group.MapPost("/", async (TimeEntryCreateRequest request, ITimeEntryService svc, CancellationToken ct) =>
         {
-            try { await svc.CreateTimeEntry(request, ct); return Results.Created(); }
+            try
+            {
+                var entry = await svc.CreateTimeEntry(request, ct);
+                return Results.Created($"/api/timeentries/{entry.Id}", entry);
+            }
             catch (EntityNotFoundException) { return Results.NotFound(); }
         }).RequireRateLimiting("write");
 
