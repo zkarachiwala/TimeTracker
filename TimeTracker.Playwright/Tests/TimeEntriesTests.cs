@@ -94,4 +94,21 @@ public class TimeEntriesTests : AuthenticatedPageTest
         // Day tab should now be active — summary card should be visible
         await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
+
+    [Fact]
+    public async Task ClickCalendarValueBarSwitchesToDayTabFilteredByProject()
+    {
+        // The whole day cell is a click target (#432); value bars must stay above it so a bar click
+        // drills into that project rather than the unfiltered day.
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Calendar" }).ClickAsync();
+        var bar = Page.Locator(".mud-cal-total").First;
+        await Expect(bar).ToBeVisibleAsync(new() { Timeout = 10_000 });
+        var projectName = (await bar.Locator(".mud-cal-total-name").InnerTextAsync()).Trim();
+
+        await bar.ClickAsync();
+
+        await Expect(Page.GetByText("Total tracked")).ToBeVisibleAsync(new() { Timeout = 10_000 });
+        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = "Project" }))
+            .ToHaveTextAsync(projectName, new() { Timeout = 10_000 });
+    }
 }
