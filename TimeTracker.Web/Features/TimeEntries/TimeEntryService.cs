@@ -169,12 +169,13 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
             .Where(te => te.Start.Year == year && te.Start.Month == month && te.Start.Day == day), userId, skip, limit, ct);
     }
 
-    public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, CancellationToken ct = default)
+    public async Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, string timeZoneId, CancellationToken ct = default)
     {
+        var range = LocalDateRange.ForYear(year, LocalDateRange.ResolveTimeZone(timeZoneId));
         var userId = await GetUserIdAsync();
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entries = await UserEntries(ctx, userId)
-            .Where(te => te.Start.Year == year)
+            .Where(te => te.Start >= range.FromUtc && te.Start < range.ToUtc)
             .ToListAsync(ct);
         return EnrichList(entries);
     }
@@ -190,13 +191,13 @@ public class TimeEntryService : ITimeEntryService, ITimeEntryQueryService
         return entry is null ? null : Enrich(entry);
     }
 
-    public async Task<List<TimeEntryResponse>> GetTodaysTimeEntries(CancellationToken ct = default)
+    public async Task<List<TimeEntryResponse>> GetTodaysTimeEntries(string timeZoneId, CancellationToken ct = default)
     {
+        var range = LocalDateRange.Today(LocalDateRange.ResolveTimeZone(timeZoneId), DateTime.UtcNow);
         var userId = await GetUserIdAsync();
-        var today = DateTime.Today;
         await using var ctx = await _contextFactory.CreateDbContextAsync(ct);
         var entries = await UserEntries(ctx, userId)
-            .Where(te => te.Start.Date == today)
+            .Where(te => te.Start >= range.FromUtc && te.Start < range.ToUtc)
             .OrderByDescending(te => te.Start)
             .ToListAsync(ct);
         return EnrichList(entries);

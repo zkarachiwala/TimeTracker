@@ -155,12 +155,11 @@
 
     private List<TimeEntryResponse> filteredEntries => activeTab switch
     {
-        0 => allEntries
-            .Where(e => e.Start.Date == cursor.Date)
+        0 => TimeEntryFilters.ForDay(allEntries, cursor)
             .Where(e => selectedProjectId == 0 || e.Project.Id == selectedProjectId)
             .OrderByDescending(e => e.Start).ToList(),
-        1 => allEntries.Where(e => e.Start.Month == cursor.Month && e.Start.Year == cursor.Year).OrderByDescending(e => e.Start).ToList(),
-        2 => allEntries.Where(e => e.Start.Year == cursor.Year).OrderByDescending(e => e.Start).ToList(),
+        1 => TimeEntryFilters.ForMonth(allEntries, cursor.Year, cursor.Month).OrderByDescending(e => e.Start).ToList(),
+        2 => TimeEntryFilters.ForYear(allEntries, cursor.Year).OrderByDescending(e => e.Start).ToList(),
         _ => (selectedProjectId == 0
             ? allEntries
             : allEntries.Where(e => e.Project.Id == selectedProjectId)).OrderByDescending(e => e.Start).ToList()
@@ -191,8 +190,7 @@
     {
         get
         {
-            return filteredEntries
-                .GroupBy(e => e.Start.Date)
+            return TimeEntryFilters.GroupByDay(filteredEntries)
                 .OrderByDescending(g => g.Key)
                 .Select(g => new EntryGroup(g.Key, g.ToList()))
                 .ToList();
@@ -262,7 +260,7 @@
 
     private async Task LoadEntries()
     {
-        allEntries = await TimeEntryService.GetAllTimeEntriesByYear(cursor.Year);
+        allEntries = await TimeEntryService.GetAllTimeEntriesByYear(cursor.Year, TimeZoneInfo.Local.Id);
     }
 
     private async Task HandleDaySelected(DateTime date)

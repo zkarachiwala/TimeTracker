@@ -13,8 +13,8 @@ internal class FakeTimeEntryService : ITimeEntryService
     public List<(int Id, TimeEntryUpdateRequest Request)> UpdateCalls { get; } = [];
 
     public Task<TimeEntryResponse?> GetActiveTimeEntry(CancellationToken ct = default) => Task.FromResult(ActiveEntry);
-    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries(CancellationToken ct = default) => Task.FromResult(TodaysEntries);
-    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, CancellationToken ct = default) =>
+    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries(string timeZoneId, CancellationToken ct = default) => Task.FromResult(TodaysEntries);
+    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, string timeZoneId, CancellationToken ct = default) =>
         Task.FromResult(new List<TimeEntryResponse>());
     public Task<List<TimeEntryResponse>> GetAllTimeEntriesByProject(int projectId, CancellationToken ct = default) =>
         Task.FromResult(new List<TimeEntryResponse>());

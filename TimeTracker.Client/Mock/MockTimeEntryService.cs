@@ -8,13 +8,13 @@ public class MockTimeEntryService(MockDataStore store) : ITimeEntryService
     public Task<TimeEntryResponse?> GetActiveTimeEntry(CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries.FirstOrDefault(e => !e.End.HasValue));
 
-    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries(CancellationToken ct = default) =>
+    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries(string timeZoneId, CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries
             .Where(e => e.Start.Date == DateTime.Today)
             .OrderByDescending(e => e.Start)
             .ToList());
 
-    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, CancellationToken ct = default) =>
+    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, string timeZoneId, CancellationToken ct = default) =>
         Task.FromResult(store.TimeEntries
             .Where(e => e.Start.Year == year)
             .OrderByDescending(e => e.Start)

@@ -14,11 +14,19 @@ public static class TimeEntryEndpoints
             return entry is null ? Results.NoContent() : Results.Ok(entry);
         });
 
-        group.MapGet("/today", async (ITimeEntryService svc, CancellationToken ct) =>
-            Results.Ok(await svc.GetTodaysTimeEntries(ct)));
+        // tz is the caller's IANA time zone (e.g. Australia/Sydney) — "today" and "year" are
+        // local to the user, not the UTC server. A missing tz is rejected with 400 by binding.
+        group.MapGet("/today", async (string tz, ITimeEntryService svc, CancellationToken ct) =>
+        {
+            try { return Results.Ok(await svc.GetTodaysTimeEntries(tz, ct)); }
+            catch (ArgumentException ex) { return Results.BadRequest(ex.Message); }
+        });
 
-        group.MapGet("/year/{year:int}/all", async (int year, ITimeEntryService svc, CancellationToken ct) =>
-            Results.Ok(await svc.GetAllTimeEntriesByYear(year, ct))).RequireRateLimiting("all-entries");
+        group.MapGet("/year/{year:int}/all", async (int year, string tz, ITimeEntryService svc, CancellationToken ct) =>
+        {
+            try { return Results.Ok(await svc.GetAllTimeEntriesByYear(year, tz, ct)); }
+            catch (ArgumentException ex) { return Results.BadRequest(ex.Message); }
+        }).RequireRateLimiting("all-entries");
 
         group.MapGet("/{skip:int}/{limit:int}", async (int skip, int limit, ITimeEntryQueryService svc, CancellationToken ct) =>
             Results.Ok(await svc.GetTimeEntries(skip, limit, ct)));

@@ -21,14 +21,14 @@ public static class CalendarDataTransformer
         }).ToList();
     }
 
-    public static List<Value> ToDailyProjectValues(List<TimeEntryResponse> entries)
+    public static List<Value> ToDailyProjectValues(List<TimeEntryResponse> entries, TimeZoneInfo? timeZone = null)
     {
         var definitions = new Dictionary<int, ValueDefinition>();
         var values = new List<Value>();
 
         foreach (var group in entries
             .Where(e => e.End.HasValue)
-            .GroupBy(e => e.Start.Date))
+            .GroupBy(e => e.Start.ToLocal(timeZone).Date))
         {
             var date = group.Key;
 
@@ -69,10 +69,10 @@ public static class CalendarDataTransformer
         return values;
     }
 
-    public static List<TimeEntryCalendarItem> ToCalendarItemsForDay(List<TimeEntryResponse> entries, DateTime date)
+    public static List<TimeEntryCalendarItem> ToCalendarItemsForDay(List<TimeEntryResponse> entries, DateTime date, TimeZoneInfo? timeZone = null)
     {
         return entries
-            .Where(e => e.Start.Date == date.Date)
+            .Where(e => e.Start.ToLocal(timeZone).Date == date.Date)
             .Select(e => new TimeEntryCalendarItem
             {
                 EntryId = e.Id,
@@ -87,13 +87,16 @@ public static class CalendarDataTransformer
 
     public static Dictionary<(DateTime Date, string ProjectName), ValueTooltipData> ToTooltipLookup(
         List<TimeEntryResponse> entries,
-        Dictionary<int, string>? projectClientNames = null)
+        Dictionary<int, string>? projectClientNames = null,
+        TimeZoneInfo? timeZone = null)
     {
         var lookup = new Dictionary<(DateTime, string), ValueTooltipData>();
 
         foreach (var entry in entries.Where(e => e.End.HasValue))
         {
-            var key = (entry.Start.Date, entry.Project.Name);
+            var localStart = entry.Start.ToLocal(timeZone);
+            var localEnd = entry.End!.Value.ToLocal(timeZone);
+            var key = (localStart.Date, entry.Project.Name);
             if (!lookup.TryGetValue(key, out var data))
             {
                 var clientName = projectClientNames?.GetValueOrDefault(entry.Project.Id);
@@ -109,7 +112,7 @@ public static class CalendarDataTransformer
             var ts = entry.End!.Value - entry.Start;
             data.Entries.Add(new ValueTooltipData.EntryBreakdown
             {
-                TimeRange = $"{entry.Start:t} — {entry.End.Value:t}",
+                TimeRange = $"{localStart:t} — {localEnd:t}",
                 Duration = ts.TotalHours >= 1
                     ? $"{(int)ts.TotalHours}h {ts.Minutes}m"
                     : $"{ts.Minutes}m"

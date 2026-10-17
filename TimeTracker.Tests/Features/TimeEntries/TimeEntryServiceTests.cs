@@ -427,7 +427,7 @@ public class TimeEntryServiceTests
             new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2023, 1, 1) });
         await seed.SaveChangesAsync();
 
-        var result = await CreateService(options).GetAllTimeEntriesByYear(2024);
+        var result = await CreateService(options).GetAllTimeEntriesByYear(2024, "UTC");
         Assert.Equal(3, result.Count);
     }
 
@@ -550,15 +550,15 @@ public class TimeEntryServiceTests
         seed.Projects.Add(project);
         await seed.SaveChangesAsync();
         seed.TimeEntries.AddRange(
-            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddHours(9) },
-            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddHours(14) },
-            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddDays(-1).AddHours(9) });
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.UtcNow.Date.AddHours(9) },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.UtcNow.Date.AddHours(14) },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.UtcNow.Date.AddDays(-1).AddHours(9) });
         await seed.SaveChangesAsync();
 
-        var result = await CreateService(options).GetTodaysTimeEntries();
+        var result = await CreateService(options).GetTodaysTimeEntries("UTC");
 
         Assert.Equal(2, result.Count);
-        Assert.All(result, e => Assert.Equal(DateTime.Today, e.Start.Date));
+        Assert.All(result, e => Assert.Equal(DateTime.UtcNow.Date, e.Start.Date));
     }
 
     [Fact]
@@ -570,16 +570,75 @@ public class TimeEntryServiceTests
         seed.Projects.Add(project);
         await seed.SaveChangesAsync();
         seed.TimeEntries.AddRange(
-            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddHours(9) },
-            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddHours(14) },
-            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddHours(11) });
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.UtcNow.Date.AddHours(9) },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.UtcNow.Date.AddHours(14) },
+            new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.UtcNow.Date.AddHours(11) });
         await seed.SaveChangesAsync();
 
-        var result = await CreateService(options).GetTodaysTimeEntries();
+        var result = await CreateService(options).GetTodaysTimeEntries("UTC");
 
         Assert.Equal(14, result[0].Start.Hour);
         Assert.Equal(11, result[1].Start.Hour);
         Assert.Equal(9, result[2].Start.Hour);
+    }
+
+    // --- Caller time zone (#431) — "today"/"year" are the user's local period, not the UTC server's ---
+
+    private static readonly TimeZoneInfo Sydney = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+
+    [Fact]
+    public async Task GetTodaysTimeEntries_UsesCallerLocalDay()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        // Sydney midnight is 13:00/14:00Z the previous UTC day, so these straddle a UTC date
+        // boundary that a UTC "today" would get wrong.
+        var sydneyToday = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Sydney).Date;
+        var startOfDayUtc = TimeZoneInfo.ConvertTimeToUtc(sydneyToday, Sydney);
+        var today = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = startOfDayUtc.AddMinutes(30) };
+        var yesterday = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = startOfDayUtc.AddMinutes(-30) };
+        seed.TimeEntries.AddRange(today, yesterday);
+        await seed.SaveChangesAsync();
+
+        var result = await CreateService(options).GetTodaysTimeEntries("Australia/Sydney");
+
+        Assert.Equal(today.Id, Assert.Single(result).Id);
+    }
+
+    [Fact]
+    public async Task GetAllTimeEntriesByYear_UsesCallerLocalYear()
+    {
+        var options = CreateOptions();
+        using var seed = new TimeTrackerDataContext(options);
+        var project = MakeProject(UserId);
+        seed.Projects.Add(project);
+        await seed.SaveChangesAsync();
+        // 08:00 AEDT on 1 Jan 2027 = 21:00Z on 31 Dec 2026
+        var newYearMorning = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2026, 12, 31, 21, 0, 0, DateTimeKind.Utc) };
+        seed.TimeEntries.Add(newYearMorning);
+        await seed.SaveChangesAsync();
+
+        Assert.Single(await CreateService(options).GetAllTimeEntriesByYear(2027, "Australia/Sydney"));
+        Assert.Empty(await CreateService(options).GetAllTimeEntriesByYear(2026, "Australia/Sydney"));
+    }
+
+    [Fact]
+    public async Task GetTodaysTimeEntries_ThrowsArgumentException_ForUnknownTimeZone()
+    {
+        var options = CreateOptions();
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            CreateService(options).GetTodaysTimeEntries("Not/AZone"));
+    }
+
+    [Fact]
+    public async Task GetAllTimeEntriesByYear_ThrowsArgumentException_ForUnknownTimeZone()
+    {
+        var options = CreateOptions();
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            CreateService(options).GetAllTimeEntriesByYear(2026, "Not/AZone"));
     }
 
     // --- GetAllTimeEntriesByProject ---
@@ -679,7 +738,7 @@ public class TimeEntryServiceTests
             new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = new DateTime(2024, 6, 2), IsDeleted = true });
         await seed.SaveChangesAsync();
 
-        var result = await CreateService(options).GetAllTimeEntriesByYear(2024);
+        var result = await CreateService(options).GetAllTimeEntriesByYear(2024, "UTC");
         Assert.Single(result);
     }
 
@@ -733,13 +792,13 @@ public class TimeEntryServiceTests
         var project = MakeProject(UserId);
         seed.Projects.Add(project);
         await seed.SaveChangesAsync();
-        var entry = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.Today.AddHours(9), IsDeleted = true };
+        var entry = new TimeEntry { ProjectId = project.Id, UserId = UserId, Start = DateTime.UtcNow.Date.AddHours(9), IsDeleted = true };
         seed.TimeEntries.Add(entry);
         await seed.SaveChangesAsync();
 
         await CreateService(options).RestoreTimeEntry(entry.Id);
 
-        var result = await CreateService(options).GetTodaysTimeEntries();
+        var result = await CreateService(options).GetTodaysTimeEntries("UTC");
         Assert.Single(result);
     }
 
