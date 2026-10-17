@@ -7,6 +7,7 @@
 @inject NavigationManager Nav
 
 @using TimeTracker.Client.Features.TimeEntries.Components
+@using TimeTracker.Client.Features.TimeEntries.Services
 @using TimeTracker.Client.Features.Projects.Components
 @using TimeTracker.Client.Shared
 @using TimeTracker.Contracts.Features.Admin
@@ -213,8 +214,8 @@
             recentEntries = allEntries.Take(8).ToList();
 
             var year = DateTime.Today.Year;
-            ytdHours = Math.Round(allEntries
-                .Where(e => e.End.HasValue && e.Start.Year == year)
+            ytdHours = Math.Round(TimeEntryFilters.ForYear(allEntries, year)
+                .Where(e => e.End.HasValue)
                 .Sum(e => (e.End!.Value - e.Start).TotalHours), 1);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)

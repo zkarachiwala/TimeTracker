@@ -1,5 +1,6 @@
 @page "/projects"
 @attribute [Authorize(Roles = "Admin")]
+@using TimeTracker.Client.Features.TimeEntries.Services
 @inject IProjectService ProjectService
 @inject ITimeEntryService TimeEntryService
 @inject NavigationManager Nav
@@ -45,8 +46,8 @@
     private int GetYtdHours(int projectId)
     {
         var year = DateTime.Today.Year;
-        return (int)Math.Round(yearEntries
-            .Where(e => e.Project.Id == projectId && e.End.HasValue && e.Start.Year == year)
+        return (int)Math.Round(TimeEntryFilters.ForYear(yearEntries, year)
+            .Where(e => e.Project.Id == projectId && e.End.HasValue)
             .Sum(e => (e.End!.Value - e.Start).TotalHours));
     }
 
