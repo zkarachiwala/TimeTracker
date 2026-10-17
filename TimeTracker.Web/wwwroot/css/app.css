@@ -298,6 +298,25 @@ label.mud-input-label.mud-input-label-animated.mud-input-label-inputcontrol {
     height: auto !important;
 }
 
+/* ── Calendar: whole day cell is the click target (#432) ──
+   Heron styles the entire cell as a link (pointer + hover) but only the day-number <a> has the
+   click handler, so clicks on the rest of the cell did nothing. Stretch the link's hit area over
+   the cell; value bars are raised above it so clicking a bar still drills into that project. */
+.mud-cal-month-cell {
+    position: relative;
+}
+
+.mud-cal-month-cell-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.mud-cal-month-cell .mud-cal-total {
+    position: relative;
+    z-index: 1;
+}
+
 /* ── Calendar: value bars stack below day number ── */
 .mud-cal-month-cell-header {
     padding: 2px 4px;
