@@ -42,6 +42,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [ADR-034](#adr-034-securitystamp-session-revocation-over-a-redis-backed-revocation-list) | `SecurityStamp` session revocation over a Redis-backed revocation list | 2026-06 | Accepted |
 | [ADR-036](#adr-036-bounded-connection-retry-over-keeping-the-database-warm) | Bounded connection retry over keeping the database warm | 2026-08 | Accepted |
 | [ADR-037](#adr-037-persistent-component-state-for-wasm-auth-instead-of-a-client-side-api-call) | Persistent Component State for WASM auth instead of a client-side API call | 2026-08 | Accepted |
+| [ADR-038](#adr-038-caller-supplied-iana-time-zone-for-local-date-queries) | Caller-supplied IANA time zone for local-date queries | 2026-10 | Accepted |
 
 ---
 
@@ -1000,3 +1001,33 @@ Fixing the caching bug alone left the underlying round trip in place — still a
 - ✅ Less code to maintain — `CookieAuthenticationStateProvider` and its tests are deleted; the framework owns this now
 - ❌ `GET /api/auth/user` and `CookieCredentialHandler` remain in place for other purposes (the `/api/auth/providers` call on the login page still needs a live request, since that page has no authenticated user to serialize) — this ADR only removes the round trip for *authenticated-state detection*, not every auth-adjacent client call
 - ❌ Adds a new package dependency (`Microsoft.AspNetCore.Components.WebAssembly.Authentication`) to `TimeTracker.Client` solely for this one extension method
+
+---
+
+## ADR-038: Caller-supplied IANA time zone for local-date queries
+
+**Date:** 2026-10 — **Status:** Accepted
+
+**Context:** Time entries are stored in UTC and the API serialises them with a `Z` suffix. The server (Azure App Service) also runs in UTC. Anything that asks "which day/year does this entry belong to?" was answering in UTC: the WASM client took `.Date`/`.Year` straight off UTC timestamps ([#430](https://github.com/zkarachiwala/TimeTracker/issues/430)), and the server's `GET /api/timeentries/today` and `/year/{year}/all` used `DateTime.Today` and `Start.Year` ([#431](https://github.com/zkarachiwala/TimeTracker/issues/431)). For a user in AEDT (UTC+11), every entry started before 11:00 showed up under the previous day, and 1 January mornings counted towards the previous year.
+
+**Decision:**
+- **Client display logic** converts to browser-local time before taking date parts (`LocalDates.ToLocal()`, `TimeEntryFilters`).
+- **Server period queries** take the caller's IANA time zone id as a required `tz` query parameter (`/today?tz=Australia/Sydney`, `/year/2026/all?tz=Australia/Sydney`). `LocalDateRange` resolves the zone with `TimeZoneInfo`, converts the local day/year into a half-open UTC range, and the query filters `Start >= FromUtc && Start < ToUtc`. A missing or unknown `tz` returns 400. The client sends `TimeZoneInfo.Local.Id`, which Blazor WASM populates from the browser.
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **IANA zone id as a query parameter** | Accepted — DST-correct (uses the zone's rules, not a fixed offset); routes are unchanged, so Playwright wait predicates on `/api/timeentries/today` and the testing docs stay valid; the API keeps its readable "today"/"year" semantics for external consumers (future Zoho integration) |
+| Client computes a UTC `from`/`to` range (`/range?from=&to=`) | Rejected — equally correct and more general, but replaces two readable endpoints with a generic one and would have required changing every Playwright predicate keyed on `/today`. Remains a good option if arbitrary date ranges are ever needed |
+| UTC offset parameter (e.g. `?offset=660`) | Rejected — an offset is a point-in-time fact, not a zone; it gives wrong boundaries on DST-transition days and for year ranges that span both offsets |
+| Store a time zone per user in the database | Rejected for now — more moving parts (settings UI, migration) and wrong when the user travels; the browser already knows the current zone |
+| Keep UTC semantics | Rejected — this is the bug |
+
+**Consequences:**
+- ✅ "Today" and "year" match what the user sees on their clock, including across DST changes
+- ✅ Range filters on `Start` are sargable — SQL Server can use an index, unlike `Start.Date == …` / `Start.Year == …`
+- ✅ Zone handling is explicit and unit-testable (`LocalDateRange` takes a `TimeZoneInfo`; client helpers take an optional zone)
+- ❌ `tz` is now required on those two endpoints — any external caller must supply it
+- ❌ SSR prerender runs on the server, where `TimeZoneInfo.Local` is UTC; the prerendered pass can show the UTC day until WASM hydrates and reloads. Acceptable because the interactive render replaces it immediately
+- ❌ The paginated `ITimeEntryQueryService` endpoints (`/year|month|day/.../{skip}/{limit}`) still use UTC date parts. They are not called by the UI; tracked as a follow-up in #431

@@ -139,7 +139,7 @@
                 .Where(p => p.ClientId == Id)
                 .ToList();
 
-            yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year);
+            yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year, TimeZoneInfo.Local.Id);
 
             var projectIds = allProjects.Select(p => p.Id).ToHashSet();
             ytdHours = Math.Round(

@@ -55,7 +55,7 @@
         try
         {
             projects = await ProjectService.GetAllProjects();
-            yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year);
+            yearEntries = await TimeEntryService.GetAllTimeEntriesByYear(DateTime.Today.Year, TimeZoneInfo.Local.Id);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {

@@ -260,7 +260,7 @@
 
     private async Task LoadEntries()
     {
-        allEntries = await TimeEntryService.GetAllTimeEntriesByYear(cursor.Year);
+        allEntries = await TimeEntryService.GetAllTimeEntriesByYear(cursor.Year, TimeZoneInfo.Local.Id);
     }
 
     private async Task HandleDaySelected(DateTime date)

@@ -314,7 +314,7 @@ else if (_providersReady)
         {
             projects = await ProjectService.GetAllProjects();
             activeEntry = await TimeEntryService.GetActiveTimeEntry();
-            todaysEntries = await TimeEntryService.GetTodaysTimeEntries();
+            todaysEntries = await TimeEntryService.GetTodaysTimeEntries(TimeZoneInfo.Local.Id);
             selectedProjectId = projects.FirstOrDefault(p => !p.EndDate.HasValue)?.Id ?? 0;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)

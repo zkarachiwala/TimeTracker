@@ -142,7 +142,7 @@
     {
         try
         {
-            var entries = await TimeEntryService.GetAllTimeEntriesByYear(year);
+            var entries = await TimeEntryService.GetAllTimeEntriesByYear(year, TimeZoneInfo.Local.Id);
             var projects = await ProjectService.GetAllProjects();
             data = ReportsCalculations.Compute(entries, projects);
             chartSeries =

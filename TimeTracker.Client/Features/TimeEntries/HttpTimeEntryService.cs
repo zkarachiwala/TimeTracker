@@ -14,11 +14,11 @@ public class HttpTimeEntryService(HttpClient http) : ITimeEntryService
         return await response.Content.ReadFromJsonAsync<TimeEntryResponse>(ct);
     }
 
-    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries(CancellationToken ct = default) =>
-        http.GetFromJsonAsync<List<TimeEntryResponse>>("api/timeentries/today", ct)!;
+    public Task<List<TimeEntryResponse>> GetTodaysTimeEntries(string timeZoneId, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<TimeEntryResponse>>($"api/timeentries/today?tz={Uri.EscapeDataString(timeZoneId)}", ct)!;
 
-    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, CancellationToken ct = default) =>
-        http.GetFromJsonAsync<List<TimeEntryResponse>>($"api/timeentries/year/{year}/all", ct)!;
+    public Task<List<TimeEntryResponse>> GetAllTimeEntriesByYear(int year, string timeZoneId, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<List<TimeEntryResponse>>($"api/timeentries/year/{year}/all?tz={Uri.EscapeDataString(timeZoneId)}", ct)!;
 
     public async Task<TimeEntryResponse> CreateTimeEntry(TimeEntryCreateRequest request, CancellationToken ct = default)
     {
