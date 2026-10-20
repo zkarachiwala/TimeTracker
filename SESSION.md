@@ -9,7 +9,7 @@
 | #436 | #432 | Calendar: whole day cell now clickable (stretched-link CSS in `app.css`); value bars still drill into their project |
 
 **Open follow-ups:**
-- **Verify on Azure after deploy:** timer page loads its "today" list — first live test of IANA zone resolution on App Service. If broken: 400 from `/api/timeentries/today?tz=…` in the browser console
+- ~~Verify on Azure after deploy~~ — ✅ verified 2026-10-20: daily entry listing correct on App Service (IANA zone resolution works)
 - **Paginated query endpoints** (`/year|month|day/.../{skip}/{limit}`, `ITimeEntryQueryService`) still use UTC date parts — unused by the UI; noted in ADR-038, not yet its own issue
 - **Remove `Pkcs` override** in `TimeTracker.Web.csproj` once Microsoft.Data.SqlClient ships a patched dependency
 - **Remove calendar CSS workaround** in `app.css` if upstream fixes [danheron/Heron.MudTotalCalendar#43](https://github.com/danheron/Heron.MudTotalCalendar/issues/43)
