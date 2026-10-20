@@ -1,8 +1,23 @@
-# Session handoff — 2026-06-28
+# Session handoff — 2026-10-17
+
+## Last session (2026-10-17)
+**Shipped (all merged to `main`, full suite green with no exclusions):**
+| PR | Issues | What |
+|----|--------|------|
+| #433 | #430, #431 | Time zone fix — entries before 11:00 AEDT showed under yesterday. Client groups by local date (`LocalDates`, `TimeEntryFilters`); `/api/timeentries/today` and `/year/{year}/all` now take a required `?tz=` IANA zone and query a UTC range (`LocalDateRange`). See ADR-038 |
+| #435 | #434 | Security: .NET 2026-10 advisories — all ASP.NET Core/EF Core packages 10.0.12 → 10.0.13, plus direct `System.Security.Cryptography.Pkcs` 10.0.13 override (SqlClient 6.1.7 still pulls vulnerable 9.0.11) |
+| #436 | #432 | Calendar: whole day cell now clickable (stretched-link CSS in `app.css`); value bars still drill into their project |
+
+**Open follow-ups:**
+- ~~Verify on Azure after deploy~~ — ✅ verified 2026-10-20: daily entry listing correct on App Service (IANA zone resolution works)
+- **Paginated query endpoints** (`/year|month|day/.../{skip}/{limit}`, `ITimeEntryQueryService`) still use UTC date parts — unused by the UI; noted in ADR-038, not yet its own issue
+- **Remove `Pkcs` override** in `TimeTracker.Web.csproj` once Microsoft.Data.SqlClient ships a patched dependency
+- **Remove calendar CSS workaround** in `app.css` if upstream fixes [danheron/Heron.MudTotalCalendar#43](https://github.com/danheron/Heron.MudTotalCalendar/issues/43)
+- **Open PR #342** — EF Core tooling least-privilege credentials (pre-existing)
 
 ## Cert study
 All DP-800 and AZ-400 learning issues have moved to the study-plans repo.
-5 schema-change issues remain here: #208, #209, #258, #263, #267 — see study-plans SESSION.md for details.
+The 5 schema-change issues that remained here (#208, #209, #258, #263, #267) are all closed.
 
 ## Standard test commands
 **Before every PR:**
@@ -20,6 +35,11 @@ dotnet test TimeTracker.Tests --filter "Category=Container"
 **Showcase smoke tests:**
 ```bash
 BROWSER= dotnet test TimeTracker.Playwright --filter "FullyQualifiedName~ShowcaseTests" --logger "console;verbosity=normal" --blame-hang-timeout 60s
+```
+
+**Gotcha — Playwright "Executable doesn't exist":** after Dependabot bumps `Microsoft.Playwright.Xunit`, install the matching browser:
+```bash
+pwsh TimeTracker.Playwright/bin/Debug/net10.0/playwright.ps1 install chromium
 ```
 
 ## Dev container
