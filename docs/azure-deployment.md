@@ -367,7 +367,7 @@ A `.bacpac` is a self-contained export format produced by Microsoft's SqlPackage
 
 #### Why a private GitHub repository?
 
-The obvious alternative — GitHub Actions artifacts — is not safe for a public repository. Artifacts on public repos are downloadable by anyone without authentication. A `.bacpac` contains all user data, so it must be stored somewhere private. A separate private repository (`TimeTracker-backups`) is used instead. The backup workflow pushes files there using a fine-grained PAT scoped exclusively to that one repo (contents: write, nothing else).
+The obvious alternative — GitHub Actions artifacts — is not safe for a public repository. Artifacts on public repos are downloadable by anyone without authentication. A `.bacpac` contains all user data, so it must be stored somewhere private. A separate private repository (`TimeTracker-backups`) is used instead. The backup workflow pushes files there using a short-lived GitHub App installation token scoped exclusively to that one repo (contents: write, nothing else) — see [ADR-039](decisions.md#adr-039-github-app-installation-token-over-fine-grained-pat-for-the-backup-push).
 
 #### Why can't the workflow use a SQL username and password?
 
@@ -396,7 +396,7 @@ The Azure RBAC side remains tightly constrained — the service principal can on
 - Separate app registration (`timetracker-github-backup`) from the deploy SP
 - Custom Azure role: `firewallRules/write` + `firewallRules/delete` only, scoped to the SQL server resource
 - SQL user: `db_owner` on `TimeTrackerDb`
-- OIDC for Azure login (no client secrets); fine-grained PAT for the backup repo push (no broad GitHub token)
+- OIDC for Azure login (no client secrets); GitHub App installation token for the backup repo push (1-hour lifetime, one repo, no expiring PAT)
 
 ### Step A — Set variables and create the app registration
 
@@ -496,17 +496,23 @@ The Azure RBAC side of this SP is still tightly locked (firewall rule write/dele
 
 Create a **private** repository at `github.com/zkarachiwala/TimeTracker-backups` (or any name you choose — must be private). Leave it empty; the workflow will push `.bacpac` files to it daily.
 
-### Step G — Create a fine-grained PAT for the backup repo
+### Step G — Create a GitHub App for the backup repo push
 
-Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**:
+The workflow mints a fresh installation token on every run with `actions/create-github-app-token` (1-hour lifetime, revoked when the job ends). Nothing expires, so there is no rotation reminder. See [ADR-039](decisions.md#adr-039-github-app-installation-token-over-fine-grained-pat-for-the-backup-push).
 
-| Field | Value |
-|-------|-------|
-| Token name | `TimeTracker backup push` |
-| Expiration | 1 year (maximum for fine-grained PATs — set a calendar reminder to rotate) |
-| Resource owner | `zkarachiwala` |
-| Repository access | Only select repositories → `TimeTracker-backups` |
-| Repository permissions | Contents → **Read and write** (all others: No access) |
+1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**:
+
+   | Field | Value |
+   |-------|-------|
+   | GitHub App name | e.g. `timetracker-backup-zak` (must be globally unique) |
+   | Homepage URL | `https://github.com/zkarachiwala/TimeTracker` |
+   | Webhook → Active | **Unchecked** |
+   | Repository permissions | Contents → **Read and write** (Metadata: Read-only is added automatically; all others: No access) |
+   | Where can this GitHub App be installed? | **Only on this account** |
+
+2. On the app's **General** page, copy the **Client ID** (not the App ID).
+3. Under **Private keys**, click **Generate a private key** — a `.pem` file downloads.
+4. **Install App** → `zkarachiwala` → **Only select repositories** → `TimeTracker-backups`.
 
 ### Step H — Add secrets and variables to GitHub
 
@@ -519,7 +525,8 @@ In **Settings → Secrets and variables → Actions** on the `TimeTracker` repo 
 | Type | Name | Value |
 |------|------|-------|
 | Secret | `BACKUP_AZURE_CLIENT_ID` | From above |
-| Secret | `BACKUP_REPO_TOKEN` | Fine-grained PAT from Step G |
+| Secret | `BACKUP_APP_PRIVATE_KEY` | Full contents of the `.pem` from Step G (`gh secret set BACKUP_APP_PRIVATE_KEY < key.pem`, then delete the file) |
+| Variable | `BACKUP_APP_CLIENT_ID` | Client ID from Step G |
 | Variable | `SQL_RESOURCE_GROUP` | `timetracker-rg` |
 | Variable | `SQL_SERVER` | `timetracker-sql` |
 | Variable | `SQL_DATABASE` | `TimeTrackerDb` |

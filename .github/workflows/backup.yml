@@ -90,9 +90,30 @@ jobs:
           
           echo "file=$FILE" >> $GITHUB_OUTPUT
 
+      # Short-lived (1 hour) installation token, scoped to the backup repo only and
+      # revoked automatically when the job ends. Replaces an expiring PAT — see ADR-039.
+      - name: Get backup repo token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BACKUP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BACKUP_APP_PRIVATE_KEY }}
+          repositories: ${{ vars.BACKUP_REPO_NAME }}
+          permission-contents: write
+
+      - name: Check out private backup repo
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/${{ vars.BACKUP_REPO_NAME }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: backup-repo
+          persist-credentials: false
+
       - name: Push to private backup repo
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
-          git clone https://x-access-token:${{ secrets.BACKUP_REPO_TOKEN }}@github.com/${{ github.repository_owner }}/${{ vars.BACKUP_REPO_NAME }}.git backup-repo
           cp ${{ steps.export.outputs.file }} backup-repo/
           cd backup-repo
           find . -name "backup-*.bacpac" | while read f; do
@@ -102,8 +123,10 @@ jobs:
               rm "$f"
             fi
           done
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
+          BOT_ID=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          git config user.email "${BOT_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git config user.name "${APP_SLUG}[bot]"
+          gh auth setup-git
           git add .
           git diff --staged --quiet || git commit -m "backup: ${{ steps.export.outputs.file }}"
           git push
