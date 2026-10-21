@@ -43,6 +43,7 @@ Architectural decisions that were non-obvious, had meaningful alternatives, or a
 | [ADR-036](#adr-036-bounded-connection-retry-over-keeping-the-database-warm) | Bounded connection retry over keeping the database warm | 2026-08 | Accepted |
 | [ADR-037](#adr-037-persistent-component-state-for-wasm-auth-instead-of-a-client-side-api-call) | Persistent Component State for WASM auth instead of a client-side API call | 2026-08 | Accepted |
 | [ADR-038](#adr-038-caller-supplied-iana-time-zone-for-local-date-queries) | Caller-supplied IANA time zone for local-date queries | 2026-10 | Accepted |
+| [ADR-039](#adr-039-github-app-installation-token-over-fine-grained-pat-for-the-backup-push) | GitHub App installation token over fine-grained PAT for the backup push | 2026-10 | Accepted |
 
 ---
 
@@ -550,7 +551,7 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 - **~~`db_owner` on the database~~ `db_ddladmin` + `db_datareader` + `rls_bypass`** *(revised 2026-07, see [ADR-033](#adr-033-named-rls_bypass-role-over-blanket-db_owner-rls-exemption))* — two constraints drive this: (1) SqlPackage requires `DBCC SHOW_STATISTICS` to analyse indexes, which requires `db_owner` or `db_ddladmin`; `db_datareader` alone is insufficient. (2) RLS filter policies block all rows for a connection with no `SESSION_CONTEXT`, so the export needs an exemption or it produces empty tables.
   <br><br>
   Constraint (2) was originally solved with `db_owner`, on the incorrect belief that `db_owner` is exempt from RLS by design — it is not; it was exempt only because the predicates named it. Membership of the `rls_bypass` role now covers (2) explicitly, leaving only (1), which `db_ddladmin` satisfies. This is a real reduction: `db_owner` can manage role membership and so could add itself to `rls_bypass`; `db_ddladmin` cannot self-elevate. It also resolves the "worth reviewing" caveat recorded below.
-- **Fine-grained PAT for the repo push** — OIDC cannot push to GitHub; a PAT is required. A fine-grained PAT scoped to `TimeTracker-backups` with `contents: write` only is the minimum possible credential. It cannot read or write any other repository.
+- **~~Fine-grained PAT~~ GitHub App installation token for the repo push** *(revised 2026-10, see [ADR-039](#adr-039-github-app-installation-token-over-fine-grained-pat-for-the-backup-push))* — originally: OIDC cannot push to GitHub; a PAT is required. A fine-grained PAT scoped to `TimeTracker-backups` with `contents: write` only is the minimum possible credential. It cannot read or write any other repository.
 - **Private repo over artifact** — GitHub Actions artifacts on public repositories are downloadable by any unauthenticated user. A `.bacpac` contains all user data; a private repository is the correct boundary.
 
 **Consequences:**
@@ -558,7 +559,7 @@ Enable with: `SQL_SERVER_RLS_TESTS=true SQL_SERVER_ADMIN_CONNECTION=... SQL_SERV
 - ✅ No stored client secrets anywhere — OIDC for Azure, fine-grained PAT for GitHub
 - ✅ Backup credential is isolated — cannot deploy code or access any Azure resource other than firewall rules on one SQL server
 - ✅ 30-day rolling retention is managed automatically — no manual cleanup
-- ❌ Fine-grained PATs expire (maximum 1 year) — requires a calendar reminder to rotate `BACKUP_REPO_TOKEN` annually
+- ❌ ~~Fine-grained PATs expire (maximum 1 year) — requires a calendar reminder to rotate `BACKUP_REPO_TOKEN` annually~~ — this is exactly what broke: the PAT expired and backups failed silently for a week ([#441](https://github.com/zkarachiwala/TimeTracker/issues/441)). Resolved by [ADR-039](#adr-039-github-app-installation-token-over-fine-grained-pat-for-the-backup-push)
 - ❌ `db_owner` on the database is broader than ideal — necessary given SqlPackage and RLS constraints, but worth reviewing if either changes in a future SqlPackage version
 
 ---
@@ -1031,3 +1032,27 @@ Fixing the caching bug alone left the underlying round trip in place — still a
 - ❌ `tz` is now required on those two endpoints — any external caller must supply it
 - ❌ SSR prerender runs on the server, where `TimeZoneInfo.Local` is UTC; the prerendered pass can show the UTC day until WASM hydrates and reloads. Acceptable because the interactive render replaces it immediately
 - ❌ The paginated `ITimeEntryQueryService` endpoints (`/year|month|day/.../{skip}/{limit}`) still use UTC date parts. They are not called by the UI; tracked as a follow-up in #431
+
+---
+
+## ADR-039: GitHub App installation token over fine-grained PAT for the backup push
+
+**Date:** 2026-10 — **Status:** Accepted — **Closes:** [#441](https://github.com/zkarachiwala/TimeTracker/issues/441)
+
+**Context:** The nightly backup ([ADR-021](#adr-021-nightly-bacpac-export-to-private-github-repo)) pushed to the private `TimeTracker-backups` repo with a fine-grained PAT stored as `BACKUP_REPO_TOKEN`. The PAT was created with a 90-day expiry on 2026-07-15; from 2026-10-14 every run failed at `git clone` with "Invalid username or token", and no backup was taken for a week. GitHub's own guidance is that "for long-lived integrations, you should use a GitHub App".
+
+**Options considered:**
+
+| Option | Why rejected / accepted |
+|--------|-------------------------|
+| **GitHub App + `actions/create-github-app-token`** | Accepted — a fresh installation token per run, valid 1 hour and revoked when the job ends, scoped to one repo with `contents: write`. The long-lived credential (the app's private key) does not expire, and the token is not tied to a personal account |
+| Rotate the PAT (same or longer expiry) | Rejected — recreates the same failure on a timer; relies on a calendar reminder |
+| Non-expiring fine-grained PAT | Rejected — allowed by GitHub, but a permanent bearer token tied to a personal account; a leak is valid until someone notices |
+| Deploy key (SSH) on the backup repo | Viable — no expiry, single-repo scope. Rejected because the key is itself a permanent bearer credential used directly by `git`; the app keeps the per-run credential short-lived |
+
+**Consequences:**
+- ✅ No expiry-driven outages; no rotation reminder
+- ✅ The credential used by `git` lives at most 1 hour and is revoked at job end
+- ✅ Backup commits are attributed to the app's bot identity, not `github-actions[bot]`
+- ❌ One more thing to provision (app registration + installation) when rebuilding the setup — documented in `docs/azure-deployment.md` Step G
+- ❌ The private key is still a long-lived secret; if it leaks, regenerate it on the app's settings page (old keys can be deleted there)
