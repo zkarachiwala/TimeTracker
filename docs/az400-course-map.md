@@ -53,6 +53,10 @@
 ## SECTION: Design and Implement Build Pipelines
 *Exam area: Design and implement build and release pipelines (50–55%)*
 
+> The Azure Pipelines YAML built for #252/#255 (`azure-pipelines.yml`) has since been removed from the repo —
+> GitHub Actions is the only CI/CD. To revisit it, see the file in git history:
+> `git log --all --full-history -- azure-pipelines.yml`
+
 | Lecture | Issue | Notes |
 |---|---|---|
 | Azure Pipelines Overview | ✅ | #252 |
