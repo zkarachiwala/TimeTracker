@@ -5,6 +5,14 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    ignore:
+      # Stay on the .NET 10 (LTS) SDK line. Moving to a new major (.NET 11+) is a
+      # deliberate migration - TargetFramework in every csproj, the runtime packages
+      # below, the Dockerfile, CI and the remote-session apt install all have to move
+      # together - so it's done by hand on its own branch, not by a Dependabot bump.
+      # Remove this rule when that migration starts.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -78,6 +86,19 @@ updates:
           - "minor"
           - "patch"
     ignore:
+      # Runtime packages that version with .NET itself (10.0.x on net10.0). Their next
+      # major (11.0.0) belongs to the .NET 11 migration, not a routine bump - see the
+      # dotnet-sdk ignore above. Patch releases (10.0.14 -> 10.0.15) still flow through.
+      # Packages with their own version lines (Microsoft.NET.Test.Sdk, Microsoft.OpenApi)
+      # are deliberately not matched here.
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "System.*"
+        update-types: ["version-update:semver-major"]
       # Microsoft.AspNetCore.OpenApi 10.0.9 pins Microsoft.OpenApi >= 2.0.0 and has not
       # been updated for the 3.x line yet (upstream release notes: 3.x support lands in
       # a future ASP.NET Core version). Stay on 2.x until that catches up.
