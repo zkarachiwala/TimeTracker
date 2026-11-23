@@ -16,7 +16,7 @@
     <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="10.0.15" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.15" />
-    <PackageReference Include="MudBlazor" Version="9.13.0" />
+    <PackageReference Include="MudBlazor" Version="9.14.0" />
     <PackageReference Include="PublicHoliday" Version="4.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.21.0" />
     <PackageReference Include="Mapster" Version="10.0.14" />
